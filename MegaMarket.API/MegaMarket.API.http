@@ -1,0 +1,6 @@
+@MegaMarket.API_HostAddress = http://localhost:5036
+
+GET {{MegaMarket.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
