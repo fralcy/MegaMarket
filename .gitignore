@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Entity Framework Migration files - mỗi người tự tạo trên máy mình
+**/Migrations/
