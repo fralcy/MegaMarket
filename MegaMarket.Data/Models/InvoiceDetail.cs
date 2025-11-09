@@ -5,14 +5,12 @@ namespace MegaMarket.Data.Models;
 
 public class InvoiceDetail
 {
-    [Key, Column(Order = 0)]
+    [Key, Column("invoice_id", Order = 0)]
     [ForeignKey("Invoice")]
-    [Column("invoice_id")]
     public int InvoiceId { get; set; }
 
-    [Key, Column(Order = 1)]
+    [Key, Column("product_id", Order = 1)]
     [ForeignKey("Product")]
-    [Column("product_id")]
     public int ProductId { get; set; }
 
     [Column("quantity")]

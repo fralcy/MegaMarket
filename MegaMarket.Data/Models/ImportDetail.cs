@@ -5,14 +5,12 @@ namespace MegaMarket.Data.Models;
 
 public class ImportDetail
 {
-    [Key, Column(Order = 0)]
+    [Key, Column("import_id", Order = 0)]
     [ForeignKey("Import")]
-    [Column("import_id")]
     public int ImportId { get; set; }
 
-    [Key, Column(Order = 1)]
+    [Key, Column("product_id", Order = 1)]
     [ForeignKey("Product")]
-    [Column("product_id")]
     public int ProductId { get; set; }
 
     [Column("quantity")]

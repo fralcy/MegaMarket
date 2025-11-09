@@ -5,14 +5,12 @@ namespace MegaMarket.Data.Models;
 
 public class PromotionProduct
 {
-    [Key, Column(Order = 0)]
+    [Key, Column("promotion_id", Order = 0)]
     [ForeignKey("Promotion")]
-    [Column("promotion_id")]
     public int PromotionId { get; set; }
 
-    [Key, Column(Order = 1)]
+    [Key, Column("product_id", Order = 1)]
     [ForeignKey("Product")]
-    [Column("product_id")]
     public int ProductId { get; set; }
 
     // Navigation properties
