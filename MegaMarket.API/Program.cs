@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using MegaMarket.Data.Data;
+using MegaMarket.API.Services;
+using MegaMarket.API.GraphQL;
+using MegaMarket.API.GraphQL.Types;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,7 +13,24 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<MegaMarketDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Register Services
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<ShiftTypeService>();
+builder.Services.AddScoped<AttendanceService>();
+
+// Configure GraphQL
+builder.Services
+    .AddGraphQLServer()
+    .AddQueryType<Query>()
+    .AddMutationType<Mutation>()
+    .AddType<UserType>()
+    .AddType<ShiftTypeType>()
+    .AddType<AttendanceType>()
+    .AddProjections()
+    .AddFiltering()
+    .AddSorting();
+
+// Swagger (giữ lại nếu còn dùng REST API)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -28,5 +48,8 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map GraphQL endpoint
+app.MapGraphQL("/graphql");
 
 app.Run();
