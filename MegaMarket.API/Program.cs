@@ -1,4 +1,7 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using MegaMarket.Data.Data;
 using MegaMarket.API.Services;
 using MegaMarket.API.GraphQL;
@@ -19,6 +22,30 @@ builder.Services.AddScoped<ShiftTypeService>();
 builder.Services.AddScoped<AttendanceService>();
 builder.Services.AddScoped<AuthService>();
 
+// Configure JWT Authentication
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new Exception("JWT Key chưa được config trong appsettings.json!");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "MegaMarket";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "MegaMarket";
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 // Configure GraphQL
 builder.Services
     .AddGraphQLServer()
@@ -31,7 +58,18 @@ builder.Services
     .AddFiltering()
     .AddSorting();
 
-// Swagger (giữ lại nếu còn dùng REST API)
+// CORS (nếu frontend và backend khác origin)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -46,11 +84,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseCors("AllowAll");
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-// Map GraphQL endpoint
 app.MapGraphQL("/graphql");
 
 app.Run();
