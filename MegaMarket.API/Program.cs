@@ -17,6 +17,7 @@ builder.Services.AddDbContext<MegaMarketDbContext>(options =>
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ShiftTypeService>();
 builder.Services.AddScoped<AttendanceService>();
+builder.Services.AddScoped<AuthService>();
 
 // Configure GraphQL
 builder.Services
