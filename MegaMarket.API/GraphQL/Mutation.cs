@@ -6,6 +6,23 @@ namespace MegaMarket.API.GraphQL;
 
 public class Mutation
 {
+    // ==================== AUTH MUTATIONS ====================
+
+    [GraphQLDescription("Đăng nhập vào hệ thống")]
+    public async Task<LoginResultDto?> Login(
+        LoginInputDto input,
+        [Service] AuthService authService)
+    {
+        var result = await authService.LoginAsync(input);
+
+        if (result == null)
+        {
+            throw new GraphQLException("Tên đăng nhập hoặc mật khẩu không đúng!");
+        }
+
+        return result;
+    }
+
     // ==================== USER MUTATIONS ====================
 
     [GraphQLDescription("Tạo nhân viên mới")]
