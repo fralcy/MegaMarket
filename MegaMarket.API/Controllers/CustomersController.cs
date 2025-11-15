@@ -12,9 +12,11 @@ namespace MegaMarket.API.Controllers
     public class CustomersController : ControllerBase
     {
         private readonly ICustomerService _customerService;
-        public CustomersController(ICustomerService customerService)
+        private readonly IPointTransactionService _pointTransactionService;
+        public CustomersController(ICustomerService customerService, IPointTransactionService pointTransactionService)
         {
             _customerService = customerService;
+            _pointTransactionService = pointTransactionService;
         }
 
         //api/customers : get all customers
@@ -105,6 +107,18 @@ namespace MegaMarket.API.Controllers
             }
 
             return Ok(results);
+        }
+
+        // GET: api/customers/{id}/points
+        [HttpGet("{id}/Points")]
+        public async Task<IActionResult> GetCustomerPointHistory(int id)
+        {
+            var history = await _pointTransactionService.GetPointHistoryAsync(id);
+
+            if (!history.Any())
+                return NotFound($"Customer {id} has no point history.");
+
+            return Ok(history);
         }
 
 

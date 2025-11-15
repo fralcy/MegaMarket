@@ -29,5 +29,8 @@ namespace MegaMarket.Data.Repositories
 
         // filter customer by field
         Task<IEnumerable<Customer>> FilterCustomersAsync(string? fullName, string? phone, string? rank);
+
+        // update point 
+        Task<bool> UpdateCustomerPointsAsync(int customerId, int newPoints);
     }
 }

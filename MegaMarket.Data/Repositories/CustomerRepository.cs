@@ -133,5 +133,18 @@ namespace MegaMarket.Data.Repositories
             return await query.ToListAsync();
         }
 
+
+        // update point 
+        public async Task<bool> UpdateCustomerPointsAsync(int customerId, int newPoints)
+        {
+            var customer = await _context.Customers.FindAsync(customerId);
+            if (customer == null) return false;
+
+            customer.Points = newPoints;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
     }
 }
