@@ -19,5 +19,7 @@ namespace MegaMarket.API.Services
         // add point
         Task<PointTransactionResponseDto?> AddPointAsync(int customerId, AddPointRequestDto dto);
 
+        // subtract point
+        Task<PointTransactionResponseDto?> SubtractPointAsync(int customerId, SubtractPointRequestDto dto);
     }
 }

@@ -117,6 +117,57 @@ namespace MegaMarket.API.Services
             };
         }
 
+        // subtract point for customer
+        public async Task<PointTransactionResponseDto?> SubtractPointAsync(int customerId, SubtractPointRequestDto dto)
+        {
+            var customer = await _customerRepository.GetCustomerByIdAsync(customerId);
+            if (customer == null)
+                return null;
+
+            // Validate: enough poit to subtract
+            if (customer.Points < dto.Points)
+                throw new Exception("Customer does not have enough points.");
+
+            // Validate transaction type
+            string[] validTypes = { "Redeem", "Adjust" };
+            if (!validTypes.Contains(dto.TransactionType))
+                throw new Exception("Invalid transaction type. Must be Redeem or Adjust.");
+
+            // Update point balance
+            int newPoints = customer.Points - dto.Points;
+            await _customerRepository.UpdateCustomerPointsAsync(customerId, newPoints);
+
+            // Create transaction object
+            var pt = new PointTransaction
+            {
+                CustomerId = customerId,
+                InvoiceId = null,           // subtract = không liên quan invoice
+                PointChange = -dto.Points,   // subtract = - add
+                TransactionType = dto.TransactionType,
+                CreatedAt = DateTime.Now,
+                Description = dto.Description
+                    ?? (dto.TransactionType == "Redeem"
+                            ? "Redeemed points"
+                            : "Adjusted by admin"),
+                Customer = customer   // get customer name by mapping
+            };
+
+            var created = await _pointTransactionRepository.AddTransactionAsync(pt);
+
+            // Return response DTO
+            return new PointTransactionResponseDto
+            {
+                TransactionId = created.TransactionId,
+                CustomerId = created.CustomerId,
+                CustomerName = customer.FullName,
+                InvoiceId = created.InvoiceId,
+                PointChange = created.PointChange,
+                TransactionType = created.TransactionType,
+                CreatedAt = created.CreatedAt,
+                Description = created.Description
+            };
+        }
+
 
 
     }

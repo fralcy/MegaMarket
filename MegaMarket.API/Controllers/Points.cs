@@ -55,5 +55,23 @@ namespace MegaMarket.API.Controllers
             }
             return Ok(point_transaction);
         }
+
+        [HttpPost("{id}/subtract")]
+        public async Task<IActionResult> SubtractPoints(int id, [FromBody] SubtractPointRequestDto dto)
+        {
+            try
+            {
+                var result = await _pointTransactionService.SubtractPointAsync(id, dto);
+
+                if (result == null)
+                    return NotFound("Customer not found.");
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }
