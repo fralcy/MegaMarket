@@ -18,7 +18,7 @@ namespace MegaMarket.Data.Repositories
         // get history point transaction of customer by id 
         Task<IEnumerable<PointTransaction>> GetPointHistoryByCustomerIdAsync(int customerId);
 
-        // add point
+        // add and subtract point
         Task<PointTransaction> AddTransactionAsync(PointTransaction transaction);
     }
 }

@@ -18,6 +18,8 @@ builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IPointTransactionRepository, PointTransactionRepository>();
 builder.Services.AddScoped<IPointTransactionService, PointTransactionService>();
+builder.Services.AddScoped<IRewardRepository, RewardRepository>();
+builder.Services.AddScoped<IRewardService, RewardService>();
 
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

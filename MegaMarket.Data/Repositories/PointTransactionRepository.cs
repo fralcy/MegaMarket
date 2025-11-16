@@ -62,7 +62,7 @@ namespace MegaMarket.Data.Repositories
                 .ToListAsync();
         }
 
-        // add point 
+        // add and subtract point 
         public async Task<PointTransaction> AddTransactionAsync(PointTransaction transaction)
         {
             _context.PointTransactions.Add(transaction);
