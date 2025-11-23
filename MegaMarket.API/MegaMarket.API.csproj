@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -22,9 +22,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="DTOs\" />
+    <Folder Include="DTOs\Imports\" />
+    <Folder Include="DTOs\Exports\" />
+    <Folder Include="DTOs\Inventory\" />
+    <Folder Include="DTOs\Products\" />
     <Folder Include="Helpers\" />
-    <Folder Include="Services\" />
   </ItemGroup>
 
 </Project>
