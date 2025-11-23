@@ -17,9 +17,11 @@ builder.Services.AddDbContext<MegaMarketDbContext>(options =>
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IPointTransactionRepository, PointTransactionRepository>();
+builder.Services.AddScoped<ICustomerRewardRepository, CustomerRewardRepository>();
 builder.Services.AddScoped<IPointTransactionService, PointTransactionService>();
 builder.Services.AddScoped<IRewardRepository, RewardRepository>();
 builder.Services.AddScoped<IRewardService, RewardService>();
+builder.Services.AddScoped<ICustomerRewardService, CustomerRewardService>();
 
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
