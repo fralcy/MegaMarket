@@ -22,5 +22,6 @@ namespace MegaMarket.API.Services
 
         // filter customer
         Task<IEnumerable<CustomerResponseDto>> FilterCustomersAsync(FilterCustomerRequestDto filter);
+
     }
 }

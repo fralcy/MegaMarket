@@ -151,6 +151,7 @@ namespace MegaMarket.API.Services
 
                 // save in db by repo
                 var updatedCustomer = await _customerRepository.UpdateCustomerAsync(customer);
+                await _customerRepository.UpdateCustomerRankAsync(customerId);
                 if (updatedCustomer == null)
                 {
                     return null;
@@ -209,5 +210,6 @@ namespace MegaMarket.API.Services
             });
         }
 
+        
     }
 }

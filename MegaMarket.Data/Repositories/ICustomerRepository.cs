@@ -32,5 +32,8 @@ namespace MegaMarket.Data.Repositories
 
         // update point 
         Task<bool> UpdateCustomerPointsAsync(int customerId, int newPoints);
+
+        // update customer rank based on total points
+        Task UpdateCustomerRankAsync(int customerId);
     }
 }

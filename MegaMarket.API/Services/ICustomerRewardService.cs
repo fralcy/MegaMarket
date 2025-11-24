@@ -13,4 +13,7 @@ public interface ICustomerRewardService
 
     // delete a customer reward by id and add back points to the customer
     Task DeleteCustomerRewardAsync(int id);
+
+    // customer receives a reward by redeeming points
+    Task<CustomerRewardResponseDto> RedeemRewardAsync(int customerId, int rewardId, int invoiceId);
 }

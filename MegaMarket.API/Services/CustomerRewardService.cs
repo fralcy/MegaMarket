@@ -6,11 +6,13 @@ public class CustomerRewardService : ICustomerRewardService
 {
     private readonly ICustomerRewardRepository _customerRewardRepo;
     private readonly ICustomerRepository _customerRepo;
+    private readonly IRewardRepository _rewardRepo;
 
-    public CustomerRewardService(ICustomerRewardRepository customerRewardRepo, ICustomerRepository customerRepo)
+    public CustomerRewardService(ICustomerRewardRepository customerRewardRepo, ICustomerRepository customerRepo, IRewardRepository rewardRepo)
     {
         _customerRewardRepo = customerRewardRepo;
         _customerRepo = customerRepo;
+        _rewardRepo = rewardRepo;
     }
 
     // get all customer rewards with optional filtering by status and customerId
@@ -96,7 +98,7 @@ public class CustomerRewardService : ICustomerRewardService
         var reward = await _customerRewardRepo.GetCustomerRewardByIdAsync(id);
         if (reward == null)
             throw new Exception("Customer reward not found.");
-        if(reward.Status != "Pending")
+        if (reward.Status != "Pending")
         {
             throw new Exception("Only pending rewards can be deleted.");
         }
@@ -106,8 +108,68 @@ public class CustomerRewardService : ICustomerRewardService
         {
             customer.Points += reward.Reward.PointCost;
             await _customerRepo.UpdateCustomerAsync(customer);
+            // update rank 
+            await _customerRepo.UpdateCustomerRankAsync(customer.CustomerId);
         }
+
+        // increase reward quantity available
+        var rewardItem = await _rewardRepo.GetRewardByIdAsync(reward.RewardId);
+        if (rewardItem != null)
+        {
+            rewardItem.QuantityAvailable += 1;
+            await _rewardRepo.UpdateRewardAsync(rewardItem);
+        }
+
         // delete reward
         await _customerRewardRepo.DeleteCustomerRewardAsync(id);
+    }
+
+    // customer redeems a reward: 
+    // - Check: `Customers.points >= Rewards.point_cost`  
+    // - `Rewards.quantity_available > 0`  
+    // - Thực hiện trong **transaction** (ở repository):  
+    // ① trừ điểm khách hàng  
+    // ② giảm `quantity_available`  
+    // ③ thêm bản ghi `CustomerRewards`  
+    // ④ thêm bản ghi `PointTransactions` (transaction_type='Redeem')
+    public async Task<CustomerRewardResponseDto> RedeemRewardAsync(int customerId, int rewardId, int invoiceId)
+    {
+        // Step 1: Validate customer exists
+        var customer = await _customerRepo.GetCustomerByIdAsync(customerId);
+        if (customer == null)
+            throw new Exception("Customer not found.");
+
+        // Step 2: Validate reward exists
+        var reward = await _rewardRepo.GetRewardByIdAsync(rewardId);
+        if (reward == null)
+            throw new Exception("Reward not found.");
+
+        // Step 3: Check sufficient points
+        if (customer.Points < reward.PointCost)
+            throw new Exception($"Insufficient points to redeem this reward. Required: {reward.PointCost}, Available: {customer.Points}");
+
+        // Step 4: Check reward availability
+        if (reward.QuantityAvailable <= 0)
+            throw new Exception("Reward is out of stock.");
+
+        // Step 5: Call repository to handle transaction
+        var customerReward = await _customerRewardRepo.RedeemRewardAsync(customerId, rewardId, invoiceId, reward.PointCost);
+
+        // update rank after redeeming
+        await _customerRepo.UpdateCustomerRankAsync(customerId);
+
+        // Step 6: Return response DTO
+        return new CustomerRewardResponseDto
+        {
+            RedemptionId = customerReward.RedemptionId,
+            CustomerId = customerReward.CustomerId,
+            CustomerName = customer.FullName ?? "",
+            RewardId = customerReward.RewardId,
+            RewardName = reward.Name ?? "",
+            InvoiceId = customerReward.InvoiceId,
+            RedeemedAt = customerReward.RedeemedAt,
+            Status = customerReward.Status,
+            UsedAt = customerReward.UsedAt
+        };
     }
 }

@@ -67,7 +67,7 @@ namespace MegaMarket.Data.Repositories
             {
                 // get customer in db
                 var customer_exist = await _context.Customers.FindAsync(customer.CustomerId);
-                if(customer_exist == null)
+                if (customer_exist == null)
                 {
                     return null;
                 }
@@ -82,7 +82,8 @@ namespace MegaMarket.Data.Repositories
                 await _context.SaveChangesAsync();
                 return customer_exist;
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 throw new Exception($"Error when updating customer in repository: {ex.Message}");
             }
         }
@@ -146,5 +147,25 @@ namespace MegaMarket.Data.Repositories
             return true;
         }
 
+        // update customer rank based on total points
+        public async Task UpdateCustomerRankAsync(int customerId)
+        {
+            var customer = await _context.Customers.FindAsync(customerId);
+            if (customer == null) return;
+            if (customer.Points >= 2000)
+            {
+                customer.Rank = "Platinum";
+            }
+            else if (customer.Points >= 1000)
+            {
+                customer.Rank = "Gold";
+            }
+            else
+            {
+                customer.Rank = "Silver";
+            }
+            await _context.SaveChangesAsync();
+
+        }
     }
 }

@@ -71,5 +71,37 @@ public class CustomerRewardsController : ControllerBase
         }
     }
 
+    // POST /api/customerrewards/redeem
+    [HttpPost("redeem")]
+    public async Task<IActionResult> RedeemReward([FromBody] RedeemRewardRequestDto request)
+    {
+        try
+        {
+            // Validate request
+            if (request == null)
+                return BadRequest(new { message = "Request body is required." });
+
+            if (request.CustomerId <= 0)
+                return BadRequest(new { message = "Invalid customer ID." });
+
+            if (request.RewardId <= 0)
+                return BadRequest(new { message = "Invalid reward ID." });
+
+            // Call service to redeem reward
+            var result = await _customerRewardService.RedeemRewardAsync(
+                customerId: request.CustomerId,
+                rewardId: request.RewardId,
+                invoiceId: request.InvoiceId ?? 0
+            );
+
+
+            return Ok(new { message = "Reward redeemed successfully.", data = result });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
 
 }

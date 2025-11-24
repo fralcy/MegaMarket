@@ -89,6 +89,7 @@ namespace MegaMarket.API.Services
 
             int newPoints = customer.Points + dto.Points;
             await _customerRepository.UpdateCustomerPointsAsync(customerId, newPoints);
+            await _customerRepository.UpdateCustomerRankAsync(customerId);
 
             var pt = new PointTransaction
             {
@@ -136,6 +137,7 @@ namespace MegaMarket.API.Services
             // Update point balance
             int newPoints = customer.Points - dto.Points;
             await _customerRepository.UpdateCustomerPointsAsync(customerId, newPoints);
+            await _customerRepository.UpdateCustomerRankAsync(customerId);
 
             // Create transaction object
             var pt = new PointTransaction
