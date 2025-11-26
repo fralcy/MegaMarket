@@ -75,7 +75,7 @@ public class CustomerRewardRepository : ICustomerRewardRepository
     }
 
     // redeem reward with transaction: deduct points, reduce reward quantity, create CustomerReward and PointTransaction
-    public async Task<CustomerReward> RedeemRewardAsync(int customerId, int rewardId, int invoiceId, int pointCost)
+    public async Task<CustomerReward> RedeemRewardAsync(int customerId, int rewardId, int? invoiceId, int pointCost)
     {
         using (var transaction = await _context.Database.BeginTransactionAsync())
         {

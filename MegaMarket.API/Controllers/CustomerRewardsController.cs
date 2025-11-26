@@ -91,7 +91,7 @@ public class CustomerRewardsController : ControllerBase
             var result = await _customerRewardService.RedeemRewardAsync(
                 customerId: request.CustomerId,
                 rewardId: request.RewardId,
-                invoiceId: request.InvoiceId ?? 0
+                invoiceId: request.InvoiceId ?? null
             );
 
 

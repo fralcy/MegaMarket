@@ -132,7 +132,7 @@ public class CustomerRewardService : ICustomerRewardService
     // ② giảm `quantity_available`  
     // ③ thêm bản ghi `CustomerRewards`  
     // ④ thêm bản ghi `PointTransactions` (transaction_type='Redeem')
-    public async Task<CustomerRewardResponseDto> RedeemRewardAsync(int customerId, int rewardId, int invoiceId)
+    public async Task<CustomerRewardResponseDto> RedeemRewardAsync(int customerId, int rewardId, int? invoiceId)
     {
         // Step 1: Validate customer exists
         var customer = await _customerRepo.GetCustomerByIdAsync(customerId);

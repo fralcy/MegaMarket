@@ -17,5 +17,5 @@ public interface ICustomerRewardRepository
     Task DeleteCustomerRewardAsync(int id);
 
     // redeem reward with transaction: deduct points, reduce reward quantity, create CustomerReward and PointTransaction
-    Task<CustomerReward> RedeemRewardAsync(int customerId, int rewardId, int invoiceId, int pointCost);
+    Task<CustomerReward> RedeemRewardAsync(int customerId, int rewardId, int? invoiceId, int pointCost);
 }
