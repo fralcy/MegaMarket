@@ -1,0 +1,177 @@
+@using MegaMarket.BlazorUI.Services.CustomerLoyalty
+
+<div class="card">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">?? Points Summary (System-wide)</h5>
+    </div>
+    <div class="card-body">
+        @if (IsLoading)
+        {
+            <div class="text-center text-muted">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (PointsSummary != null && PointsSummary.Count > 0)
+        {
+            <div class="row">
+                @foreach (var summary in PointsSummary)
+                {
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center p-3 border rounded">
+                            <h6 class="text-muted mb-2">@GetTransactionTypeLabel(summary.TransactionType)</h6>
+                            <h3 class="@GetSummaryColor(summary.TransactionType)">
+                                @(summary.TotalPoints > 0 ? "+" : "")@summary.TotalPoints.ToString("N0")
+                            </h3>
+                            <small class="text-muted">@GetTransactionTypeIcon(summary.TransactionType) @summary.TransactionType</small>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Summary Details Table -->
+            <div class="mt-4">
+                <h6 class="mb-3">Detailed Breakdown</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Type</th>
+                                <th class="text-end">Total Points</th>
+                                <th class="text-end">Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                int totalPoints = PointsSummary.Sum(p => Math.Abs(p.TotalPoints));
+                                foreach (var summary in PointsSummary)
+                                {
+                                    int percentage = totalPoints > 0 ? (Math.Abs(summary.TotalPoints) * 100) / totalPoints : 0;
+                                    <tr>
+                                        <td>
+                                            <span class="badge @GetBadgeClass(summary.TransactionType)">
+                                                @GetTransactionTypeIcon(summary.TransactionType) @summary.TransactionType
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong class="@GetSummaryColor(summary.TransactionType)">
+                                                @(summary.TotalPoints > 0 ? "+" : "")@summary.TotalPoints.ToString("N0")
+                                            </strong>
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar @GetProgressBarClass(summary.TransactionType)" style="width: @percentage%">
+                                                    <small>@percentage%</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded">
+                        <h6 class="text-muted mb-2">Net Points (System)</h6>
+                        <h4 class="@GetNetPointsColor()">@GetNetPoints().ToString("N0")</h4>
+                        <small class="text-muted">= Earned @(GetEarnedPoints() > 0 ? "+" : "")@GetEarnedPoints() - Redeemed @GetRedeemedPoints()</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded">
+                        <h6 class="text-muted mb-2">Total Transactions</h6>
+                        <h4>@PointsSummary.Count</h4>
+                        <small class="text-muted">Different transaction types tracked</small>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="text-center text-muted p-4">
+                <p class="mb-0">No points summary data available</p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public List<PointsSummaryDto>? PointsSummary { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    private string GetTransactionTypeLabel(string? type) => type switch
+    {
+        "Earn" => "Points Earned",
+        "Redeem" => "Points Redeemed",
+        "Adjust" => "Points Adjusted",
+        _ => type ?? "Unknown"
+    };
+
+    private string GetTransactionTypeIcon(string? type) => type switch
+    {
+        "Earn" => "??",
+        "Redeem" => "??",
+        "Adjust" => "??",
+        _ => "?"
+    };
+
+    private string GetSummaryColor(string? type) => type switch
+    {
+        "Earn" => "text-success",
+        "Redeem" => "text-danger",
+        "Adjust" => "text-warning",
+        _ => "text-muted"
+    };
+
+    private string GetBadgeClass(string? type) => type switch
+    {
+        "Earn" => "bg-success",
+        "Redeem" => "bg-danger",
+        "Adjust" => "bg-warning text-dark",
+        _ => "bg-light text-dark"
+    };
+
+    private string GetProgressBarClass(string? type) => type switch
+    {
+        "Earn" => "bg-success",
+        "Redeem" => "bg-danger",
+        "Adjust" => "bg-warning",
+        _ => "bg-light"
+    };
+
+    private int GetEarnedPoints()
+    {
+        return PointsSummary?.FirstOrDefault(p => p.TransactionType == "Earn")?.TotalPoints ?? 0;
+    }
+
+    private int GetRedeemedPoints()
+    {
+        var total = PointsSummary?.FirstOrDefault(p => p.TransactionType == "Redeem")?.TotalPoints ?? 0;
+        return Math.Abs(total);
+    }
+
+    private int GetAdjustedPoints()
+    {
+        return PointsSummary?.FirstOrDefault(p => p.TransactionType == "Adjust")?.TotalPoints ?? 0;
+    }
+
+    private int GetNetPoints()
+    {
+        return GetEarnedPoints() - GetRedeemedPoints() + GetAdjustedPoints();
+    }
+
+    private string GetNetPointsColor()
+    {
+        int netPoints = GetNetPoints();
+        return netPoints > 0 ? "text-success" : netPoints < 0 ? "text-danger" : "text-muted";
+    }
+}

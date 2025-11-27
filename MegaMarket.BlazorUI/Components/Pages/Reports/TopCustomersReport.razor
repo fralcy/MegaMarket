@@ -1,0 +1,99 @@
+@using MegaMarket.BlazorUI.Services.CustomerLoyalty
+
+<div class="card h-100">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">?? Top Customers (by Points)</h5>
+        <span class="badge bg-primary">@(TopCustomers?.Count ?? 0)</span>
+    </div>
+    <div class="card-body p-0">
+        @if (IsLoading)
+        {
+            <div class="p-4 text-center text-muted">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (TopCustomers != null && TopCustomers.Count > 0)
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th class="text-end">Points</th>
+                            <th>Rank</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int index = 1;
+                            foreach (var customer in TopCustomers)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (index == 1)
+                                        {
+                                            <span class="badge bg-warning text-dark">?? @index</span>
+                                        }
+                                        else if (index == 2)
+                                        {
+                                            <span class="badge bg-secondary">?? @index</span>
+                                        }
+                                        else if (index == 3)
+                                        {
+                                            <span class="badge bg-danger">?? @index</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@index</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <strong>@customer.FullName</strong>
+                                    </td>
+                                    <td>
+                                        <small>@customer.Phone</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="badge bg-success">@customer.Points.ToString("N0")</span>
+                                    </td>
+                                    <td>
+                                        @RenderRankBadge(customer.Rank)
+                                    </td>
+                                </tr>
+                                index++;
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="p-4 text-center text-muted">
+                <p class="mb-0">No customers data available</p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public List<TopCustomerDto>? TopCustomers { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    private RenderFragment RenderRankBadge(string? rank) => @<span class="badge @GetRankBadgeClass(rank)">@rank</span>;
+
+    private string GetRankBadgeClass(string? rank) => rank switch
+    {
+        "Gold" => "bg-warning text-dark",
+        "Silver" => "bg-secondary",
+        "Platinum" => "bg-info",
+        _ => "bg-light text-dark"
+    };
+}
