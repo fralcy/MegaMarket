@@ -19,7 +19,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
     {
         public int CustomerId { get; set; }
         public int RewardId { get; set; }
-        public int InvoiceId { get; set; } = 0;
+        public int? InvoiceId { get; set; } = 0;
     }
 
     public class PointHistoryDto
@@ -31,6 +31,17 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
         public string? Description { get; set; }
         public int? InvoiceId { get; set; }
         public string? CustomerName { get; set; }
+    }
+
+    public class RewardDto
+    {
+        public int RewardId { get; set; }
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public int PointCost { get; set; }
+        public string RewardType { get; set; } = "";
+        public int QuantityAvailable { get; set; }
+        public bool IsActive { get; set; }
     }
 
     public class LoyaltyService
@@ -74,6 +85,23 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
             }
         }
 
+        public async Task<List<RewardDto>> GetAvailableRewardsAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/rewards");
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<List<RewardDto>>() ?? new();
+                }
+                return new();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error fetching available rewards: {ex.Message}", ex);
+            }
+        }
+
         public async Task<List<CustomerRewardDto>> GetCustomerRewardsAsync(int customerId)
         {
             try
@@ -98,8 +126,17 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
                 var response = await _httpClient.PostAsJsonAsync($"{_apiBaseUrl}/api/customerrewards/redeem", request);
                 if (response.IsSuccessStatusCode)
                 {
-                    var result = await response.Content.ReadFromJsonAsync<dynamic>();
-                    return await response.Content.ReadFromJsonAsync<CustomerRewardDto>() ?? new();
+                    var jsonContent = await response.Content.ReadAsStringAsync();
+                    using (var jsonDoc = System.Text.Json.JsonDocument.Parse(jsonContent))
+                    {
+                        var root = jsonDoc.RootElement;
+                        if (root.TryGetProperty("data", out var dataElement))
+                        {
+                            var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                            return System.Text.Json.JsonSerializer.Deserialize<CustomerRewardDto>(dataElement.GetRawText(), options) ?? new();
+                        }
+                    }
+                    return new();
                 }
                 var errorContent = await response.Content.ReadAsStringAsync();
                 throw new Exception($"Failed to redeem reward: {errorContent}");
@@ -124,6 +161,51 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
             catch (Exception ex)
             {
                 throw new Exception($"Error using reward: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<CustomerRewardDto> ApplyVoucherToInvoiceAsync(int redemptionId, int invoiceId)
+        {
+            try
+            {
+                var request = new { invoiceId };
+                var response = await _httpClient.PutAsJsonAsync($"{_apiBaseUrl}/api/customerrewards/{redemptionId}/apply-to-invoice", request);
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonContent = await response.Content.ReadAsStringAsync();
+                    using (var jsonDoc = System.Text.Json.JsonDocument.Parse(jsonContent))
+                    {
+                        var root = jsonDoc.RootElement;
+                        if (root.TryGetProperty("data", out var dataElement))
+                        {
+                            var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                            return System.Text.Json.JsonSerializer.Deserialize<CustomerRewardDto>(dataElement.GetRawText(), options) ?? new();
+                        }
+                    }
+                    return new();
+                }
+                throw new Exception("Failed to apply voucher to invoice");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error applying voucher: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<CustomerRewardDto> ClaimRewardAsync(int rewardId)
+        {
+            try
+            {
+                var response = await _httpClient.PutAsJsonAsync($"{_apiBaseUrl}/api/customerrewards/{rewardId}/claim", new { });
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<CustomerRewardDto>() ?? new();
+                }
+                throw new Exception("Failed to claim reward");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error claiming reward: {ex.Message}", ex);
             }
         }
 

@@ -63,6 +63,33 @@ public class CustomerRewardRepository : ICustomerRewardRepository
         return reward;
     }
 
+    // claim reward: Pending → Claimed (Voucher) hoặc Pending → Used (Gift)
+    public async Task<CustomerReward> ClaimRewardAsync(int id)
+    {
+        var reward = await GetCustomerRewardByIdAsync(id);
+        if (reward == null)
+            throw new Exception("Reward not found.");
+
+        // Only pending rewards can be claimed
+        if (reward.Status != "Pending")
+            throw new Exception($"Reward must be in 'Pending' status. Current status: {reward.Status}");
+
+        // Nếu là Gift → tự động chuyển sang Used (vì đã nhận vật rồi)
+        // Nếu là Voucher → chuyển sang Claimed (chờ áp dụng)
+        if (reward.Reward.RewardType == "Gift")
+        {
+            reward.Status = "Used";
+            reward.UsedAt = DateTime.Now;
+        }
+        else if (reward.Reward.RewardType == "Voucher" || reward.Reward.RewardType == "Discount")
+        {
+            reward.Status = "Claimed";
+        }
+
+        await UpdateCustomerRewardAsync(reward);
+        return reward;
+    }
+
     // delete customer reward by id and add again point for customer
     public async Task DeleteCustomerRewardAsync(int id)
     {

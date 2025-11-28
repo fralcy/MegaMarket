@@ -1,28 +1,34 @@
-@using MegaMarket.BlazorUI.Services.CustomerLoyalty
+﻿@using MegaMarket.BlazorUI.Services.CustomerLoyalty
 @inject LoyaltyService LoyaltyService
 
 <div>
     @if (isLoading)
     {
-        <div class="alert alert-info">Loading rewards...</div>
+        <div class="alert alert-info">
+            <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            Loading rewards...
+        </div>
     }
     else if (errorMessage != null)
     {
-        <div class="alert alert-danger">
-            <strong>Error:</strong> @errorMessage
+        <div class="alert alert-danger alert-dismissible fade show">
+            <strong>⚠️ Error:</strong> @errorMessage
+            <button class="btn-close" @onclick="() => { errorMessage = null; }"></button>
         </div>
     }
 
     <div class="form-group">
-        <label for="rewardSelect" class="form-label">Select Reward to Redeem</label>
-        <select class="form-select" id="rewardSelect" @bind="selectedRewardId" @bind:event="onchange">
+        <label for="rewardSelect" class="form-label fw-bold">🎁 Select Reward to Redeem</label>
+        <select class="form-select form-select-lg" id="rewardSelect" @onchange="OnRewardSelected">
             <option value="0">-- Choose a reward --</option>
-            @if (availableRewards != null)
+            @if (availableRewards != null && availableRewards.Count > 0)
             {
                 @foreach (var reward in availableRewards)
                 {
                     <option value="@reward.RewardId">
-                        @reward.RewardName (@reward.PointCost pts) - @reward.RewardType
+                        @reward.Name (@reward.PointCost pts) - @reward.RewardType
                     </option>
                 }
             }
@@ -31,39 +37,66 @@
 
     @if (selectedReward != null)
     {
-        <div class="card mt-3 border-info">
+        <div class="card mt-4 border-0 shadow-sm">
             <div class="card-body">
-                <h6 class="card-title">@selectedReward.RewardName</h6>
-                <p class="card-text">@selectedReward.Description</p>
-                <div class="row">
-                    <div class="col-6">
-                        <p class="text-muted small">Points Required</p>
-                        <h5 class="text-danger">@selectedReward.PointCost</h5>
+                <h5 class="card-title mb-3">@selectedReward.Name</h5>
+                
+                @if (!string.IsNullOrEmpty(selectedReward.Description))
+                {
+                    <p class="card-text text-muted">@selectedReward.Description</p>
+                }
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded">
+                            <p class="text-muted small mb-2">💎 Points Required</p>
+                            <h4 class="text-danger">@selectedReward.PointCost</h4>
+                        </div>
                     </div>
-                    <div class="col-6">
-                        <p class="text-muted small">Your Points</p>
-                        <h5 class="@(CurrentPoints >= selectedReward.PointCost ? "text-success" : "text-danger")">
-                            @CurrentPoints
-                        </h5>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded">
+                            <p class="text-muted small mb-2">⭐ Your Points</p>
+                            <h4 class="@(CurrentPoints >= selectedReward.PointCost ? "text-success" : "text-danger")">
+                                @CurrentPoints
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="text-muted small">📦 Type</p>
+                            <span class="badge @GetRewardTypeBadge(selectedReward.RewardType)">
+                                @selectedReward.RewardType
+                            </span>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="text-muted small">📊 Available</p>
+                            <h6>@selectedReward.QuantityAvailable items</h6>
+                        </div>
                     </div>
                 </div>
 
                 @if (CurrentPoints < selectedReward.PointCost)
                 {
-                    <div class="alert alert-warning mt-3 mb-0">
-                        ?? You don't have enough points. Need @(selectedReward.PointCost - CurrentPoints) more points.
+                    <div class="alert alert-warning mt-4 mb-0">
+                        <strong>⚠️ Insufficient Points</strong>
+                        <p class="mb-0">You need @(selectedReward.PointCost - CurrentPoints) more points to redeem this reward.</p>
                     </div>
                 }
                 else if (selectedReward.QuantityAvailable <= 0)
                 {
-                    <div class="alert alert-danger mt-3 mb-0">
-                        ? This reward is out of stock.
+                    <div class="alert alert-danger mt-4 mb-0">
+                        <strong>❌ Out of Stock</strong>
+                        <p class="mb-0">This reward is no longer available.</p>
                     </div>
                 }
                 else
                 {
-                    <div class="alert alert-success mt-3 mb-0">
-                        ? You can redeem this reward!
+                    <div class="alert alert-success mt-4 mb-0">
+                        <strong>✅ Ready to Redeem</strong>
+                        <p class="mb-0">You have enough points to redeem this reward!</p>
                     </div>
                 }
             </div>
@@ -71,12 +104,22 @@
     }
 
     <div class="d-flex gap-2 mt-4">
-        <button class="btn btn-primary flex-grow-1" 
+        <button class="btn btn-primary flex-grow-1 btn-lg" 
                 @onclick="RedeemReward"
-                disabled="@(selectedRewardId == 0 || selectedReward == null || CurrentPoints < selectedReward.PointCost || selectedReward.QuantityAvailable <= 0)">
-            ?? Redeem Now
+                disabled="@(selectedRewardId == 0 || selectedReward == null || CurrentPoints < selectedReward.PointCost || selectedReward.QuantityAvailable <= 0 || isRedeeming)">
+            @if (isRedeeming)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </span>
+                <span>Processing...</span>
+            }
+            else
+            {
+                <span>🎁 Redeem Now</span>
+            }
         </button>
-        <button class="btn btn-outline-secondary" @onclick="OnCancel">Cancel</button>
+        <button class="btn btn-outline-secondary btn-lg" @onclick="OnCancel" disabled="@isRedeeming">Cancel</button>
     </div>
 </div>
 
@@ -93,10 +136,11 @@
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
-    private List<RewardModel> availableRewards = new();
-    private RewardModel? selectedReward = null;
+    private List<RewardDto> availableRewards = new();
+    private RewardDto? selectedReward = null;
     private int selectedRewardId = 0;
     private bool isLoading = true;
+    private bool isRedeeming = false;
     private string? errorMessage = null;
 
     protected override async Task OnInitializedAsync()
@@ -110,15 +154,13 @@
         errorMessage = null;
         try
         {
-            // Mock data - In production, you'd fetch this from an API
-            availableRewards = new List<RewardModel>
-            {
-                new() { RewardId = 1, RewardName = "Free Coffee", RewardType = "Gift", PointCost = 100, Description = "Get a free coffee at any branch", QuantityAvailable = 50 },
-                new() { RewardId = 2, RewardName = "Discount 10%", RewardType = "Discount", PointCost = 200, Description = "10% discount on next purchase", QuantityAvailable = 100 },
-                new() { RewardId = 3, RewardName = "Free Meal", RewardType = "Gift", PointCost = 500, Description = "Complimentary meal from our menu", QuantityAvailable = 20 },
-                new() { RewardId = 4, RewardName = "Discount 20%", RewardType = "Discount", PointCost = 300, Description = "20% discount on next purchase", QuantityAvailable = 30 },
-                new() { RewardId = 5, RewardName = "Voucher 50K", RewardType = "Voucher", PointCost = 800, Description = "50,000 VND voucher", QuantityAvailable = 10 }
-            };
+            // Fetch all active rewards from API
+            availableRewards = await LoyaltyService.GetAvailableRewardsAsync();
+            
+            // Filter to only active rewards with quantity available
+            availableRewards = availableRewards
+                .Where(r => r.QuantityAvailable > 0)
+                .ToList();
         }
         catch (Exception ex)
         {
@@ -134,32 +176,50 @@
     {
         if (selectedRewardId == 0 || selectedReward == null) return;
 
+        isRedeeming = true;
+        errorMessage = null;
         try
         {
             var redeemDto = new RedeemRewardDto
             {
                 CustomerId = CustomerId,
                 RewardId = selectedRewardId,
-                InvoiceId = 0
+                InvoiceId = null
             };
 
-            var result = await LoyaltyService.RedeemRewardAsync(redeemDto);
-            errorMessage = null;
+            await LoyaltyService.RedeemRewardAsync(redeemDto);
             await OnRedeemSuccess.InvokeAsync();
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error redeeming reward: {ex.Message}";
+            errorMessage = $"❌ {ex.Message}";
+        }
+        finally
+        {
+            isRedeeming = false;
         }
     }
 
-    private class RewardModel
+    private void OnRewardSelected(ChangeEventArgs e)
     {
-        public int RewardId { get; set; }
-        public string RewardName { get; set; } = "";
-        public string RewardType { get; set; } = "";
-        public int PointCost { get; set; }
-        public string Description { get; set; } = "";
-        public int QuantityAvailable { get; set; }
+        if (int.TryParse(e.Value?.ToString(), out int rewardId) && rewardId > 0)
+        {
+            selectedRewardId = rewardId;
+            selectedReward = availableRewards.FirstOrDefault(r => r.RewardId == rewardId);
+        }
+        else
+        {
+            selectedRewardId = 0;
+            selectedReward = null;
+        }
+        StateHasChanged();
     }
+
+    private string GetRewardTypeBadge(string? type) => type switch
+    {
+        "Gift" => "bg-success",
+        "Discount" => "bg-warning text-dark",
+        "Voucher" => "bg-primary",
+        _ => "bg-light text-dark"
+    };
 }

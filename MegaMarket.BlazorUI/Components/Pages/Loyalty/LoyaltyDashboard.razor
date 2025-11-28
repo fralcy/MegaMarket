@@ -285,8 +285,35 @@
                                                     Redeemed: @reward.RedeemedAt.ToString("dd/MM/yyyy")
                                                 </small>
                                             </div>
-                                            @RenderRewardStatusBadge(reward.Status)
+                                            <div>
+                                                @RenderRewardStatusBadge(reward.Status)
+                                            </div>
                                         </div>
+                                        
+                                        @* Actions based on status *@
+                                        @if (reward.Status == "Pending")
+                                        {
+                                            <div class="mt-2">
+                                                <button class="btn btn-sm btn-success" @onclick="() => ClaimReward(reward.RedemptionId)">
+                                                    ✓ Claim
+                                                </button>
+                                            </div>
+                                        }
+                                        else if (reward.Status == "Claimed")
+                                        {
+                                            <div class="mt-2">
+                                                <button class="btn btn-sm btn-info" 
+                                                        @onclick="() => UseReward(reward.RedemptionId)"
+                                                        disabled="@(reward.InvoiceId == null)"
+                                                    >
+                                                    💳 Apply to Invoice
+                                                </button>
+                                                @if (reward.InvoiceId == null)
+                                                {
+                                                    <small class="text-muted ms-2">Chờ thanh toán...</small>
+                                                }
+                                            </div>
+                                        }
                                     </div>
                                 }
                             </div>
@@ -554,5 +581,33 @@
     {
         var total = pointHistory?.Where(p => p.TransactionType == "Redeem").Sum(p => p.PointChange) ?? 0;
         return Math.Abs(total);
+    }
+
+    private async Task ClaimReward(int redemptionId)
+    {
+        errorMessage = null;
+        try
+        {
+            await LoyaltyService.ClaimRewardAsync(redemptionId);
+            await LoadCustomerLoyalty(); // Refresh data
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error claiming reward: {ex.Message}";
+        }
+    }
+
+    private async Task UseReward(int redemptionId)
+    {
+        errorMessage = null;
+        try
+        {
+            await LoyaltyService.UseRewardAsync(redemptionId);
+            await LoadCustomerLoyalty(); // Refresh data
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error using reward: {ex.Message}";
+        }
     }
 }

@@ -11,6 +11,12 @@ public interface ICustomerRewardService
     // use a customer reward by id and update its status to "Used"
     Task<CustomerRewardResponseDto?> UseRewardAsync(int id);
 
+    // claim a customer reward by id and update its status to "Claimed"
+    Task<CustomerRewardResponseDto?> ClaimRewardAsync(int id);
+
+    // apply voucher to invoice (called from checkout/payment module)
+    Task<CustomerRewardResponseDto?> ApplyVoucherToInvoiceAsync(int redemptionId, int invoiceId);
+
     // delete a customer reward by id and add back points to the customer
     Task DeleteCustomerRewardAsync(int id);
 

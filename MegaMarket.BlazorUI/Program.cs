@@ -14,6 +14,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<CustomerService>();
 builder.Services.AddScoped<LoyaltyService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<RewardManagementService>();
 
 var app = builder.Build();
 

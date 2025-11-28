@@ -13,6 +13,9 @@ public interface ICustomerRewardRepository
     // update status of customer reward
     Task<CustomerReward> UpdateCustomerRewardAsync(CustomerReward reward);
 
+    // claim reward: Pending → Claimed
+    Task<CustomerReward> ClaimRewardAsync(int id);
+
     // delete customer reward by id and add again point for customer
     Task DeleteCustomerRewardAsync(int id);
 
