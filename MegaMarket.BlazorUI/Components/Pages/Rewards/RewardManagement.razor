@@ -1,6 +1,7 @@
 ﻿@page "/rewards"
 @using MegaMarket.BlazorUI.Services.CustomerLoyalty
 @inject RewardManagementService RewardService
+@inject ReportService ReportService
 @inject IJSRuntime JsRuntime
 @rendermode InteractiveServer
 
@@ -34,15 +35,88 @@
         </div>
     }
 
+    <!-- TOP REWARDS STATS -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">📊 Top 5 Most Redeemed Rewards</h5>
+                </div>
+                <div class="card-body p-0">
+                    @if (topRewards != null && topRewards.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Reward Name</th>
+                                        <th>Type</th>
+                                        <th>Times Redeemed</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var (reward, index) in topRewards.Select((r, i) => (r, i + 1)))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-primary">@index</span>
+                                            </td>
+                                            <td><strong>@reward.RewardName</strong></td>
+                                            <td>
+                                                <span class="badge @GetRewardTypeBadge(reward.RewardType)">@reward.RewardType</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-success">@reward.TotalRedeemed</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-3 text-center text-muted">
+                            <p>No reward data available</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">📈 Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <p class="text-muted small">Total Rewards</p>
+                        <h4 class="text-success">@(allRewards?.Count ?? 0)</h4>
+                    </div>
+                    <div class="mb-3">
+                        <p class="text-muted small">Active Rewards</p>
+                        <h4 class="text-info">@(allRewards?.Where(r => r.IsActive).Count() ?? 0)</h4>
+                    </div>
+                    <div class="mb-3">
+                        <p class="text-muted small">Low Stock</p>
+                        <h4 class="text-warning">@(allRewards?.Where(r => r.QuantityAvailable <= 5).Count() ?? 0)</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- REWARD LIST SECTION -->
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-light">
             <div class="row g-3">
                 <div class="col-md-6">
                     <input type="text" class="form-control" placeholder="Search by name..."
-                           @bind="searchTerm" @bind:event="oninput" />
+                           @bind="searchTerm" @bind:event="oninput" @onchange="OnSearchChanged" />
                 </div>
                 <div class="col-md-3">
-                    <select class="form-select" @bind="filterType" @bind:event="onchange">
+                    <select class="form-select" @onchange="OnFilterTypeChanged">
                         <option value="">All Types</option>
                         <option value="Gift">Gift</option>
                         <option value="Discount">Discount</option>
@@ -108,6 +182,10 @@
         </div>
         <div class="card-footer bg-light text-muted small">
             Showing <strong>@(filteredRewards?.Count ?? 0)</strong> of <strong>@(allRewards?.Count ?? 0)</strong> rewards
+            <div class="float-end">
+                <button class="btn btn-sm btn-outline-secondary @(currentPage == 1 ? "disabled" : "")" @onclick="PreviousPage">← Previous</button>
+                <button class="btn btn-sm btn-outline-secondary @(((currentPage * pageSize) >= allRewards.Count) ? "disabled" : "")" @onclick="NextPage">Next →</button>
+            </div>
         </div>
     </div>
 </div>
@@ -171,6 +249,7 @@
 @code {
     private List<RewardManagementDto> allRewards = new();
     private List<RewardManagementDto> filteredRewards = new();
+    private List<TopRewardDto> topRewards = new();
     private RewardManagementDto formData = new();
     private string searchTerm = "";
     private string filterType = "";
@@ -178,6 +257,8 @@
     private bool isEditing = false;
     private bool showModal = false;
     private string? errorMessage = null;
+    private int currentPage = 1;
+    private int pageSize = 10;
 
     protected override async Task OnInitializedAsync()
     {
@@ -191,11 +272,40 @@
         try
         {
             allRewards = await RewardService.GetAllRewardsAsync();
+            System.Diagnostics.Debug.WriteLine($"[RewardManagement] Loaded {allRewards.Count} rewards");
+            
+            topRewards = await ReportService.GetTopRewardsAsync(5);
+            System.Diagnostics.Debug.WriteLine($"[RewardManagement] Received {topRewards?.Count ?? 0} top rewards");
+
+            // Fallback: nếu API không trả dữ liệu hoặc empty, không hiển thị
+            if (topRewards == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[RewardManagement] topRewards is null, setting to empty list");
+                topRewards = new();
+            }
+            else if (topRewards.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine("[RewardManagement] topRewards is empty");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[RewardManagement] Sorting {topRewards.Count} rewards by TotalRedeemed");
+                // sắp xếp lại theo TotalRedeemed giảm dần
+                topRewards = topRewards.OrderByDescending(r => r.TotalRedeemed).ToList();
+                System.Diagnostics.Debug.WriteLine($"[RewardManagement] After sorting: {topRewards.Count} rewards");
+                foreach (var r in topRewards)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  - {r.RewardName}: {r.TotalRedeemed} times redeemed");
+                }
+            }
+
             ApplyFilters();
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[RewardManagement] Error: {ex.Message}\n{ex.StackTrace}");
             errorMessage = ex.Message;
+            topRewards = new();
         }
         finally
         {
@@ -205,12 +315,36 @@
 
     private void ApplyFilters()
     {
-        filteredRewards = allRewards
+        var filtered = allRewards
             .Where(r =>
                 (string.IsNullOrWhiteSpace(searchTerm) || r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
                 (string.IsNullOrWhiteSpace(filterType) || r.RewardType == filterType)
             )
             .ToList();
+
+        // Pagination: show 10 items per page
+        filteredRewards = filtered
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private void NextPage()
+    {
+        if ((currentPage * pageSize) < allRewards.Count)
+        {
+            currentPage++;
+            ApplyFilters();
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            ApplyFilters();
+        }
     }
 
     private void OpenAddModal()
@@ -308,4 +442,31 @@
         "Voucher" => "bg-primary",
         _ => "bg-light text-dark"
     };
+
+    private string GetRewardTypeBadge(string? type) => type switch
+    {
+        "Gift" => "bg-success",
+        "Discount" => "bg-warning text-dark",
+        "Voucher" => "bg-primary",
+        _ => "bg-light text-dark"
+    };
+
+    private void OnSearchChanged()
+    {
+        currentPage = 1;
+        ApplyFilters();
+    }
+
+    private void OnFilterChanged()
+    {
+        currentPage = 1;
+        ApplyFilters();
+    }
+
+    private void OnFilterTypeChanged(ChangeEventArgs e)
+    {
+        filterType = e.Value?.ToString() ?? "";
+        currentPage = 1;
+        ApplyFilters();
+    }
 }

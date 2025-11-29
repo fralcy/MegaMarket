@@ -36,10 +36,10 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
         {
             _httpClient = httpClient;
             _config = config;
-            _apiBaseUrl = config["ApiSettings:BaseUrl"] ?? "https://localhost:7224";
+            _apiBaseUrl = config["ApiSettings:BaseUrl"] ?? "https://localhost:7284";
         }
 
-        public async Task<List<TopCustomerDto>> GetTopCustomersAsync(int limit = 10)
+        public async Task<List<TopCustomerDto>> GetTopCustomersAsync(int limit = 5)
         {
             try
             {
@@ -47,21 +47,39 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonString = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"[ReportService] TopCustomers Response: {jsonString}");
+                    
                     using (JsonDocument doc = JsonDocument.Parse(jsonString))
                     {
-                        var dataElement = doc.RootElement.GetProperty("data");
-                        return JsonSerializer.Deserialize<List<TopCustomerDto>>(dataElement.GetRawText()) ?? new();
+                        var root = doc.RootElement;
+                        
+                        // Check if "data" property exists
+                        if (root.TryGetProperty("data", out var dataElement))
+                        {
+                            var result = JsonSerializer.Deserialize<List<TopCustomerDto>>(dataElement.GetRawText(),
+                                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                            
+                            System.Diagnostics.Debug.WriteLine($"[ReportService] Deserialized {result.Count} customers");
+                            return result;
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ReportService] 'data' property not found in response");
+                            return new();
+                        }
                     }
                 }
+                System.Diagnostics.Debug.WriteLine($"[ReportService] API returned non-success status: {response.StatusCode}");
                 return new();
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[ReportService] Exception: {ex.Message}");
                 throw new Exception($"Error fetching top customers: {ex.Message}", ex);
             }
         }
 
-        public async Task<List<TopRewardDto>> GetTopRewardsAsync(int limit = 10)
+        public async Task<List<TopRewardDto>> GetTopRewardsAsync(int limit = 5)
         {
             try
             {
@@ -69,16 +87,35 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonString = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"[ReportService] TopRewards Response: {jsonString}");
+                    
                     using (JsonDocument doc = JsonDocument.Parse(jsonString))
                     {
-                        var dataElement = doc.RootElement.GetProperty("data");
-                        return JsonSerializer.Deserialize<List<TopRewardDto>>(dataElement.GetRawText()) ?? new();
+                        var root = doc.RootElement;
+                        System.Diagnostics.Debug.WriteLine($"[ReportService] Root element: {root}");
+                        
+                        // Check if "data" property exists
+                        if (root.TryGetProperty("data", out var dataElement))
+                        {
+                            var result = JsonSerializer.Deserialize<List<TopRewardDto>>(dataElement.GetRawText(), 
+                                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                            
+                            System.Diagnostics.Debug.WriteLine($"[ReportService] Deserialized {result.Count} rewards");
+                            return result;
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ReportService] 'data' property not found in response");
+                            return new();
+                        }
                     }
                 }
+                System.Diagnostics.Debug.WriteLine($"[ReportService] API returned non-success status: {response.StatusCode}");
                 return new();
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[ReportService] Exception: {ex.Message}");
                 throw new Exception($"Error fetching top rewards: {ex.Message}", ex);
             }
         }
@@ -91,16 +128,34 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonString = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"[ReportService] PointsSummary Response: {jsonString}");
+                    
                     using (JsonDocument doc = JsonDocument.Parse(jsonString))
                     {
-                        var dataElement = doc.RootElement.GetProperty("data");
-                        return JsonSerializer.Deserialize<List<PointsSummaryDto>>(dataElement.GetRawText()) ?? new();
+                        var root = doc.RootElement;
+                        
+                        // Check if "data" property exists
+                        if (root.TryGetProperty("data", out var dataElement))
+                        {
+                            var result = JsonSerializer.Deserialize<List<PointsSummaryDto>>(dataElement.GetRawText(),
+                                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                            
+                            System.Diagnostics.Debug.WriteLine($"[ReportService] Deserialized {result.Count} points summary records");
+                            return result;
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ReportService] 'data' property not found in response");
+                            return new();
+                        }
                     }
                 }
+                System.Diagnostics.Debug.WriteLine($"[ReportService] API returned non-success status: {response.StatusCode}");
                 return new();
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[ReportService] Exception: {ex.Message}");
                 throw new Exception($"Error fetching points summary: {ex.Message}", ex);
             }
         }

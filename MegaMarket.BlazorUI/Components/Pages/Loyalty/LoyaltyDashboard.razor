@@ -2,6 +2,7 @@
 @using MegaMarket.BlazorUI.Services.CustomerLoyalty
 @inject CustomerService CustomerService
 @inject LoyaltyService LoyaltyService
+@inject ReportService ReportService
 @rendermode InteractiveServer
 
 <div class="container-fluid mt-4">
@@ -28,6 +29,52 @@
             <button class="btn-close" @onclick="() => { errorMessage = null; }"></button>
         </div>
     }
+
+    <!-- POINTS SUMMARY STATS -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">📊 Points Summary</h5>
+                </div>
+                <div class="card-body">
+                    @if (pointsSummary != null && pointsSummary.Count > 0)
+                    {
+                        <div class="row g-3">
+                            @foreach (var stat in pointsSummary)
+                            {
+                                <div class="col-md-4">
+                                    <div class="p-3 bg-light rounded">
+                                        <p class="text-muted small mb-2">
+                                            @if (stat.TransactionType == "Earn")
+                                            {
+                                                <span>⬆️ Total Earned</span>
+                                            }
+                                            else if (stat.TransactionType == "Redeem")
+                                            {
+                                                <span>⬇️ Total Redeemed</span>
+                                            }
+                                            else
+                                            {
+                                                <span>🔧 @stat.TransactionType</span>
+                                            }
+                                        </p>
+                                        <h4 class="@(stat.TransactionType == "Earn" ? "text-success" : "text-danger")">
+                                            @stat.TotalPoints
+                                        </h4>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No points data available</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Customer Selection Section -->
     <div class="card mb-4 border-0 shadow-sm">
@@ -390,6 +437,7 @@
     private CustomerDto? selectedCustomer = null;
     private List<CustomerRewardDto> customerRewards = new();
     private List<PointHistoryDto> pointHistory = new();
+    private List<PointsSummaryDto> pointsSummary = new();
     private string searchTerm = "";
     private bool isLoading = true;
     private bool loyaltyLoaded = false;
@@ -403,6 +451,19 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadAllCustomers();
+        await LoadPointsSummary();
+    }
+
+    private async Task LoadPointsSummary()
+    {
+        try
+        {
+            pointsSummary = await ReportService.GetPointsSummaryAsync();
+        }
+        catch (Exception ex)
+        {
+            // Silent fail - không hiển thị error nếu không lấy được stats
+        }
     }
 
     private async Task LoadAllCustomers()

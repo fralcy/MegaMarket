@@ -1,6 +1,7 @@
 ﻿@page "/customers"
 @using MegaMarket.BlazorUI.Services.CustomerLoyalty
 @inject CustomerService CustomerService
+@inject ReportService ReportService
 @rendermode InteractiveServer
 
 <div class="container-fluid mt-4">
@@ -27,15 +28,100 @@
         </div>
     }
 
+    <!-- TOP CUSTOMERS STATS -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">👑 Top 5 Customers by Points</h5>
+                </div>
+                <div class="card-body p-0">
+                    @if (topCustomers != null && topCustomers.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Customer Name</th>
+                                        <th>Phone</th>
+                                        <th>Points</th>
+                                        <th>Rank</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var (customer, index) in topCustomers.Select((c, i) => (c, i + 1)))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-primary">@index</span>
+                                            </td>
+                                            <td><strong>@customer.FullName</strong></td>
+                                            <td>@customer.Phone</td>
+                                            <td>
+                                                <span class="badge bg-success">@customer.Points pts</span>
+                                            </td>
+                                            <td>
+                                                @if (customer.Rank == "Gold")
+                                                {
+                                                    <span class="badge bg-warning text-dark">@customer.Rank</span>
+                                                }
+                                                else if (customer.Rank == "Silver")
+                                                {
+                                                    <span class="badge bg-secondary">@customer.Rank</span>
+                                                }
+                                                else if (customer.Rank == "Platinum")
+                                                {
+                                                    <span class="badge bg-info">@customer.Rank</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-3 text-center text-muted">
+                            <p>@(isLoadingStats ? "Loading top customers..." : "No customer data available")</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">📈 Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <p class="text-muted small">Total Customers</p>
+                        <h4 class="text-success">@(allCustomers?.Count ?? 0)</h4>
+                    </div>
+                    <div class="mb-3">
+                        <p class="text-muted small">Platinum Members</p>
+                        <h4 class="text-info">@(allCustomers?.Where(c => c.Rank == "Platinum").Count() ?? 0)</h4>
+                    </div>
+                    <div class="mb-3">
+                        <p class="text-muted small">Gold Members</p>
+                        <h4 class="text-warning">@(allCustomers?.Where(c => c.Rank == "Gold").Count() ?? 0)</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-header bg-light">
             <div class="row g-3">
                 <div class="col-md-6">
                     <input type="text" class="form-control" placeholder="Search by name or phone..." 
-                           @bind="searchTerm" @bind:event="oninput" @onkeyup="OnSearchChanged" />
+                           @bind="searchTerm" @bind:event="oninput" @onchange="OnSearchChanged" />
                 </div>
                 <div class="col-md-3">
-                    <select class="form-select" @bind="filterRank" @bind:event="onchange">
+                    <select class="form-select" @onchange="OnFilterRankChanged">
                         <option value="">All Ranks</option>
                         <option value="Silver">Silver</option>
                         <option value="Gold">Gold</option>
@@ -103,16 +189,16 @@
 
                 <!-- Pagination -->
                 <nav class="d-flex justify-content-between align-items-center p-3 border-top">
-                    <small class="text-muted">Showing @filteredCustomers.Count customers</small>
+                    <small class="text-muted">Showing @filteredCustomers.Count customers (Page @currentPage of @totalPages)</small>
                     <ul class="pagination mb-0 small">
                         <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                            <button class="page-link" @onclick="() => currentPage--">Previous</button>
+                            <button class="page-link" @onclick="() => { currentPage--; ApplyFilters(); }" disabled="@(currentPage == 1)">Previous</button>
                         </li>
                         <li class="page-item active">
                             <span class="page-link">Page @currentPage</span>
                         </li>
-                        <li class="page-item @(filteredCustomers.Count < pageSize ? "disabled" : "")">
-                            <button class="page-link" @onclick="() => currentPage++">Next</button>
+                        <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => { currentPage++; ApplyFilters(); }" disabled="@(currentPage >= totalPages)">Next</button>
                         </li>
                     </ul>
                 </nav>
@@ -152,12 +238,15 @@
 @code {
     private List<CustomerDto> allCustomers = new();
     private List<CustomerDto> filteredCustomers = new();
+    private List<TopCustomerDto> topCustomers = new();
     private bool isLoading = true;
+    private bool isLoadingStats = true;
     private string? errorMessage = null;
     private string searchTerm = "";
     private string filterRank = "";
     private int currentPage = 1;
     private int pageSize = 10;
+    private int totalPages = 1;
     private bool showModal = false;
     private bool isEditing = false;
     private CustomerDto? editingCustomer = null;
@@ -165,6 +254,7 @@
     protected override async Task OnInitializedAsync()
     {
         await ReloadData();
+        await LoadTopCustomers();
     }
 
     private async Task ReloadData()
@@ -174,6 +264,7 @@
         try
         {
             allCustomers = await CustomerService.GetAllCustomersAsync();
+            currentPage = 1;
             ApplyFilters();
         }
         catch (Exception ex)
@@ -186,15 +277,74 @@
         }
     }
 
+    private async Task LoadTopCustomers()
+    {
+        isLoadingStats = true;
+        try
+        {
+            topCustomers = await ReportService.GetTopCustomersAsync(5);
+            
+            // Fallback: nếu API không trả dữ liệu, sort local allCustomers
+            if (!(topCustomers == null || topCustomers.Count == 0))
+            {
+                topCustomers = allCustomers
+                    .OrderByDescending(c => c.Points)
+                    .Take(5)
+                    .Select(c => new TopCustomerDto
+                    {
+                        CustomerId = c.CustomerId,
+                        FullName = c.FullName,
+                        Phone = c.Phone,
+                        Points = c.Points,
+                        Rank = c.Rank
+                    })
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Silent fail - không hiển thị error nếu không lấy được stats
+            System.Diagnostics.Debug.WriteLine($"Error loading top customers: {ex.Message}");
+            
+            // Fallback: sort local data
+            topCustomers = allCustomers
+                .OrderByDescending(c => c.Points)
+                .Take(5)
+                .Select(c => new TopCustomerDto
+                {
+                    CustomerId = c.CustomerId,
+                    FullName = c.FullName,
+                    Phone = c.Phone,
+                    Points = c.Points,
+                    Rank = c.Rank
+                })
+                .ToList();
+        }
+        finally
+        {
+            isLoadingStats = false;
+        }
+    }
+
     private void ApplyFilters()
     {
-        filteredCustomers = allCustomers
+        var filtered = allCustomers
             .Where(c => 
                 (string.IsNullOrEmpty(searchTerm) || 
                  c.FullName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
                  c.Phone?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true) &&
                 (string.IsNullOrEmpty(filterRank) || c.Rank == filterRank)
             )
+            .ToList();
+
+        // Calculate total pages
+        totalPages = (filtered.Count + pageSize - 1) / pageSize;
+        if (totalPages == 0) totalPages = 1;
+
+        // Pagination: show 10 items per page
+        filteredCustomers = filtered
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
             .ToList();
     }
 
@@ -206,6 +356,13 @@
 
     private void OnFilterChanged()
     {
+        currentPage = 1;
+        ApplyFilters();
+    }
+
+    private void OnFilterRankChanged(ChangeEventArgs e)
+    {
+        filterRank = e.Value?.ToString() ?? "";
         currentPage = 1;
         ApplyFilters();
     }
