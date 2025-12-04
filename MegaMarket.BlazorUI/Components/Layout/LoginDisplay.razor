@@ -1,0 +1,60 @@
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+
+<AuthorizeView>
+    <Authorized>
+        <div class="d-flex align-items-center">
+            <div class="me-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-circle-small me-2">
+                        <span>@GetInitials(context.User.FindFirst("FullName")?.Value ?? "U")</span>
+                    </div>
+                    <div>
+                        <div class="fw-bold small">@context.User.FindFirst("FullName")?.Value</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">
+                            <span class="badge bg-@GetRoleBadgeColor(context.User.FindFirst(ClaimTypes.Role)?.Value ?? "")">
+                                @context.User.FindFirst(ClaimTypes.Role)?.Value
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-sm btn-outline-danger" @onclick="HandleLogout">
+                Logout
+            </button>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <a href="/login" class="btn btn-sm btn-primary">Login</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        NavigationManager.NavigateTo("/login", true);
+    }
+
+    private string GetInitials(string fullName)
+    {
+        if (string.IsNullOrEmpty(fullName))
+            return "U";
+
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+            return parts[0][0].ToString().ToUpper();
+
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    private string GetRoleBadgeColor(string role)
+    {
+        return role switch
+        {
+            "Admin" => "primary",
+            "Employee" => "secondary",
+            _ => "secondary"
+        };
+    }
+}
