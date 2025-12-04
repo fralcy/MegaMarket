@@ -1,0 +1,205 @@
+@* Employee Form Modal Component *@
+
+@if (IsVisible)
+{
+    <div class="modal show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <EditForm Model="formModel" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            @(IsEditMode ? $"Edit Employee: {Employee?.FullName}" : "Add New Employee")
+                        </h5>
+                        <button type="button" class="btn-close" @onclick="HandleCancel"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">
+                                <strong>Error:</strong> @errorMessage
+                            </div>
+                        }
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="fullName" class="form-label">Full Name <span class="text-danger">*</span></label>
+                                <InputText id="fullName" class="form-control" @bind-Value="formModel.FullName" placeholder="Enter full name" />
+                                <ValidationMessage For="@(() => formModel.FullName)" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                                <InputText id="username" class="form-control" @bind-Value="formModel.Username" placeholder="Enter username" />
+                                <ValidationMessage For="@(() => formModel.Username)" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">
+                                    Password @(IsEditMode ? "(leave blank to keep current)" : "")<span class="text-danger">@(IsEditMode ? "" : "*")</span>
+                                </label>
+                                <InputText id="password" type="password" class="form-control" @bind-Value="formModel.Password" placeholder="Enter password" />
+                                <ValidationMessage For="@(() => formModel.Password)" />
+                                @if (!IsEditMode)
+                                {
+                                    <div class="form-text">Minimum 6 characters</div>
+                                }
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="role" class="form-label">Role <span class="text-danger">*</span></label>
+                                <InputSelect id="role" class="form-select" @bind-Value="formModel.Role">
+                                    <option value="Employee">Employee</option>
+                                    <option value="Admin">Admin</option>
+                                </InputSelect>
+                                <ValidationMessage For="@(() => formModel.Role)" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label">📞 Phone</label>
+                                <InputText id="phone" class="form-control" @bind-Value="formModel.Phone" placeholder="Enter phone number" />
+                                <ValidationMessage For="@(() => formModel.Phone)" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">✉️ Email</label>
+                                <InputText id="email" type="email" class="form-control" @bind-Value="formModel.Email" placeholder="Enter email address" />
+                                <ValidationMessage For="@(() => formModel.Email)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="HandleCancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                            }
+                            <span>@(IsEditMode ? "Update Employee" : "Create Employee")</span>
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop show"></div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EmployeeManagement.EmployeeDto? Employee { get; set; }
+
+    [Parameter]
+    public EventCallback<EmployeeManagement.EmployeeFormData> OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private EmployeeFormModel formModel = new();
+    private bool isSaving = false;
+    private string? errorMessage;
+
+    private bool IsEditMode => Employee != null;
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible)
+        {
+            if (Employee != null)
+            {
+                // Edit mode - populate form with employee data
+                formModel = new EmployeeFormModel
+                {
+                    FullName = Employee.FullName,
+                    Username = Employee.Username,
+                    Password = null, // Don't populate password
+                    Role = Employee.Role,
+                    Phone = Employee.Phone,
+                    Email = Employee.Email
+                };
+            }
+            else
+            {
+                // Create mode - reset form
+                formModel = new EmployeeFormModel();
+            }
+
+            errorMessage = null;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+
+            var formData = new EmployeeManagement.EmployeeFormData
+            {
+                FullName = formModel.FullName,
+                Username = formModel.Username,
+                Password = formModel.Password,
+                Role = formModel.Role,
+                Phone = formModel.Phone,
+                Email = formModel.Email
+            };
+
+            if (OnSave.HasDelegate)
+            {
+                await OnSave.InvokeAsync(formData);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    public class EmployeeFormModel
+    {
+        [Required(ErrorMessage = "Full name is required")]
+        [StringLength(100, ErrorMessage = "Full name cannot exceed 100 characters")]
+        public string FullName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Username is required")]
+        [StringLength(50, ErrorMessage = "Username cannot exceed 50 characters")]
+        public string Username { get; set; } = string.Empty;
+
+        [StringLength(255, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
+        public string? Password { get; set; }
+
+        [Required(ErrorMessage = "Role is required")]
+        public string Role { get; set; } = "Employee";
+
+        [Phone(ErrorMessage = "Invalid phone number format")]
+        [StringLength(15)]
+        public string? Phone { get; set; }
+
+        [EmailAddress(ErrorMessage = "Invalid email address format")]
+        [StringLength(100)]
+        public string? Email { get; set; }
+    }
+}

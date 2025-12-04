@@ -1,0 +1,98 @@
+@* Employee Detail Panel Component *@
+
+<div class="card border-0 shadow-sm h-100">
+    <div class="card-body">
+        <div class="text-center mb-3">
+            <div class="avatar-circle mx-auto mb-3">
+                <span style="font-size: 2em; color: white;">@GetInitials(Employee.FullName)</span>
+            </div>
+            <h4>@Employee.FullName</h4>
+            <p class="text-muted mb-2">
+                <StatusBadge Status="@Employee.Role" />
+            </p>
+            <p class="text-muted small">@Employee.Username</p>
+        </div>
+
+        <hr />
+
+        <div class="mb-3">
+            <label class="text-muted small">Employee ID</label>
+            <p class="mb-2"><strong>#@Employee.UserId</strong></p>
+        </div>
+
+        <div class="mb-3">
+            <label class="text-muted small">Full Name</label>
+            <p class="mb-2"><strong>@Employee.FullName</strong></p>
+        </div>
+
+        <div class="mb-3">
+            <label class="text-muted small">Username</label>
+            <p class="mb-2"><strong>@Employee.Username</strong></p>
+        </div>
+
+        <div class="mb-3">
+            <label class="text-muted small">Role</label>
+            <p class="mb-2"><StatusBadge Status="@Employee.Role" /></p>
+        </div>
+
+        <div class="mb-3">
+            <label class="text-muted small">📞 Phone</label>
+            <p class="mb-2"><strong>@(Employee.Phone ?? "Not provided")</strong></p>
+        </div>
+
+        <div class="mb-3">
+            <label class="text-muted small">✉️ Email</label>
+            <p class="mb-2"><strong>@(Employee.Email ?? "Not provided")</strong></p>
+        </div>
+
+        <hr />
+
+        <div class="d-grid gap-2">
+            <button class="btn btn-primary" @onclick="HandleEdit">
+                <span class="bi bi-pencil me-1"></span> Edit Employee
+            </button>
+            <button class="btn btn-outline-danger" @onclick="HandleDelete">
+                <span class="bi bi-trash me-1"></span> Delete Employee
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public EmployeeManagement.EmployeeDto Employee { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnDelete { get; set; }
+
+    private async Task HandleEdit()
+    {
+        if (OnEdit.HasDelegate)
+        {
+            await OnEdit.InvokeAsync();
+        }
+    }
+
+    private async Task HandleDelete()
+    {
+        if (OnDelete.HasDelegate)
+        {
+            await OnDelete.InvokeAsync();
+        }
+    }
+
+    private string GetInitials(string fullName)
+    {
+        if (string.IsNullOrEmpty(fullName))
+            return "?";
+
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+            return parts[0][0].ToString().ToUpper();
+
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+}
