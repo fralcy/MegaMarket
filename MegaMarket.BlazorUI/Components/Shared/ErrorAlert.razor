@@ -1,0 +1,32 @@
+@* Error Alert Component with dismiss button *@
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>⚠️ Error:</strong> @ErrorMessage
+        @if (Dismissible)
+        {
+            <button type="button" class="btn-close" @onclick="HandleDismiss"></button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string ErrorMessage { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool Dismissible { get; set; } = true;
+
+    [Parameter]
+    public EventCallback OnDismiss { get; set; }
+
+    private async Task HandleDismiss()
+    {
+        ErrorMessage = string.Empty;
+        if (OnDismiss.HasDelegate)
+        {
+            await OnDismiss.InvokeAsync();
+        }
+    }
+}

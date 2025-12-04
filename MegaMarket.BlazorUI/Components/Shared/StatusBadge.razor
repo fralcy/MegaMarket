@@ -1,0 +1,22 @@
+@* Status Badge with automatic color mapping *@
+
+<span class="badge bg-@GetBadgeColor()">@Status</span>
+
+@code {
+    [Parameter]
+    public string Status { get; set; } = string.Empty;
+
+    private string GetBadgeColor()
+    {
+        return Status switch
+        {
+            "Admin" => "primary",
+            "Employee" => "secondary",
+            "Active" or "On Time" or "Completed" or "Claimed" => "success",
+            "Late" or "Pending" or "In Progress" => "warning text-dark",
+            "Absent" or "Error" or "Cancelled" or "Failed" => "danger",
+            "Info" or "Neutral" => "info",
+            _ => "secondary"
+        };
+    }
+}

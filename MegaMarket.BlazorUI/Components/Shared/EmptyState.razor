@@ -1,0 +1,41 @@
+@* Empty State Component *@
+
+<div class="text-center py-5">
+    <p class="text-muted mb-3">
+        <span style="font-size: 3em;">@Icon</span>
+    </p>
+    <h5 class="text-muted mb-2">@Title</h5>
+    <p class="text-muted small mb-3">@Description</p>
+
+    @if (!string.IsNullOrEmpty(ActionText) && OnAction.HasDelegate)
+    {
+        <button class="btn btn-primary btn-sm" @onclick="HandleAction">
+            @ActionText
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Icon { get; set; } = "📭";
+
+    [Parameter]
+    public string Title { get; set; } = "No data available";
+
+    [Parameter]
+    public string Description { get; set; } = "There are no items to display";
+
+    [Parameter]
+    public string? ActionText { get; set; }
+
+    [Parameter]
+    public EventCallback OnAction { get; set; }
+
+    private async Task HandleAction()
+    {
+        if (OnAction.HasDelegate)
+        {
+            await OnAction.InvokeAsync();
+        }
+    }
+}
