@@ -1,10 +1,31 @@
 using MegaMarket.BlazorUI.Components;
+using MegaMarket.BlazorUI.Services.Auth;
+using MegaMarket.BlazorUI.Services.GraphQL;
+using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Add LocalStorage service
+builder.Services.AddScoped<LocalStorageService>();
+
+// Add Auth services
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
+builder.Services.AddAuthorizationCore();
+
+// Configure HttpClient for GraphQL
+builder.Services.AddHttpClient("GraphQL", client =>
+{
+    var graphqlEndpoint = builder.Configuration["GraphQL:Endpoint"] ?? "https://localhost:7284/graphql";
+    client.BaseAddress = new Uri(graphqlEndpoint);
+});
+
+// Add GraphQL client service
+builder.Services.AddScoped<GraphQLClient>();
 
 var app = builder.Build();
 
@@ -20,6 +41,9 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
