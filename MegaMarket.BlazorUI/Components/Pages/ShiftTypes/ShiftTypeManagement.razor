@@ -1,0 +1,302 @@
+@page "/admin/shift-types"
+@attribute [Authorize(Roles = "Admin")]
+@inject Services.GraphQL.GraphQLClient GraphQLClient
+@inject NavigationManager NavigationManager
+
+<div class="container-fluid mt-4">
+    @* Header *@
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-gradient mb-1">Shift Type Management</h2>
+            <p class="text-muted">Manage work shift schedules and wage rates</p>
+        </div>
+        <button class="btn btn-primary" @onclick="ShowCreateModal">
+            <span class="bi bi-plus-lg me-1"></span> Add Shift Type
+        </button>
+    </div>
+
+    @* Stats Cards *@
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <StatsCard
+                Title="Total Shift Types"
+                Value="@totalShiftTypes.ToString()"
+                SubLabel="Active shifts"
+                Color="primary" />
+        </div>
+        <div class="col-md-4">
+            <StatsCard
+                Title="Average Wage"
+                Value="@($"${averageWage:F2}/hr")"
+                SubLabel="Per hour"
+                Color="success" />
+        </div>
+        <div class="col-md-4">
+            <StatsCard
+                Title="Shifts Today"
+                Value="@activeShiftsToday.ToString()"
+                SubLabel="Currently active"
+                Color="info" />
+        </div>
+    </div>
+
+    @* Error Message *@
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <ErrorAlert ErrorMessage="@errorMessage" OnDismiss="@(() => errorMessage = null)" />
+    }
+
+    @* Loading State *@
+    @if (isLoading)
+    {
+        <LoadingSpinner Message="Loading shift types..." />
+    }
+    else if (shiftTypes == null || !shiftTypes.Any())
+    {
+        <EmptyState
+            Icon="📋"
+            Title="No Shift Types Found"
+            Description="Create your first shift type to get started with scheduling."
+            ActionText="Add Shift Type"
+            OnAction="ShowCreateModal" />
+    }
+    else
+    {
+        @* Shift Type Grid *@
+        <ShiftTypeList
+            ShiftTypes="@shiftTypes"
+            OnEdit="ShowEditModal"
+            OnDelete="ShowDeleteModal" />
+    }
+</div>
+
+@* Form Modal *@
+<ShiftTypeFormModal
+    IsVisible="@showFormModal"
+    ShiftType="@shiftTypeToEdit"
+    OnSave="HandleSaveShiftType"
+    OnCancel="HideFormModal" />
+
+@* Delete Confirmation Modal *@
+<ConfirmDialog
+    IsVisible="@showDeleteModal"
+    Title="Delete Shift Type"
+    Message="@($"Are you sure you want to delete '{shiftTypeToDelete?.Name}'? This will affect all related attendance records.")"
+    OnConfirm="HandleDeleteShiftType"
+    OnCancel="HideDeleteModal" />
+
+@code {
+    private List<ShiftTypeDto>? shiftTypes;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    // Stats
+    private int totalShiftTypes => shiftTypes?.Count ?? 0;
+    private decimal averageWage => shiftTypes?.Any() == true ? shiftTypes.Average(s => s.WagePerHour) : 0;
+    private int activeShiftsToday = 0;
+
+    // Modal states
+    private bool showFormModal = false;
+    private bool showDeleteModal = false;
+    private ShiftTypeDto? shiftTypeToEdit;
+    private ShiftTypeDto? shiftTypeToDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadShiftTypes();
+    }
+
+    private async Task LoadShiftTypes()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            var query = @"
+                query GetShiftTypes {
+                    shiftTypes {
+                        shiftTypeId
+                        name
+                        startTime
+                        endTime
+                        wagePerHour
+                    }
+                }
+            ";
+
+            var response = await GraphQLClient.QueryAsync<GetShiftTypesResponse>(query);
+
+            if (response.Errors != null && response.Errors.Any())
+            {
+                errorMessage = string.Join(", ", response.Errors.Select(e => e.Message));
+            }
+            else
+            {
+                shiftTypes = response.Data?.ShiftTypes ?? new List<ShiftTypeDto>();
+                CalculateActiveShiftsToday();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load shift types: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void CalculateActiveShiftsToday()
+    {
+        if (shiftTypes == null) return;
+
+        var currentTime = DateTime.Now.TimeOfDay;
+        activeShiftsToday = shiftTypes.Count(s =>
+            s.StartTime <= currentTime && s.EndTime >= currentTime);
+    }
+
+    private void ShowCreateModal()
+    {
+        shiftTypeToEdit = null;
+        showFormModal = true;
+    }
+
+    private void ShowEditModal(ShiftTypeDto shiftType)
+    {
+        shiftTypeToEdit = shiftType;
+        showFormModal = true;
+    }
+
+    private void ShowDeleteModal(ShiftTypeDto shiftType)
+    {
+        shiftTypeToDelete = shiftType;
+        showDeleteModal = true;
+    }
+
+    private void HideFormModal()
+    {
+        showFormModal = false;
+        shiftTypeToEdit = null;
+    }
+
+    private void HideDeleteModal()
+    {
+        showDeleteModal = false;
+        shiftTypeToDelete = null;
+    }
+
+    private async Task HandleSaveShiftType(ShiftTypeFormData formData)
+    {
+        try
+        {
+            if (shiftTypeToEdit == null)
+            {
+                // Create new shift type
+                var mutation = @"
+                    mutation CreateShiftType($input: ShiftTypeInputDto!) {
+                        createShiftType(input: $input) {
+                            shiftTypeId
+                            name
+                            startTime
+                            endTime
+                            wagePerHour
+                        }
+                    }
+                ";
+
+                var variables = new { input = formData };
+                await GraphQLClient.MutateAsync<CreateShiftTypeResponse>(mutation, variables);
+            }
+            else
+            {
+                // Update existing shift type
+                var mutation = @"
+                    mutation UpdateShiftType($shiftTypeId: Int!, $input: ShiftTypeInputDto!) {
+                        updateShiftType(shiftTypeId: $shiftTypeId, input: $input) {
+                            shiftTypeId
+                            name
+                            startTime
+                            endTime
+                            wagePerHour
+                        }
+                    }
+                ";
+
+                var variables = new { shiftTypeId = shiftTypeToEdit.ShiftTypeId, input = formData };
+                await GraphQLClient.MutateAsync<UpdateShiftTypeResponse>(mutation, variables);
+            }
+
+            HideFormModal();
+            await LoadShiftTypes();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save shift type: {ex.Message}";
+        }
+    }
+
+    private async Task HandleDeleteShiftType()
+    {
+        if (shiftTypeToDelete == null) return;
+
+        try
+        {
+            var mutation = @"
+                mutation DeleteShiftType($shiftTypeId: Int!) {
+                    deleteShiftType(shiftTypeId: $shiftTypeId)
+                }
+            ";
+
+            var variables = new { shiftTypeId = shiftTypeToDelete.ShiftTypeId };
+            await GraphQLClient.MutateAsync<DeleteShiftTypeResponse>(mutation, variables);
+
+            HideDeleteModal();
+            await LoadShiftTypes();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to delete shift type: {ex.Message}";
+            HideDeleteModal();
+        }
+    }
+
+    // DTOs
+    public class ShiftTypeDto
+    {
+        public int ShiftTypeId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public TimeSpan StartTime { get; set; }
+        public TimeSpan EndTime { get; set; }
+        public decimal WagePerHour { get; set; }
+    }
+
+    public class ShiftTypeFormData
+    {
+        public string Name { get; set; } = string.Empty;
+        public string StartTime { get; set; } = string.Empty;
+        public string EndTime { get; set; } = string.Empty;
+        public decimal WagePerHour { get; set; }
+    }
+
+    // GraphQL Response Types
+    private class GetShiftTypesResponse
+    {
+        public List<ShiftTypeDto>? ShiftTypes { get; set; }
+    }
+
+    private class CreateShiftTypeResponse
+    {
+        public ShiftTypeDto? CreateShiftType { get; set; }
+    }
+
+    private class UpdateShiftTypeResponse
+    {
+        public ShiftTypeDto? UpdateShiftType { get; set; }
+    }
+
+    private class DeleteShiftTypeResponse
+    {
+        public bool DeleteShiftType { get; set; }
+    }
+}
