@@ -1,0 +1,307 @@
+@page "/attendance/check-in-out"
+@attribute [Authorize]
+@inject Services.GraphQL.GraphQLClient GraphQLClient
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="container mt-4">
+    @* Header *@
+    <div class="text-center mb-4">
+        <h2 class="text-gradient mb-1">Attendance Check-In/Out</h2>
+        <p class="text-muted">Mark your attendance for today's shift</p>
+    </div>
+
+    @* Error Message *@
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <ErrorAlert ErrorMessage="@errorMessage" OnDismiss="@(() => errorMessage = null)" />
+    }
+
+    @* Success Message *@
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <strong>✓ Success:</strong> @successMessage
+            <button class="btn-close" @onclick="@(() => successMessage = null)"></button>
+        </div>
+    }
+
+    @* Loading State *@
+    @if (isLoading)
+    {
+        <LoadingSpinner Message="Loading attendance status..." />
+    }
+    else
+    {
+        @* Check-In/Out Card *@
+        <CheckInOutCard
+            CurrentUser="@currentUser"
+            TodayAttendance="@todayAttendance"
+            AvailableShiftTypes="@availableShiftTypes"
+            OnCheckIn="HandleCheckIn"
+            OnCheckOut="HandleCheckOut" />
+    }
+</div>
+
+@code {
+    private UserDto? currentUser;
+    private AttendanceDto? todayAttendance;
+    private List<ShiftTypeDto>? availableShiftTypes;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            // Get current user info
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdClaim = user.FindFirst("userId")?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                errorMessage = "Unable to identify current user. Please log in again.";
+                return;
+            }
+
+            // Load user info
+            var userQuery = $@"
+                query GetUser {{
+                    user(userId: {userId}) {{
+                        userId
+                        fullName
+                        username
+                        role
+                    }}
+                }}
+            ";
+
+            var userResponse = await GraphQLClient.QueryAsync<GetUserResponse>(userQuery);
+            if (userResponse.Errors != null && userResponse.Errors.Any())
+            {
+                errorMessage = string.Join(", ", userResponse.Errors.Select(e => e.Message));
+                return;
+            }
+
+            currentUser = userResponse.Data?.User;
+
+            // Load today's attendance
+            var today = DateTime.Today.ToString("yyyy-MM-dd");
+            var attendanceQuery = $@"
+                query GetAttendancesByUser {{
+                    attendancesByUser(userId: {userId}) {{
+                        attendanceId
+                        userId
+                        shiftTypeId
+                        date
+                        checkIn
+                        checkOut
+                        isLate
+                        shiftType {{
+                            shiftTypeId
+                            name
+                            startTime
+                            endTime
+                            wagePerHour
+                        }}
+                    }}
+                }}
+            ";
+
+            var attendanceResponse = await GraphQLClient.QueryAsync<GetAttendancesByUserResponse>(attendanceQuery);
+            if (attendanceResponse.Errors == null || !attendanceResponse.Errors.Any())
+            {
+                todayAttendance = attendanceResponse.Data?.AttendancesByUser?
+                    .FirstOrDefault(a => a.Date.Date == DateTime.Today);
+            }
+
+            // Load available shift types
+            var shiftTypesQuery = @"
+                query GetShiftTypes {
+                    shiftTypes {
+                        shiftTypeId
+                        name
+                        startTime
+                        endTime
+                        wagePerHour
+                    }
+                }
+            ";
+
+            var shiftTypesResponse = await GraphQLClient.QueryAsync<GetShiftTypesResponse>(shiftTypesQuery);
+            if (shiftTypesResponse.Errors == null || !shiftTypesResponse.Errors.Any())
+            {
+                availableShiftTypes = shiftTypesResponse.Data?.ShiftTypes ?? new List<ShiftTypeDto>();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleCheckIn(int shiftTypeId)
+    {
+        try
+        {
+            if (currentUser == null)
+            {
+                errorMessage = "User information not available";
+                return;
+            }
+
+            errorMessage = null;
+            successMessage = null;
+
+            var mutation = $@"
+                mutation CheckIn {{
+                    checkIn(userId: {currentUser.UserId}, shiftTypeId: {shiftTypeId}) {{
+                        attendanceId
+                        userId
+                        shiftTypeId
+                        date
+                        checkIn
+                        isLate
+                        shiftType {{
+                            shiftTypeId
+                            name
+                            startTime
+                            endTime
+                            wagePerHour
+                        }}
+                    }}
+                }}
+            ";
+
+            var response = await GraphQLClient.MutateAsync<CheckInResponse>(mutation);
+
+            if (response.Errors != null && response.Errors.Any())
+            {
+                errorMessage = string.Join(", ", response.Errors.Select(e => e.Message));
+            }
+            else
+            {
+                todayAttendance = response.Data?.CheckIn;
+                var status = todayAttendance?.IsLate == true ? "late" : "on time";
+                successMessage = $"Checked in successfully at {DateTime.Now:h:mm tt} ({status})!";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to check in: {ex.Message}";
+        }
+    }
+
+    private async Task HandleCheckOut()
+    {
+        if (todayAttendance == null)
+        {
+            errorMessage = "No check-in record found for today";
+            return;
+        }
+
+        try
+        {
+            errorMessage = null;
+            successMessage = null;
+
+            var mutation = $@"
+                mutation CheckOut {{
+                    checkOut(attendanceId: {todayAttendance.AttendanceId}) {{
+                        attendanceId
+                        checkOut
+                    }}
+                }}
+            ";
+
+            var response = await GraphQLClient.MutateAsync<CheckOutResponse>(mutation);
+
+            if (response.Errors != null && response.Errors.Any())
+            {
+                errorMessage = string.Join(", ", response.Errors.Select(e => e.Message));
+            }
+            else
+            {
+                if (todayAttendance != null)
+                {
+                    todayAttendance.CheckOut = response.Data?.CheckOut?.CheckOut;
+                }
+                successMessage = $"Checked out successfully at {DateTime.Now:h:mm tt}!";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to check out: {ex.Message}";
+        }
+    }
+
+    // DTOs
+    public class UserDto
+    {
+        public int UserId { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+    }
+
+    public class AttendanceDto
+    {
+        public int AttendanceId { get; set; }
+        public int UserId { get; set; }
+        public int ShiftTypeId { get; set; }
+        public DateTime Date { get; set; }
+        public DateTime CheckIn { get; set; }
+        public DateTime? CheckOut { get; set; }
+        public bool IsLate { get; set; }
+        public ShiftTypeDto? ShiftType { get; set; }
+    }
+
+    public class ShiftTypeDto
+    {
+        public int ShiftTypeId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public TimeSpan StartTime { get; set; }
+        public TimeSpan EndTime { get; set; }
+        public decimal WagePerHour { get; set; }
+    }
+
+    // GraphQL Response Types
+    private class GetUserResponse
+    {
+        public UserDto? User { get; set; }
+    }
+
+    private class GetAttendancesByUserResponse
+    {
+        public List<AttendanceDto>? AttendancesByUser { get; set; }
+    }
+
+    private class GetShiftTypesResponse
+    {
+        public List<ShiftTypeDto>? ShiftTypes { get; set; }
+    }
+
+    private class CheckInResponse
+    {
+        public AttendanceDto? CheckIn { get; set; }
+    }
+
+    private class CheckOutResponse
+    {
+        public AttendanceDto? CheckOut { get; set; }
+    }
+}

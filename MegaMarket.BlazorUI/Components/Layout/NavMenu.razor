@@ -43,6 +43,11 @@
 
         <AuthorizeView>
             <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="attendance/check-in-out">
+                        <span class="bi bi-calendar-check" aria-hidden="true"></span> Check In/Out
+                    </NavLink>
+                </div>
                 <div class="nav-item px-3 mt-3">
                     <a class="nav-link" href="javascript:void(0)" @onclick="HandleLogout" style="cursor: pointer;">
                         <span class="bi bi-box-arrow-right" aria-hidden="true"></span> Logout
