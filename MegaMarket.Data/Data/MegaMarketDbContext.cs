@@ -191,5 +191,21 @@ public class MegaMarketDbContext : DbContext
 
         modelBuilder.Entity<Attendance>()
             .HasIndex(a => new { a.UserId, a.Date });
+
+        // Dashboard-specific indexes for better query performance
+        modelBuilder.Entity<Invoice>()
+            .HasIndex(i => i.Status);
+
+        modelBuilder.Entity<Product>()
+            .HasIndex(p => new { p.QuantityInStock, p.MinQuantity });
+
+        modelBuilder.Entity<Product>()
+            .HasIndex(p => new { p.IsPerishable, p.ExpiryDate });
+
+        modelBuilder.Entity<Product>()
+            .HasIndex(p => p.Category);
+
+        modelBuilder.Entity<PointTransaction>()
+            .HasIndex(pt => new { pt.CustomerId, pt.CreatedAt, pt.TransactionType });
     }
 }
