@@ -324,6 +324,330 @@
             }
         </DashboardSection>
     </div>
+
+    @* ==================== CUSTOMER ANALYTICS ==================== *@
+    <div class="mb-5">
+        <h4 class="mb-3">
+            <span class="bi bi-people me-2"></span>Customer & Loyalty Analytics
+        </h4>
+
+        <DashboardSection IsLoading="@isCustomerLoading"
+                          ErrorMessage="@customerErrorMessage"
+                          ShowRetryButton="true"
+                          OnRetry="@LoadCustomerDashboard">
+            @if (customerData != null)
+            {
+                @* Customer Stats Row *@
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <StatsCard
+                            Title="Total Customers"
+                            Value="@customerData.TotalCustomers.ToString("N0")"
+                            SubLabel="Registered customers"
+                            Color="primary" />
+                    </div>
+                    <div class="col-md-3">
+                        <StatsCard
+                            Title="New Customers"
+                            Value="@customerData.NewCustomers.ToString("N0")"
+                            SubLabel="@GetDateRangeLabel()"
+                            Color="success" />
+                    </div>
+                    <div class="col-md-3">
+                        <StatsCard
+                            Title="Average Spending"
+                            Value="@($"${customerData.AverageSpending:N2}")"
+                            SubLabel="Per customer"
+                            Color="info" />
+                    </div>
+                    <div class="col-md-3">
+                        <StatsCard
+                            Title="Active Loyalty Points"
+                            Value="@(customerData.LoyaltyPointsSummary?.ActivePoints.ToString("N0") ?? "N/A")"
+                            SubLabel="Total points in system"
+                            Color="warning" />
+                    </div>
+                </div>
+
+                @* Charts Row *@
+                <div class="row mb-4">
+                    @* Customer Rank Distribution *@
+                    <div class="col-lg-6 mb-3">
+                        <ChartCard Title="Customer Rank Distribution" Subtitle="Customer segmentation" Height="350px">
+                            @if (customerData.CustomerRankDistribution.Any())
+                            {
+                                <ApexChart TItem="CustomerRankDistributionDto"
+                                           Options="@customerRankOptions">
+                                    <ApexPointSeries TItem="CustomerRankDistributionDto"
+                                                     Items="@customerData.CustomerRankDistribution"
+                                                     Name="Customers"
+                                                     SeriesType="SeriesType.Donut"
+                                                     XValue="@(e => e.Rank)"
+                                                     YAggregate="@(e => e.Sum(f => f.Count))" />
+                                </ApexChart>
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    <p class="text-muted">No customer rank data available</p>
+                                </div>
+                            }
+                        </ChartCard>
+                    </div>
+
+                    @* Loyalty Points Summary *@
+                    <div class="col-lg-6 mb-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0">
+                                    <span class="bi bi-gift me-2"></span>Loyalty Points Summary
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                @if (customerData.LoyaltyPointsSummary != null)
+                                {
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <div class="mb-3">
+                                                <h3 class="text-primary mb-1">@customerData.LoyaltyPointsSummary.TotalPointsIssued.ToString("N0")</h3>
+                                                <small class="text-muted">Total Issued</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="mb-3">
+                                                <h3 class="text-danger mb-1">@customerData.LoyaltyPointsSummary.TotalPointsRedeemed.ToString("N0")</h3>
+                                                <small class="text-muted">Total Redeemed</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="mb-3">
+                                                <h3 class="text-success mb-1">@customerData.LoyaltyPointsSummary.ActivePoints.ToString("N0")</h3>
+                                                <small class="text-muted">Active Points</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar bg-success" role="progressbar"
+                                             style="width: @(GetPercentage(customerData.LoyaltyPointsSummary.ActivePoints, customerData.LoyaltyPointsSummary.TotalPointsIssued))%">
+                                            Active
+                                        </div>
+                                        <div class="progress-bar bg-danger" role="progressbar"
+                                             style="width: @(GetPercentage(customerData.LoyaltyPointsSummary.TotalPointsRedeemed, customerData.LoyaltyPointsSummary.TotalPointsIssued))%">
+                                            Redeemed
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="text-muted mb-0">No loyalty points data available</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* Top Customers *@
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <span class="bi bi-star me-2"></span>Top Customers by Spending
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (customerData.TopCustomers.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Customer</th>
+                                            <th>Phone</th>
+                                            <th class="text-end">Invoices</th>
+                                            <th class="text-end">Total Spending</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var customer in customerData.TopCustomers.Take(10))
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@customer.CustomerName</strong>
+                                                    <br />
+                                                    <small class="text-muted">ID: @customer.CustomerId</small>
+                                                </td>
+                                                <td>@customer.Phone</td>
+                                                <td class="text-end">
+                                                    <span class="badge bg-primary">@customer.InvoiceCount</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <strong class="text-success">$@customer.TotalSpending.ToString("N2")</strong>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0">No customer data available</p>
+                        }
+                    </div>
+                </div>
+            }
+        </DashboardSection>
+    </div>
+
+    @* ==================== EMPLOYEE ANALYTICS ==================== *@
+    <div class="mb-5">
+        <h4 class="mb-3">
+            <span class="bi bi-person-badge me-2"></span>Employee & Attendance Analytics
+        </h4>
+
+        <DashboardSection IsLoading="@isEmployeeLoading"
+                          ErrorMessage="@employeeErrorMessage"
+                          ShowRetryButton="true"
+                          OnRetry="@LoadEmployeeDashboard">
+            @if (employeeData != null)
+            {
+                @* Employee Stats Row *@
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <StatsCard
+                            Title="Total Employees"
+                            Value="@employeeData.TotalEmployees.ToString("N0")"
+                            SubLabel="Active staff members"
+                            Color="primary" />
+                    </div>
+                    <div class="col-md-4">
+                        <StatsCard
+                            Title="Active Shifts"
+                            Value="@employeeData.ActiveShifts.ToString("N0")"
+                            SubLabel="Currently scheduled"
+                            Color="info" />
+                    </div>
+                    <div class="col-md-4">
+                        <StatsCard
+                            Title="Total Wages"
+                            Value="@($"${employeeData.TotalWages:N2}")"
+                            SubLabel="@GetDateRangeLabel()"
+                            Color="success" />
+                    </div>
+                </div>
+
+                @* Charts Row *@
+                <div class="row mb-4">
+                    @* Attendance by Shift *@
+                    <div class="col-lg-6 mb-3">
+                        <ChartCard Title="Attendance by Shift" Subtitle="Employee distribution" Height="350px">
+                            @if (employeeData.AttendanceByShift.Any())
+                            {
+                                <ApexChart TItem="AttendanceByShiftDto"
+                                           Options="@attendanceByShiftOptions">
+                                    <ApexPointSeries TItem="AttendanceByShiftDto"
+                                                     Items="@employeeData.AttendanceByShift"
+                                                     Name="Employees"
+                                                     SeriesType="SeriesType.Donut"
+                                                     XValue="@(e => e.ShiftName)"
+                                                     YAggregate="@(e => e.Sum(f => f.EmployeeCount))" />
+                                </ApexChart>
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    <p class="text-muted">No shift attendance data available</p>
+                                </div>
+                            }
+                        </ChartCard>
+                    </div>
+
+                    @* Employee Work Summary Chart *@
+                    <div class="col-lg-6 mb-3">
+                        <ChartCard Title="Top Performers" Subtitle="By working days" Height="350px">
+                            @if (employeeData.EmployeeWorkSummary.Any())
+                            {
+                                <ApexChart TItem="EmployeeWorkSummaryDto"
+                                           Options="@workSummaryOptions">
+                                    <ApexPointSeries TItem="EmployeeWorkSummaryDto"
+                                                     Items="@employeeData.EmployeeWorkSummary.Take(10).ToList()"
+                                                     Name="Working Days"
+                                                     SeriesType="SeriesType.Bar"
+                                                     XValue="@(e => e.EmployeeName)"
+                                                     YAggregate="@(e => e.Sum(f => f.WorkingDays))"
+                                                     OrderByDescending="e => e.Y" />
+                                </ApexChart>
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    <p class="text-muted">No employee work data available</p>
+                                </div>
+                            }
+                        </ChartCard>
+                    </div>
+                </div>
+
+                @* Employee Work Summary Table *@
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <span class="bi bi-clipboard-data me-2"></span>Employee Work Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (employeeData.EmployeeWorkSummary.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Employee</th>
+                                            <th class="text-end">Working Days</th>
+                                            <th class="text-end">Absent Days</th>
+                                            <th class="text-end">Total Hours</th>
+                                            <th class="text-end">Attendance Rate</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var employee in employeeData.EmployeeWorkSummary.Take(10))
+                                        {
+                                            var totalDays = employee.WorkingDays + employee.AbsentDays;
+                                            var attendanceRate = totalDays > 0 ? (double)employee.WorkingDays / totalDays * 100 : 0;
+                                            <tr>
+                                                <td>
+                                                    <strong>@employee.EmployeeName</strong>
+                                                    <br />
+                                                    <small class="text-muted">ID: @employee.EmployeeId</small>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="badge bg-success">@employee.WorkingDays</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="badge bg-danger">@employee.AbsentDays</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <strong>@employee.TotalHours.ToString("F1")h</strong>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="badge @(attendanceRate >= 90 ? "bg-success" : attendanceRate >= 75 ? "bg-warning" : "bg-danger")">
+                                                        @attendanceRate.ToString("F0")%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0">No employee work data available</p>
+                        }
+                    </div>
+                </div>
+            }
+        </DashboardSection>
+    </div>
 </div>
 
 @code {
@@ -340,6 +664,16 @@
     private bool isInventoryLoading = true;
     private string? inventoryErrorMessage;
     private InventoryDashboardDto? inventoryData;
+
+    // Customer Data
+    private bool isCustomerLoading = true;
+    private string? customerErrorMessage;
+    private CustomerDashboardDto? customerData;
+
+    // Employee Data
+    private bool isEmployeeLoading = true;
+    private string? employeeErrorMessage;
+    private EmployeeDashboardDto? employeeData;
 
     // Chart Options
     private ApexChartOptions<RevenueTrendDto> revenueTrendOptions = new()
@@ -391,6 +725,35 @@
         Colors = new List<string> { "#007bff", "#6610f2", "#6f42c1", "#e83e8c", "#dc3545", "#fd7e14", "#ffc107", "#28a745" }
     };
 
+    private ApexChartOptions<CustomerRankDistributionDto> customerRankOptions = new()
+    {
+        Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+        Legend = new Legend { Position = LegendPosition.Bottom },
+        Colors = new List<string> { "#ffc107", "#28a745", "#007bff", "#dc3545" }
+    };
+
+    private ApexChartOptions<AttendanceByShiftDto> attendanceByShiftOptions = new()
+    {
+        Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+        Legend = new Legend { Position = LegendPosition.Bottom },
+        Colors = new List<string> { "#007bff", "#28a745", "#ffc107", "#dc3545", "#6610f2" }
+    };
+
+    private ApexChartOptions<EmployeeWorkSummaryDto> workSummaryOptions = new()
+    {
+        Chart = new Chart
+        {
+            Toolbar = new Toolbar { Show = false },
+            Zoom = new Zoom { Enabled = false }
+        },
+        PlotOptions = new PlotOptions
+        {
+            Bar = new PlotOptionsBar { Horizontal = true }
+        },
+        Datalavels = new DataLabels { Enabled = false },
+        Colors = new List<string> { "#007bff" }
+    };
+
     protected override async Task OnInitializedAsync()
     {
         await LoadAllDashboards();
@@ -400,7 +763,9 @@
     {
         await Task.WhenAll(
             LoadSalesDashboard(),
-            LoadInventoryDashboard()
+            LoadInventoryDashboard(),
+            LoadCustomerDashboard(),
+            LoadEmployeeDashboard()
         );
     }
 
@@ -519,6 +884,111 @@
         }
     }
 
+    private async Task LoadCustomerDashboard()
+    {
+        try
+        {
+            isCustomerLoading = true;
+            customerErrorMessage = null;
+
+            var query = @"
+                query GetCustomerDashboard($dateRange: DateRangeEnum!) {
+                    customerDashboard(dateRange: $dateRange) {
+                        totalCustomers
+                        newCustomers
+                        averageSpending
+                        customerRankDistribution {
+                            rank
+                            count
+                        }
+                        loyaltyPointsSummary {
+                            totalPointsIssued
+                            totalPointsRedeemed
+                            activePoints
+                        }
+                        topCustomers {
+                            customerId
+                            customerName
+                            phone
+                            totalSpending
+                            invoiceCount
+                        }
+                    }
+                }
+            ";
+
+            var variables = new { dateRange = selectedRange.ToString().ToUpper() };
+            var response = await GraphQLClient.QueryAsync<CustomerDashboardResponse>(query, variables);
+
+            if (response.Data?.CustomerDashboard != null)
+            {
+                customerData = response.Data.CustomerDashboard;
+            }
+            else
+            {
+                customerErrorMessage = "No customer data returned from server";
+            }
+        }
+        catch (Exception ex)
+        {
+            customerErrorMessage = $"Failed to load customer data: {ex.Message}";
+        }
+        finally
+        {
+            isCustomerLoading = false;
+        }
+    }
+
+    private async Task LoadEmployeeDashboard()
+    {
+        try
+        {
+            isEmployeeLoading = true;
+            employeeErrorMessage = null;
+
+            var query = @"
+                query GetEmployeeDashboard($dateRange: DateRangeEnum!) {
+                    employeeDashboard(dateRange: $dateRange) {
+                        totalEmployees
+                        activeShifts
+                        totalWages
+                        attendanceByShift {
+                            shiftName
+                            employeeCount
+                        }
+                        employeeWorkSummary {
+                            employeeId
+                            employeeName
+                            workingDays
+                            absentDays
+                            totalHours
+                        }
+                    }
+                }
+            ";
+
+            var variables = new { dateRange = selectedRange.ToString().ToUpper() };
+            var response = await GraphQLClient.QueryAsync<EmployeeDashboardResponse>(query, variables);
+
+            if (response.Data?.EmployeeDashboard != null)
+            {
+                employeeData = response.Data.EmployeeDashboard;
+            }
+            else
+            {
+                employeeErrorMessage = "No employee data returned from server";
+            }
+        }
+        catch (Exception ex)
+        {
+            employeeErrorMessage = $"Failed to load employee data: {ex.Message}";
+        }
+        finally
+        {
+            isEmployeeLoading = false;
+        }
+    }
+
     private async Task HandleRangeChanged(DateRangeEnum newRange)
     {
         selectedRange = newRange;
@@ -537,6 +1007,11 @@
         };
     }
 
+    private double GetPercentage(int value, int total)
+    {
+        return total > 0 ? (double)value / total * 100 : 0;
+    }
+
     // GraphQL Response Types
     private class SalesDashboardResponse
     {
@@ -546,5 +1021,15 @@
     private class InventoryDashboardResponse
     {
         public InventoryDashboardDto? InventoryDashboard { get; set; }
+    }
+
+    private class CustomerDashboardResponse
+    {
+        public CustomerDashboardDto? CustomerDashboard { get; set; }
+    }
+
+    private class EmployeeDashboardResponse
+    {
+        public EmployeeDashboardDto? EmployeeDashboard { get; set; }
     }
 }
