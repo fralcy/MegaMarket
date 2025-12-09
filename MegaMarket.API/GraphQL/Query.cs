@@ -125,4 +125,39 @@ public class Query
     {
         return await attendanceService.GetAttendancesByDateAsync(date);
     }
+
+    // ==================== SALES DASHBOARD QUERIES ====================
+
+    [Authorize]
+    [GraphQLDescription("Lấy thống kê doanh thu")]
+    public async Task<DTOs.Dashboard.Sales.SalesDashboardDto> GetSalesDashboard(
+        DTOs.Dashboard.Common.DateRangeEnum dateRange,
+        ClaimsPrincipal claimsPrincipal,
+        [Service] DashboardSalesService service)
+    {
+        var currentUserId = int.Parse(claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentRole = claimsPrincipal.FindFirst(ClaimTypes.Role)?.Value;
+        return await service.GetSalesDashboardAsync(dateRange, currentRole, currentUserId);
+    }
+
+    [Authorize(Roles = new[] { "Admin" })]
+    [GraphQLDescription("Lấy xu hướng doanh thu theo ngày")]
+    public async Task<List<DTOs.Dashboard.Sales.RevenueTrendDto>> GetRevenueTrend(
+        DTOs.Dashboard.Common.DateRangeEnum dateRange,
+        [Service] DashboardSalesService service)
+    {
+        return await service.GetRevenueTrendAsync(dateRange);
+    }
+
+    [Authorize]
+    [GraphQLDescription("Lấy top sản phẩm bán chạy")]
+    public async Task<List<DTOs.Dashboard.Sales.TopProductDto>> GetTopSellingProducts(
+        DTOs.Dashboard.Common.DateRangeEnum dateRange,
+        int limit,
+        ClaimsPrincipal claimsPrincipal,
+        [Service] DashboardSalesService service)
+    {
+        var currentRole = claimsPrincipal.FindFirst(ClaimTypes.Role)?.Value;
+        return await service.GetTopSellingProductsAsync(dateRange, limit, currentRole);
+    }
 }

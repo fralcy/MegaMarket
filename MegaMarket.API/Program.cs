@@ -22,6 +22,9 @@ builder.Services.AddScoped<ShiftTypeService>();
 builder.Services.AddScoped<AttendanceService>();
 builder.Services.AddScoped<AuthService>();
 
+// Dashboard Services
+builder.Services.AddScoped<DashboardSalesService>();
+
 // Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new Exception("JWT Key chưa được config trong appsettings.json!");
