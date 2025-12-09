@@ -241,4 +241,48 @@ public class Query
     {
         return await service.GetCustomerRankDistributionAsync();
     }
+
+    // ==================== EMPLOYEE DASHBOARD QUERIES ====================
+
+    [Authorize]
+    [GraphQLDescription("Lấy thống kê nhân viên và chấm công")]
+    public async Task<DTOs.Dashboard.Employee.EmployeeDashboardDto> GetEmployeeDashboard(
+        DTOs.Dashboard.Common.DateRangeEnum dateRange,
+        ClaimsPrincipal claimsPrincipal,
+        [Service] DashboardEmployeeService service)
+    {
+        var currentUserId = int.Parse(claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentRole = claimsPrincipal.FindFirst(ClaimTypes.Role)?.Value;
+        return await service.GetEmployeeDashboardAsync(dateRange, currentRole, currentUserId);
+    }
+
+    [Authorize(Roles = new[] { "Admin" })]
+    [GraphQLDescription("Lấy tổng hợp công việc của tất cả nhân viên")]
+    public async Task<List<DTOs.Dashboard.Employee.EmployeeWorkSummaryDto>> GetEmployeeWorkSummary(
+        DTOs.Dashboard.Common.DateRangeEnum dateRange,
+        [Service] DashboardEmployeeService service)
+    {
+        return await service.GetEmployeeWorkSummaryAsync(dateRange);
+    }
+
+    [Authorize]
+    [GraphQLDescription("Lấy thống kê chấm công của một nhân viên")]
+    public async Task<DTOs.Dashboard.Employee.AttendanceRateDto> GetAttendanceStatistics(
+        int employeeId,
+        DTOs.Dashboard.Common.DateRangeEnum dateRange,
+        ClaimsPrincipal claimsPrincipal,
+        [Service] DashboardEmployeeService service)
+    {
+        // Employee chỉ xem được của chính mình
+        // Admin xem được của bất kỳ ai
+        var currentUserId = int.Parse(claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentRole = claimsPrincipal.FindFirst(ClaimTypes.Role)?.Value;
+
+        if (currentRole != "Admin" && currentUserId != employeeId)
+        {
+            throw new GraphQLException("Bạn không có quyền xem thống kê chấm công của người khác!");
+        }
+
+        return await service.GetAttendanceStatisticsAsync(employeeId, dateRange);
+    }
 }
