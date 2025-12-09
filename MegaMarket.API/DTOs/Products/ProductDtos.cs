@@ -15,8 +15,17 @@ public record ProductDto
     [StringLength(100)]
     public string? Category { get; init; }
 
+    [StringLength(50)]
+    public string? UnitLabel { get; init; }
+
     [Range(0, 999999)]
     public decimal UnitPrice { get; init; }
+
+    [Range(0, 999999)]
+    public decimal? OriginalPrice { get; init; }
+
+    [Range(0, 100)]
+    public int? DiscountPercent { get; init; }
 
     [Range(0, int.MaxValue)]
     public int QuantityInStock { get; init; }
@@ -27,6 +36,9 @@ public record ProductDto
     public DateTime? ExpiryDate { get; init; }
 
     public bool IsPerishable { get; init; }
+
+    [StringLength(500)]
+    public string? ImageUrl { get; init; }
 }
 
 public record ProductCreateUpdateDto
@@ -40,8 +52,17 @@ public record ProductCreateUpdateDto
     [StringLength(100)]
     public string? Category { get; init; }
 
+    [StringLength(50)]
+    public string? UnitLabel { get; init; }
+
     [Range(0, 999999)]
     public decimal UnitPrice { get; init; }
+
+    [Range(0, 999999)]
+    public decimal? OriginalPrice { get; init; }
+
+    [Range(0, 100)]
+    public int? DiscountPercent { get; init; }
 
     [Range(0, int.MaxValue)]
     public int QuantityInStock { get; init; }
@@ -52,4 +73,7 @@ public record ProductCreateUpdateDto
     public DateTime? ExpiryDate { get; init; }
 
     public bool IsPerishable { get; init; }
+
+    [StringLength(500)]
+    public string? ImageUrl { get; init; }
 }

@@ -1,0 +1,115 @@
+.product-table thead {
+    background: #f4f6fb;
+    color: #445166;
+}
+
+.product-table th {
+    font-size: 0.9rem;
+    font-weight: 700;
+    white-space: nowrap;
+    border-bottom: 1px solid #e5e8ef;
+}
+
+.product-table td {
+    vertical-align: middle;
+    border-color: #eef1f5;
+}
+
+.product-table .sort {
+    border: none;
+    background: transparent;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.product-table .badge-row {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.product-table .badge-row .badge {
+    border-radius: 999px;
+    padding: 0.35rem 0.6rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.product-table tr.low-stock {
+    background: #fff9e6;
+}
+
+.product-table tr.near-expiry {
+    background: #fff4e1;
+}
+
+.product-table tr.expired {
+    background: #ffe9e9;
+}
+
+.product-table tbody tr:hover {
+    box-shadow: inset 0 0 0 9999px rgba(15, 98, 254, 0.04);
+}
+
+.product-table .col-image {
+    width: 72px;
+}
+
+.product-table .col-barcode {
+    width: 160px;
+}
+
+.product-table .thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f8fbff, #f1f4f9);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid #e4e8f1;
+    box-shadow: 0 6px 18px rgba(17, 32, 60, 0.1);
+}
+
+.product-table .thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.action-icons {
+    display: inline-flex;
+    gap: 0.35rem;
+    justify-content: flex-end;
+}
+
+.icon-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid #d9dee7;
+    background: #ffffff;
+    color: #1f2b3d;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.icon-btn:hover {
+    background: #0f62fe;
+    border-color: #0f62fe;
+    color: #ffffff;
+}
+
+.icon-btn.danger:hover {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: #ffffff;
+}

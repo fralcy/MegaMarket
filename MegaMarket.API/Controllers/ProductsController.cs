@@ -97,11 +97,15 @@ public class ProductsController : ControllerBase
             Barcode = product.Barcode,
             Name = product.Name,
             Category = product.Category,
+            UnitLabel = product.UnitLabel,
             UnitPrice = product.UnitPrice,
+            OriginalPrice = product.OriginalPrice,
+            DiscountPercent = product.DiscountPercent,
             QuantityInStock = product.QuantityInStock,
             MinQuantity = product.MinQuantity,
             ExpiryDate = product.ExpiryDate,
-            IsPerishable = product.IsPerishable
+            IsPerishable = product.IsPerishable,
+            ImageUrl = product.ImageUrl
         };
 
     private static Product MapToEntity(ProductCreateUpdateDto dto, int? id = null) =>
@@ -111,10 +115,14 @@ public class ProductsController : ControllerBase
             Barcode = dto.Barcode,
             Name = dto.Name,
             Category = dto.Category,
+            UnitLabel = dto.UnitLabel,
             UnitPrice = dto.UnitPrice,
+            OriginalPrice = dto.OriginalPrice,
+            DiscountPercent = dto.DiscountPercent,
             QuantityInStock = dto.QuantityInStock,
             MinQuantity = dto.MinQuantity,
             ExpiryDate = dto.ExpiryDate,
-            IsPerishable = dto.IsPerishable
+            IsPerishable = dto.IsPerishable,
+            ImageUrl = dto.ImageUrl
         };
 }

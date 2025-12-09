@@ -42,11 +42,15 @@ public class ProductService : IProductService
         existing.Barcode = product.Barcode;
         existing.Name = product.Name;
         existing.Category = product.Category;
+        existing.UnitLabel = product.UnitLabel;
         existing.UnitPrice = product.UnitPrice;
+        existing.OriginalPrice = product.OriginalPrice;
+        existing.DiscountPercent = product.DiscountPercent;
         existing.QuantityInStock = product.QuantityInStock;
         existing.MinQuantity = product.MinQuantity;
         existing.ExpiryDate = product.ExpiryDate;
         existing.IsPerishable = product.IsPerishable;
+        existing.ImageUrl = product.ImageUrl;
 
         await _dbContext.SaveChangesAsync();
         return true;

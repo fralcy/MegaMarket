@@ -1,0 +1,265 @@
+@page "/imports"
+@rendermode InteractiveServer
+@using MegaMarket.BlazorUI.Services.Imports
+@inject NavigationManager Navigation
+@inject ImportService ImportService
+
+<div class="imports-page">
+    <div class="page-header card shadow-sm border-0">
+        <div class="d-flex align-items-center gap-3">
+            <div class="header-icon">
+                <span class="bi bi-box-seam"></span>
+            </div>
+            <div>
+                <h1 class="page-title mb-1">Import Management</h1>
+                <p class="text-muted mb-0">Track and manage stock import transactions</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="filters card shadow-sm border-0">
+        <div class="filter-layout">
+            <div class="filter-left">
+                <div class="calendar-icon">
+                    <span class="bi bi-calendar4-week"></span>
+                </div>
+                <div class="date-range">
+                    <input class="form-control" type="date" @bind="fromDate" @bind:format="yyyy-MM-dd" placeholder="mm/dd/yyyy" />
+                    <span class="to-label text-muted">to</span>
+                    <input class="form-control" type="date" @bind="toDate" @bind:format="yyyy-MM-dd" placeholder="mm/dd/yyyy" />
+                </div>
+                <div class="id-search input-group input-group-sm">
+                    <span class="input-group-text">#</span>
+                    <input class="form-control" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Import ID" @bind="importIdSearchText" @bind:event="oninput" />
+                </div>
+                <select class="form-select slim" @bind="selectedSupplier">
+                    <option value="">All Suppliers</option>
+                    @foreach (var supplier in Suppliers)
+                    {
+                        <option value="@supplier">@supplier</option>
+                    }
+                </select>
+
+                <select class="form-select slim" @bind="selectedStatus">
+                    <option value="">All Status</option>
+                    @foreach (var status in Statuses)
+                    {
+                        <option value="@status">@status</option>
+                    }
+                </select>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-outline-secondary refresh-btn" title="Refresh" @onclick="ResetFilters" disabled="@isLoading">
+                    <span class="bi bi-arrow-repeat"></span>
+                </button>
+                <button class="btn btn-dark d-flex align-items-center gap-2" @onclick="GoToNewImport">
+                    <span class="bi bi-plus-lg"></span>
+                    New Import
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Oops!</strong> @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            @if (isLoading)
+            {
+                <div class="p-4 text-center text-muted">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mb-0 mt-2">Loading imports...</p>
+                </div>
+            }
+            else if (!FilteredImports.Any())
+            {
+                <div class="p-4 text-center text-muted">
+                    <p class="mb-2">No imports match your filters.</p>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="ResetFilters">Reset filters</button>
+                </div>
+            }
+            else
+            {
+                <table class="table align-middle mb-0 imports-table">
+                    <thead>
+                        <tr>
+                            <th>Import ID <span class="bi bi-arrow-down-up"></span></th>
+                            <th>Date <span class="bi bi-arrow-down-up"></span></th>
+                            <th>Supplier</th>
+                            <th>Staff</th>
+                            <th>Total Cost <span class="bi bi-arrow-down-up"></span></th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var import in FilteredImports)
+                        {
+                            var rowClass = import.NearExpiry || import.Expired ? "highlight" : string.Empty;
+                            <tr class="@rowClass">
+                                <td class="text-muted">#@import.ImportId.ToString("0000")</td>
+                                <td>@import.ImportDate.ToString("dd/MM/yyyy")</td>
+                                <td>@import.Supplier</td>
+                                <td>@import.Staff</td>
+                                <td class="fw-semibold">@import.TotalCost.ToString("N0") đ</td>
+                                <td>
+                                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                                        <span class="badge status @GetStatusClass(import.Status)">@import.Status</span>
+                                        @if (import.NearExpiry)
+                                        {
+                                            <span class="badge status warning">Near Expiry</span>
+                                        }
+                                        @if (import.Expired)
+                                        {
+                                            <span class="badge status danger">Expired</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <div class="action-icons">
+                                        <button class="icon-btn" title="View" @onclick="() => ViewImport(import.ImportId)"><span class="bi bi-eye"></span></button>
+                                        <button class="icon-btn" title="Edit" @onclick="() => EditImport(import.ImportId)"><span class="bi bi-pencil"></span></button>
+                                        <button class="icon-btn danger" title="Delete" @onclick="() => ConfirmDelete(import.ImportId)"><span class="bi bi-trash"></span></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+        <div class="px-3 py-3 text-muted small border-top">Showing @FilteredImports.Count() imports</div>
+    </div>
+
+    @if (deleteTargetId.HasValue)
+    {
+        <div class="modal-overlay" @onclick="() => deleteTargetId = null">
+            <div class="modal-panel confirm" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <div>
+                        <p class="eyebrow mb-1">Delete import</p>
+                        <h4 class="mb-0 text-danger">Are you sure?</h4>
+                    </div>
+                    <button class="btn-close" @onclick="() => deleteTargetId = null"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">This will remove the import permanently.</p>
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button class="btn btn-outline-secondary" @onclick="() => deleteTargetId = null" disabled="@isDeleting">Cancel</button>
+                        <button class="btn btn-danger" @onclick="DeleteConfirmed" disabled="@isDeleting">
+                            @(isDeleting ? "Deleting..." : "Delete")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ImportSummaryDto> imports = new();
+    private DateTime? fromDate;
+    private DateTime? toDate;
+    private string? importIdSearchText;
+    private string selectedSupplier = string.Empty;
+    private string selectedStatus = string.Empty;
+    private bool isLoading;
+    private string? errorMessage;
+    private int? deleteTargetId;
+    private bool isDeleting;
+
+    private IEnumerable<string> Suppliers => imports.Select(i => i.Supplier).Distinct().OrderBy(i => i);
+    private IEnumerable<string> Statuses => imports.Any()
+        ? imports.Select(i => i.Status).Distinct().OrderBy(i => i)
+        : new[] { "Completed", "Draft", "Cancelled" };
+
+    private IEnumerable<ImportSummaryDto> FilteredImports => imports
+        .Where(i => !fromDate.HasValue || i.ImportDate.Date >= fromDate.Value.Date)
+        .Where(i => !toDate.HasValue || i.ImportDate.Date <= toDate.Value.Date)
+        .Where(i => string.IsNullOrWhiteSpace(importIdSearchText) || i.ImportId.ToString("0000").Contains(importIdSearchText.Trim(), StringComparison.OrdinalIgnoreCase))
+        .Where(i => string.IsNullOrWhiteSpace(selectedSupplier) || i.Supplier == selectedSupplier)
+        .Where(i => string.IsNullOrWhiteSpace(selectedStatus) || i.Status == selectedStatus);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadImportsAsync();
+    }
+
+    private async Task LoadImportsAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            imports = await ImportService.GetImportsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ResetFilters()
+    {
+        fromDate = null;
+        toDate = null;
+        importIdSearchText = null;
+        selectedSupplier = string.Empty;
+        selectedStatus = string.Empty;
+        await LoadImportsAsync();
+    }
+
+    private void GoToNewImport() => Navigation.NavigateTo("/imports/new");
+
+    private void ViewImport(int id) => Navigation.NavigateTo($"/imports/{id}");
+
+    private void EditImport(int id) => Navigation.NavigateTo($"/imports/{id}/edit");
+
+    private void ConfirmDelete(int id)
+    {
+        deleteTargetId = id;
+    }
+
+    private async Task DeleteConfirmed()
+    {
+        if (!deleteTargetId.HasValue)
+        {
+            return;
+        }
+
+        try
+        {
+            isDeleting = true;
+            await ImportService.DeleteImportAsync(deleteTargetId.Value);
+            deleteTargetId = null;
+            await LoadImportsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+
+    private static string GetStatusClass(string status) => (status ?? string.Empty).ToLower() switch
+    {
+        "completed" => "success",
+        "draft" => "neutral",
+        "cancelled" => "danger",
+        _ => "neutral"
+    };
+}
