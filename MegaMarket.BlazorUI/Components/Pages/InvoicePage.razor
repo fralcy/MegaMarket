@@ -1,0 +1,346 @@
+﻿@page "/invoice"
+@using System.Globalization
+@using System.ComponentModel.DataAnnotations
+@using System.ComponentModel.DataAnnotations.Schema
+
+<div class="invoice-container">
+    <h2>Quản Lý Hóa Đơn</h2>
+
+    <div class="search-area">
+        <h4>Tìm Kiếm Hóa Đơn</h4>
+        <div class="search-input-group">
+            <label for="searchId">Mã HĐ:</label>
+            <input id="searchId" @bind="SearchInvoiceId" placeholder="Nhập mã hóa đơn" />
+
+            <label for="searchDate">Ngày Tạo:</label>
+            <input id="searchDate" @bind="SearchDate" type="date" />
+
+            <button class="btn-primary" @onclick="ApplyFilter">Tìm Kiếm</button>
+            <button class="btn-secondary" @onclick="ClearFilter">Xóa Filter</button>
+        </div>
+    </div>
+
+    <div class="invoice-grid">
+        <div>
+            <h4>Danh Sách Hóa Đơn (@FilteredInvoices.Count)</h4>
+            <table class="table" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color: #f1f1f1;">
+                        <th style="padding: 10px; border: 1px solid #ddd;">ID</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Ngày Tạo</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Tổng Tiền</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">TT</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var invoice in FilteredInvoices)
+                    {
+                        <tr style="@(SelectedInvoice?.InvoiceId == invoice.InvoiceId ? "background-color: #e0f7fa;" : "")" @onclick="() => SelectInvoice(invoice.InvoiceId)">
+                            <td style="padding: 10px; border: 1px solid #ddd;">@invoice.InvoiceId</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">@invoice.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">@FormatCurrency(invoice.TotalAmount)</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">@invoice.PaymentMethod</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">
+                                <button class="btn-success" @onclick="() => ShowPrintPreview(invoice.InvoiceId)">In HĐ</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="detail-view">
+            @if (SelectedInvoice != null)
+            {
+                <h4>Chi Tiết Hóa Đơn #@SelectedInvoice.InvoiceId</h4>
+
+                <div class="detail-section">
+                    <strong>Thông tin chung</strong>
+                    <div class="detail-row"><span>Người tạo:</span> <span>@SelectedInvoice.User.UserName</span></div>
+                    <div class="detail-row"><span>Khách hàng:</span> <span>@(SelectedInvoice.Customer?.CustomerName ?? "Khách lẻ")</span></div>
+                    <div class="detail-row"><span>Ngày tạo:</span> <span>@SelectedInvoice.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</span></div>
+                    <div class="detail-row"><span>Phương thức:</span> <span>@SelectedInvoice.PaymentMethod</span></div>
+                    <div class="detail-row"><span>Trạng thái:</span> <span>@SelectedInvoice.Status</span></div>
+                </div>
+
+                <div class="detail-section">
+                    <strong>Chi tiết Sản phẩm</strong>
+                    <table style="width: 100%; font-size: 0.9em; margin-top: 5px;">
+                        @foreach (var detail in SelectedInvoice.InvoiceDetails)
+                        {
+                            <tr>
+                                <td>@detail.Product.ProductName (@detail.Quantity)</td>
+                                <td style="text-align: right;">@FormatCurrency(detail.Quantity * detail.UnitPrice)</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+
+                <div class="detail-section">
+                    <strong>Tổng kết</strong>
+                    <div class="detail-row"><span>Tổng trước KM:</span> <span>@FormatCurrency(SelectedInvoice.TotalBeforeDiscount)</span></div>
+                    <div class="detail-row"><span>Mã KM:</span> <span>@(SelectedInvoice.Promotion?.Name ?? "Không")</span></div>
+                    <div class="detail-row"><span>Tiền nhận:</span> <span>@FormatCurrency(SelectedInvoice.ReceivedAmount)</span></div>
+                    <div class="detail-row"><span>Tiền thừa:</span> <span>@FormatCurrency(SelectedInvoice.ChangeAmount)</span></div>
+                    <div class="detail-row" style="font-weight: bold;"><span>TỔNG CỘNG:</span> <span>@FormatCurrency(SelectedInvoice.TotalAmount)</span></div>
+                </div>
+            }
+            else
+            {
+                <p style="text-align: center; color: #6c757d;">Chọn một hóa đơn để xem chi tiết.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@if (IsPrintModalVisible && InvoiceToPrint != null)
+{
+    <div class="print-modal" @onclick="HidePrintPreview">
+        <div class="print-content" @onclick:stopPropagation="true">
+            <div class="receipt-header">
+                <strong>SIÊU THỊ MAXIMART</strong><br />
+                <small>Địa chỉ: 123 Lê Lợi, TP.HCM</small><br />
+                <small>ĐT: 028 1234 5678</small>
+            </div>
+
+            <div class="receipt-divider"></div>
+
+            <div class="receipt-line"><span>Mã HĐ:</span> <span>#@InvoiceToPrint.InvoiceId</span></div>
+            <div class="receipt-line"><span>Ngày:</span> <span>@InvoiceToPrint.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</span></div>
+            <div class="receipt-line"><span>NV:</span> <span>@InvoiceToPrint.User.UserName</span></div>
+            <div class="receipt-line"><span>KH:</span> <span>@(InvoiceToPrint.Customer?.CustomerName ?? "Khách lẻ")</span></div>
+
+            <div class="receipt-divider"></div>
+
+            @foreach (var detail in InvoiceToPrint.InvoiceDetails)
+            {
+                <div class="receipt-line">
+                    <span>@detail.Product.ProductName</span>
+                    <span>@detail.Quantity x @FormatCurrency(detail.UnitPrice)</span>
+                </div>
+                <div class="receipt-line">
+                    <span style="font-size: 0.8em;">KM: @FormatCurrency(detail.DiscountPerUnit)</span>
+                    <span style="text-align: right;">@FormatCurrency(detail.Quantity * (detail.UnitPrice - detail.DiscountPerUnit))</span>
+                </div>
+            }
+
+            <div class="receipt-divider"></div>
+
+            <div class="receipt-line"><span>Tổng (trước KM):</span> <span>@FormatCurrency(InvoiceToPrint.TotalBeforeDiscount)</span></div>
+            <div class="receipt-line"><span>Khuyến mãi:</span> <span>@FormatCurrency(InvoiceToPrint.TotalBeforeDiscount - InvoiceToPrint.TotalAmount)</span></div>
+            <div class="receipt-line receipt-total"><span>TỔNG CỘNG:</span> <span>@FormatCurrency(InvoiceToPrint.TotalAmount)</span></div>
+
+            <div class="receipt-divider"></div>
+
+            <div class="receipt-line"><span>Thanh toán:</span> <span>@InvoiceToPrint.PaymentMethod</span></div>
+            <div class="receipt-line"><span>Tiền nhận:</span> <span>@FormatCurrency(InvoiceToPrint.ReceivedAmount)</span></div>
+            <div class="receipt-line"><span>Tiền thừa:</span> <span>@FormatCurrency(InvoiceToPrint.ChangeAmount)</span></div>
+
+            <div class="receipt-footer">
+                <p>Cảm ơn quý khách!</p>
+                <small>Hóa đơn không phải là biên lai chính thức</small>
+            </div>
+
+            <button class="btn-primary" style="width: 100%; margin-top: 15px;" @onclick="PrintReceipt">In</button>
+            <button class="btn-secondary" style="width: 100%; margin-top: 5px;" @onclick="HidePrintPreview">Đóng</button>
+        </div>
+    </div>
+}
+
+
+@code {
+    // -----------------------------------------------------------------------
+    // MOCK MODELS (GIẢ LẬP CÁC CLASS KHÔNG ĐƯỢC CUNG CẤP)
+    // -----------------------------------------------------------------------
+    public class User { public int UserId { get; set; } public string UserName { get; set; } = string.Empty; }
+    public class Customer { public int CustomerId { get; set; } public string CustomerName { get; set; } = string.Empty; }
+    public class Promotion { public int PromotionId { get; set; } public string Name { get; set; } = string.Empty; }
+    public class Product { public int ProductId { get; set; } public string ProductName { get; set; } = string.Empty; }
+    public class PointTransaction { }
+    // -----------------------------------------------------------------------
+    // CÁC CLASS CHÍNH (ĐƯỢC CUNG CẤP)
+    // -----------------------------------------------------------------------
+    public class Invoice
+    {
+        [Key][Column("invoice_id")] public int InvoiceId { get; set; }
+        [ForeignKey("User")][Column("user_id")] public int UserId { get; set; }
+        [ForeignKey("Customer")][Column("customer_id")] public int? CustomerId { get; set; }
+        [Column("created_at")] public DateTime CreatedAt { get; set; } = DateTime.Now;
+        [Column("total_before_discount", TypeName = "decimal(12,2)")] public decimal TotalBeforeDiscount { get; set; }
+        [Column("total_amount", TypeName = "decimal(12,2)")] public decimal TotalAmount { get; set; }
+        [StringLength(50)][Column("payment_method")] public string PaymentMethod { get; set; } = "cash";
+        [Column("received_amount", TypeName = "decimal(12,2)")] public decimal ReceivedAmount { get; set; }
+        [Column("change_amount", TypeName = "decimal(12,2)")] public decimal ChangeAmount { get; set; }
+        [StringLength(20)][Column("status")] public string Status { get; set; } = "Pending";
+        [ForeignKey("Promotion")][Column("promotion_id")] public int? PromotionId { get; set; }
+
+        public User User { get; set; } = null!;
+        public Customer? Customer { get; set; }
+        public Promotion? Promotion { get; set; }
+        public ICollection<InvoiceDetail> InvoiceDetails { get; set; } = new List<InvoiceDetail>();
+        public ICollection<PointTransaction> PointTransactions { get; set; } = new List<PointTransaction>();
+    }
+
+    public class InvoiceDetail
+    {
+        [Key, Column("invoice_id", Order = 0)][ForeignKey("Invoice")] public int InvoiceId { get; set; }
+        [Key, Column("product_id", Order = 1)][ForeignKey("Product")] public int ProductId { get; set; }
+        [Column("quantity")] public int Quantity { get; set; }
+        [Column("unit_price", TypeName = "decimal(10,2)")] public decimal UnitPrice { get; set; }
+        [Column("discount_per_unit", TypeName = "decimal(10,2)")] public decimal DiscountPerUnit { get; set; } = 0;
+        [ForeignKey("Promotion")][Column("promotion_id")] public int? PromotionId { get; set; }
+
+        public Invoice Invoice { get; set; } = null!;
+        public Product Product { get; set; } = null!;
+        public Promotion? Promotion { get; set; }
+    }
+    // -----------------------------------------------------------------------
+    // STATE VÀ DỮ LIỆU
+    // -----------------------------------------------------------------------
+
+    private List<Invoice> AllInvoices { get; set; } = new List<Invoice>();
+    private List<Invoice> FilteredInvoices { get; set; } = new List<Invoice>();
+    private Invoice? SelectedInvoice { get; set; }
+    private Invoice? InvoiceToPrint { get; set; }
+
+    private string SearchInvoiceId { get; set; } = "";
+    private DateTime? SearchDate { get; set; }
+
+    // Trạng thái modal in
+    private bool IsPrintModalVisible { get; set; } = false;
+
+    [Inject]
+    public IJSRuntime JSRuntime { get; set; } = default!;
+
+    // -----------------------------------------------------------------------
+    // LIFECYCLE VÀ KHỞI TẠO DỮ LIỆU MẪU
+    // -----------------------------------------------------------------------
+
+    protected override void OnInitialized()
+    {
+        // Khởi tạo dữ liệu mẫu (Mock Data)
+        var user1 = new User { UserId = 1, UserName = "Lê Văn Tèo" };
+        var cust1 = new Customer { CustomerId = 101, CustomerName = "Nguyễn Thị A" };
+        var promo1 = new Promotion { PromotionId = 1, Name = "Giảm 10%" };
+
+        var productA = new Product { ProductId = 1, ProductName = "Sữa Tươi 1L" };
+        var productB = new Product { ProductId = 2, ProductName = "Bánh Quy" };
+        var productC = new Product { ProductId = 3, ProductName = "Thịt Bò" };
+
+        AllInvoices = new List<Invoice>
+        {
+            new Invoice
+            {
+                InvoiceId = 1001, UserId = 1, CustomerId = 101, CreatedAt = DateTime.Now.AddHours(-5),
+                TotalBeforeDiscount = 350000, TotalAmount = 315000, ReceivedAmount = 350000, ChangeAmount = 35000,
+                PaymentMethod = "cash", Status = "Paid", PromotionId = 1, User = user1, Customer = cust1, Promotion = promo1,
+                InvoiceDetails = new List<InvoiceDetail>
+                {
+                    new InvoiceDetail { ProductId = 1, Quantity = 5, UnitPrice = 50000, DiscountPerUnit = 0, Product = productA },
+                    new InvoiceDetail { ProductId = 2, Quantity = 2, UnitPrice = 50000, DiscountPerUnit = 5000, Product = productB, PromotionId = 1 }
+                }
+            },
+            new Invoice
+            {
+                InvoiceId = 1002, UserId = 1, CustomerId = null, CreatedAt = DateTime.Now.AddDays(-2).AddHours(10),
+                TotalBeforeDiscount = 120000, TotalAmount = 120000, ReceivedAmount = 120000, ChangeAmount = 0,
+                PaymentMethod = "bank_transfer", Status = "Paid", User = user1,
+                InvoiceDetails = new List<InvoiceDetail>
+                {
+                    new InvoiceDetail { ProductId = 3, Quantity = 1, UnitPrice = 120000, DiscountPerUnit = 0, Product = productC }
+                }
+            },
+            new Invoice
+            {
+                InvoiceId = 1003, UserId = 1, CustomerId = 101, CreatedAt = DateTime.Now.AddDays(-10).AddHours(15),
+                TotalBeforeDiscount = 55000, TotalAmount = 55000, ReceivedAmount = 0, ChangeAmount = 0,
+                PaymentMethod = "card", Status = "Pending", User = user1, Customer = cust1,
+                InvoiceDetails = new List<InvoiceDetail>
+                {
+                    new InvoiceDetail { ProductId = 1, Quantity = 1, UnitPrice = 50000, DiscountPerUnit = 0, Product = productA }
+                }
+            }
+        };
+
+        FilteredInvoices = AllInvoices;
+    }
+
+    // -----------------------------------------------------------------------
+    // HÀM HỖ TRỢ HIỂN THỊ
+    // -----------------------------------------------------------------------
+    private string FormatCurrency(decimal amount)
+    {
+        var culture = new CultureInfo("vi-VN");
+        return string.Format(culture, "{0:N0} VNĐ", amount);
+    }
+
+    // -----------------------------------------------------------------------
+    // LOGIC TÌM KIẾM VÀ DANH SÁCH
+    // -----------------------------------------------------------------------
+    private void SelectInvoice(int id)
+    {
+        SelectedInvoice = AllInvoices.FirstOrDefault(i => i.InvoiceId == id);
+    }
+
+    private void ApplyFilter()
+    {
+        IEnumerable<Invoice> query = AllInvoices;
+
+        // Lọc theo Mã hóa đơn
+        if (!string.IsNullOrWhiteSpace(SearchInvoiceId) && int.TryParse(SearchInvoiceId, out var id))
+        {
+            query = query.Where(i => i.InvoiceId == id);
+        }
+
+        // Lọc theo Ngày tạo hóa đơn CreatedAt
+        if (SearchDate.HasValue)
+        {
+            // So sánh chỉ phần ngày (Date)
+            query = query.Where(i => i.CreatedAt.Date == SearchDate.Value.Date);
+        }
+
+        FilteredInvoices = query.ToList();
+        SelectedInvoice = null; // Reset chi tiết khi filter
+    }
+
+    private void ClearFilter()
+    {
+        SearchInvoiceId = "";
+        SearchDate = null;
+        FilteredInvoices = AllInvoices;
+        SelectedInvoice = null;
+    }
+
+    // -----------------------------------------------------------------------
+    // LOGIC IN HÓA ĐƠN
+    // -----------------------------------------------------------------------
+    private void ShowPrintPreview(int id)
+    {
+        InvoiceToPrint = AllInvoices.FirstOrDefault(i => i.InvoiceId == id);
+        if (InvoiceToPrint != null)
+        {
+            IsPrintModalVisible = true;
+        }
+    }
+
+    private void HidePrintPreview()
+    {
+        IsPrintModalVisible = false;
+        InvoiceToPrint = null;
+    }
+
+    private async Task PrintReceipt()
+    {
+        if (InvoiceToPrint == null) return;
+
+        // **Lưu ý:** Trong ứng dụng thực tế, bạn sẽ cần thư viện JS hoặc CSS media print
+        // để chỉ in nội dung hóa đơn (receipt-content)
+        await JSRuntime.InvokeVoidAsync("alert", $"Đang gửi lệnh in hóa đơn #{InvoiceToPrint.InvoiceId}");
+
+        // Giả lập lệnh in thực tế (chỉ đóng modal)
+        // await JSRuntime.InvokeVoidAsync("window.print");
+
+        HidePrintPreview();
+    }
+}

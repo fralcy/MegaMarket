@@ -1,7 +1,509 @@
 ﻿@page "/"
+@using System.Globalization
 
-<PageTitle>Home</PageTitle>
+<div class="checkout-container">
+    <h2>Quầy Thanh Toán Siêu Thị</h2>
 
-<h1>Hello, world!</h1>
+    @if (!IsPaymentScreenVisible)
+    {
+        <div class="product-list-area">
+            <h3>Danh Sách Sản Phẩm</h3>
+            <div class="product-list-header">
+                <span class="col-name">Sản Phẩm</span>
+                <span class="col-qty">SL</span>
+                <span class="col-price">Đơn Giá</span>
+                <span class="col-total">Thành Tiền</span>
+                <span class="col-action">Xóa</span>
+            </div>
 
-Welcome to your new app.
+            <div class="product-list">
+                @if (CartItems.Any())
+                {
+                    @foreach (var item in CartItems)
+                    {
+                        <div class="product-item">
+                            <span class="col-name">@item.Name</span>
+                            <span class="col-qty">@item.Quantity</span>
+                            <span class="col-price">@FormatCurrency(item.UnitPrice)</span>
+                            <span class="col-total">@FormatCurrency(item.Total)</span>
+                            <span class="col-action">
+                                <button class="btn-delete" @onclick="() => RemoveItem(item.ProductId)">Xóa</button>
+                            </span>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="empty-cart">Giỏ hàng trống. Vui lòng thêm sản phẩm.</p>
+                }
+            </div>
+
+            <hr />
+
+            <div class="total-area">
+                <strong>TỔNG CỘNG:</strong>
+                <span class="total-amount">@FormatCurrency(OriginalPrice)</span>
+            </div>
+        </div>
+
+        <div class="input-keypad-area">
+            <div class="input-form">
+                <div class="input-group">
+                    <label for="productCode">Mã Sản Phẩm:</label>
+                    <input id="productCode" @bind="InputProductCode"
+                           placeholder="Nhập mã sản phẩm" @onfocus="SetFocusToProductCode" />
+                </div>
+
+                <div class="input-group">
+                    <label>Đơn Giá:</label>
+                    <span class="display-price">@FormatCurrency(CurrentUnitPrice)</span>
+                </div>
+
+                <div class="input-group">
+                    <label for="quantity">Số Lượng:</label>
+                    <input id="quantity" @bind="InputQuantity" type="number" min="1"
+                           placeholder="Số lượng" @onfocus="SetFocusToQuantity" />
+                </div>
+
+                <div class="input-group">
+                    <button class="btn-add" @onclick="AddItem" disabled="@(CurrentUnitPrice == 0 || InputQuantity <= 0)">Thêm Sản Phẩm</button>
+                </div>
+            </div>
+
+            <div class="numeric-keypad">
+                <button @onclick="() => AppendToInput('7'.ToString())">7</button>
+                <button @onclick="() => AppendToInput('8'.ToString())">8</button>
+                <button @onclick="() => AppendToInput('9'.ToString())">9</button>
+
+                <button @onclick="() => AppendToInput('4'.ToString())">4</button>
+                <button @onclick="() => AppendToInput('5'.ToString())">5</button>
+                <button @onclick="() => AppendToInput('6'.ToString())">6</button>
+
+                <button @onclick="() => AppendToInput('1'.ToString())">1</button>
+                <button @onclick="() => AppendToInput('2'.ToString())">2</button>
+                <button @onclick="() => AppendToInput('3'.ToString())">3</button>
+
+                <button @onclick="ClearLastInput">CE</button>
+                <button @onclick="() => AppendToInput('0'.ToString())">0</button>
+                <button @onclick="ClearAllInput">C</button>
+            </div>
+        </div>
+
+        <hr />
+
+        <div class="action-buttons">
+            <button class="btn-primary" @onclick="Checkout" disabled="@(!CartItems.Any())">Thanh Toán</button>
+            <button class="btn-secondary" @onclick="CancelTransaction" disabled="@(!CartItems.Any())">Hủy Bỏ</button>
+        </div>
+    }
+    else
+    {
+        <div class="payment-screen">
+            <h3>Chi Tiết Thanh Toán</h3>
+
+            <div class="payment-methods">
+                <button class="@(SelectedPaymentMethod == PaymentMethod.Cash ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Cash)">Tiền mặt</button>
+                <button class="@(SelectedPaymentMethod == PaymentMethod.BankTransfer ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.BankTransfer)">Chuyển khoản</button>
+                <button class="@(SelectedPaymentMethod == PaymentMethod.Card ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Card)">Thẻ</button>
+            </div>
+
+            <div class="financial-summary">
+                <div class="summary-row">
+                    <span class="summary-label">Giá gốc:</span>
+                    <span class="summary-value">@FormatCurrency(OriginalPrice)</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Khuyến mãi:</span>
+                    <span class="summary-value negative">@FormatCurrency(DiscountAmountCalculated)</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Làm tròn:</span>
+                    <span class="summary-value">@FormatCurrency(RoundingAmount)</span>
+                </div>
+
+                <hr style="grid-column: 1 / -1; margin: 5px 0;" />
+
+                <div class="summary-row">
+                    <span class="summary-label"><strong>CẦN THU:</strong></span>
+                    <span class="summary-value total negative">@FormatCurrency(AmountToCollect)</span>
+                </div>
+
+                @if (SelectedPaymentMethod == PaymentMethod.Cash)
+                {
+                    <div class="payment-input-group" style="grid-column: 1 / -1;">
+                        <label for="amountPaid">Đã Thu (Khách Trả):</label>
+                        <input id="amountPaid"
+                               type="number"
+                               value="@AmountPaidInput.ToString("N0", new CultureInfo("vi-VN"))"
+                               @onchange="HandleAmountPaidInput"
+                               placeholder="Nhập số tiền khách trả" />
+                    </div>
+                }
+                else
+                {
+                    <div class="summary-row">
+                        <span class="summary-label">Đã thu:</span>
+                        <span class="summary-value">@FormatCurrency(PaidAmountDisplay)</span>
+                    </div>
+                }
+
+                <div class="summary-row">
+                    <span class="summary-label">Còn thiếu:</span>
+                    <span class="summary-value negative">@FormatCurrency(AmountMissing)</span>
+                </div>
+
+                <div class="summary-row">
+                    <span class="summary-label">Tiền thừa:</span>
+                    <span class="summary-value positive">@FormatCurrency(ChangeAmount)</span>
+                </div>
+            </div>
+
+            <div class="promo-details">
+                <strong>Chi tiết Khuyến mãi:</strong> @DiscountDetails
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn-primary" @onclick="FinalizePayment" disabled="@(AmountMissing > 0)">HOÀN TẤT</button>
+                <button class="btn-secondary" @onclick="CancelPaymentScreen">HỦY THANH TOÁN</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // -----------------------------------------------------------------------
+    // MOCK DATA VÀ MODEL
+    // -----------------------------------------------------------------------
+
+    // Model sản phẩm trong giỏ hàng
+    public class CartItem
+    {
+        public string ProductId { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+        public decimal Total => Quantity * UnitPrice;
+    }
+
+    // Mock Database sản phẩm
+    private readonly Dictionary<string, (string Name, decimal Price)> ProductDB = new Dictionary<string, (string, decimal)>
+    {
+        { "1001", ("Sữa Vinamilk 1L", 35000) },
+        { "1002", ("Bánh Mì Sandwich", 25000) },
+        { "1003", ("Trứng Gà 10 Quả", 40000) },
+        { "1004", ("Nước Suối 500ml", 8000) }
+    };
+
+    // -----------------------------------------------------------------------
+    // ENUM VÀ STATE (Trạng thái)
+    // -----------------------------------------------------------------------
+
+    public enum PaymentMethod
+    {
+        Cash,
+        BankTransfer,
+        Card
+    }
+
+    private List<CartItem> CartItems = new List<CartItem>();
+    private string InputProductCode { get; set; } = "";
+    private string InputQuantityText { get; set; } = "1";
+    private decimal CurrentUnitPrice { get; set; } = 0;
+    private string CurrentFocusedInput { get; set; } = "ProductCode";
+
+    // Trạng thái màn hình thanh toán
+    private bool IsPaymentScreenVisible { get; set; } = false;
+    private PaymentMethod SelectedPaymentMethod { get; set; } = PaymentMethod.Cash;
+    private decimal AmountPaidInput { get; set; } = 0;
+    private string DiscountDetails { get; set; } = "Không có khuyến mãi nào được áp dụng.";
+
+
+    // -----------------------------------------------------------------------
+    // CÁC THUỘC TÍNH TÍNH TOÁN
+    // -----------------------------------------------------------------------
+
+    private decimal TotalAmount => CartItems.Sum(item => item.Total);
+
+    // Thuộc tính tính toán cho màn hình thanh toán
+    private decimal OriginalPrice { get; set; } = 0;
+    private decimal DiscountAmountCalculated { get; set; } = 0;
+    private decimal AmountToCollect { get; set; } = 0;
+    private decimal RoundingAmount { get; set; } = 0;
+
+    private decimal AmountMissing => AmountToCollect - AmountPaidInput > 0 ? AmountToCollect - AmountPaidInput : 0;
+    private decimal ChangeAmount => AmountPaidInput - AmountToCollect > 0 ? AmountPaidInput - AmountToCollect : 0;
+    private decimal PaidAmountDisplay => AmountPaidInput;
+
+    private int InputQuantity
+    {
+        get => int.TryParse(InputQuantityText, out var qty) && qty > 0 ? qty : 1;
+        set => InputQuantityText = value.ToString();
+    }
+
+    // -----------------------------------------------------------------------
+    // HÀM XỬ LÝ SỰ KIỆN
+    // -----------------------------------------------------------------------
+
+    // Định dạng tiền tệ
+    private string FormatCurrency(decimal amount)
+    {
+        var culture = new CultureInfo("vi-VN");
+        // Hiển thị số 0 nếu giá trị âm hoặc null, ví dụ: Tiền thừa âm thì hiển thị 0
+        if (amount < 0) return string.Format(culture, "-{0:N0} VNĐ", Math.Abs(amount));
+        return string.Format(culture, "{0:N0} VNĐ", amount);
+    }
+
+    private void CalculateFinancialSummary()
+    {
+        OriginalPrice = CartItems.Sum(item => item.Total);
+
+        // MOCK Khuyến mãi (Ví dụ: Giảm 10% nếu tổng > 100k)
+        if (OriginalPrice > 100000)
+        {
+            DiscountAmountCalculated = OriginalPrice * 0.10m;
+            DiscountDetails = "Giảm 10% tổng hóa đơn (Áp dụng cho hóa đơn > 100,000 VNĐ).";
+        }
+        else
+        {
+            DiscountAmountCalculated = 0;
+            DiscountDetails = "Không có khuyến mãi nào được áp dụng.";
+        }
+
+        decimal amountBeforeRounding = OriginalPrice - DiscountAmountCalculated;
+
+        // MOCK Làm tròn (Ví dụ: làm tròn xuống bội số 100 gần nhất)
+        decimal rounded = Math.Floor(amountBeforeRounding / 100) * 100;
+
+        RoundingAmount = amountBeforeRounding - rounded;
+        AmountToCollect = rounded;
+
+        // Nếu không phải tiền mặt, giả định đã thu bằng số cần thu
+        if (IsPaymentScreenVisible && SelectedPaymentMethod != PaymentMethod.Cash)
+        {
+            AmountPaidInput = AmountToCollect;
+        }
+    }
+
+    private void OnProductCodeChange(ChangeEventArgs e)
+    {
+        InputProductCode = e.Value?.ToString() ?? "";
+        UpdateUnitPriceDisplay();
+        Console.WriteLine($"Mã sản phẩm thay đổi: {InputProductCode}");
+    }
+
+    private void UpdateUnitPriceDisplay()
+    {
+        if (ProductDB.TryGetValue(InputProductCode, out var productInfo))
+        {
+            CurrentUnitPrice = productInfo.Price;
+        }
+        else
+        {
+            CurrentUnitPrice = 0;
+        }
+    }
+
+    private void SetFocusToQuantity()
+    {
+        CurrentFocusedInput = "Quantity";
+    }
+
+    private void SetFocusToProductCode()
+    {
+        CurrentFocusedInput = "ProductCode";
+    }
+
+    private void AddItem()
+    {
+        UpdateUnitPriceDisplay();
+
+        if (string.IsNullOrWhiteSpace(InputProductCode) || CurrentUnitPrice == 0 || InputQuantity <= 0)
+        {
+            Console.WriteLine("Lỗi: Vui lòng nhập mã sản phẩm hợp lệ và số lượng lớn hơn 0.");
+            return;
+        }
+
+        var productInfo = ProductDB[InputProductCode];
+
+        var existingItem = CartItems.FirstOrDefault(i => i.ProductId == InputProductCode);
+
+        if (existingItem != null)
+        {
+            existingItem.Quantity += InputQuantity;
+        }
+        else
+        {
+            CartItems.Add(new CartItem
+            {
+                ProductId = InputProductCode,
+                Name = productInfo.Name,
+                Quantity = InputQuantity,
+                UnitPrice = productInfo.Price
+            });
+        }
+
+        // Reset inputs sau khi thêm
+        InputProductCode = "";
+        InputQuantityText = "1";
+        CurrentUnitPrice = 0;
+        CurrentFocusedInput = "ProductCode";
+
+        CalculateFinancialSummary(); // <-- CẬP NHẬT TRẠNG THÁI TÀI CHÍNH
+    }
+
+    private void RemoveItem(string productId)
+    {
+        var itemToRemove = CartItems.FirstOrDefault(i => i.ProductId == productId);
+        if (itemToRemove != null)
+        {
+            CartItems.Remove(itemToRemove);
+            CalculateFinancialSummary(); // <-- CẬP NHẬT TRẠNG THÁI TÀI CHÍNH
+        }
+    }
+
+    // Xử lý nút Thanh Toán cũ
+    private void Checkout()
+    {
+        if (CartItems.Any())
+        {
+            CalculateFinancialSummary(); // Tính toán lại số tiền lần cuối
+            IsPaymentScreenVisible = true;
+            AmountPaidInput = AmountToCollect; // Gán tiền đã thu ban đầu bằng tiền cần thu
+
+            // Nếu không phải tiền mặt, tự động set phương thức để trigger AmountPaidInput
+            if (SelectedPaymentMethod != PaymentMethod.Cash)
+            {
+                SetPaymentMethod(SelectedPaymentMethod);
+            }
+
+            Console.WriteLine("Hiển thị màn hình thanh toán.");
+        }
+        else
+        {
+            Console.WriteLine("Lỗi: Giỏ hàng trống.");
+        }
+    }
+
+    // Hàm mới: Hủy thanh toán trên màn hình thanh toán
+    private void CancelPaymentScreen()
+    {
+        IsPaymentScreenVisible = false;
+        AmountPaidInput = 0;
+        SelectedPaymentMethod = PaymentMethod.Cash;
+        DiscountDetails = "Không có khuyến mãi nào được áp dụng.";
+        Console.WriteLine("Hủy thanh toán, quay lại màn hình giỏ hàng.");
+    }
+
+    // Hàm mới: Hoàn tất thanh toán
+    private void FinalizePayment()
+    {
+        if (AmountPaidInput >= AmountToCollect)
+        {
+            Console.WriteLine($"Giao dịch THÀNH CÔNG! Phương thức: {SelectedPaymentMethod}. Cần thu: {FormatCurrency(AmountToCollect)}. Khách trả: {FormatCurrency(AmountPaidInput)}. Tiền thừa: {FormatCurrency(ChangeAmount)}");
+
+            CancelTransaction();
+            IsPaymentScreenVisible = false;
+            AmountPaidInput = 0;
+            SelectedPaymentMethod = PaymentMethod.Cash;
+        }
+        else
+        {
+            Console.WriteLine("Lỗi: Số tiền đã thu không đủ để thanh toán.");
+        }
+    }
+
+    private void SetPaymentMethod(PaymentMethod method)
+    {
+        SelectedPaymentMethod = method;
+        if (method != PaymentMethod.Cash)
+        {
+            AmountPaidInput = AmountToCollect;
+        }
+        else
+        {
+            // Trở về mặc định số cần thu để dễ nhập liệu tiền thừa
+            AmountPaidInput = AmountToCollect;
+        }
+    }
+
+    private void HandleAmountPaidInput(ChangeEventArgs e)
+    {
+        string value = e.Value?.ToString() ?? "0";
+        // Loại bỏ ký tự phân cách hàng nghìn (dấu chấm)
+        value = value.Replace(".", "").Replace(",", "");
+
+        if (decimal.TryParse(value, out var amount))
+        {
+            AmountPaidInput = amount;
+        }
+        else
+        {
+            // Nếu nhập không hợp lệ, giữ nguyên giá trị cũ hoặc reset về 0
+            AmountPaidInput = 0;
+        }
+    }
+
+    // Xử lý nút Hủy Bỏ cũ (cho màn hình giỏ hàng)
+    private void CancelTransaction()
+    {
+        CartItems.Clear();
+        InputProductCode = "";
+        InputQuantityText = "1";
+        CurrentUnitPrice = 0;
+
+        CalculateFinancialSummary(); // Reset lại số tiền
+
+        Console.WriteLine("Giao dịch đã được hủy bỏ.");
+    }
+
+    // -----------------------------------------------------------------------
+    // HÀM XỬ LÝ BÀN PHÍM SỐ (KHÔNG THAY ĐỔI)
+    // -----------------------------------------------------------------------
+
+    private void AppendToInput(string number)
+    {
+        if (CurrentFocusedInput == "ProductCode")
+        {
+            InputProductCode += number;
+            UpdateUnitPriceDisplay();
+        }
+        else if (CurrentFocusedInput == "Quantity")
+        {
+            if (InputQuantityText == "0")
+            {
+                InputQuantityText = number;
+            }
+            else
+            {
+                InputQuantityText += number;
+            }
+        }
+    }
+
+    private void ClearLastInput()
+    {
+        if (CurrentFocusedInput == "ProductCode" && InputProductCode.Length > 0)
+        {
+            InputProductCode = InputProductCode.Substring(0, InputProductCode.Length - 1);
+            UpdateUnitPriceDisplay();
+        }
+        else if (CurrentFocusedInput == "Quantity" && InputQuantityText.Length > 0)
+        {
+            InputQuantityText = InputQuantityText.Substring(0, InputQuantityText.Length - 1);
+            if (string.IsNullOrWhiteSpace(InputQuantityText)) InputQuantityText = "1";
+        }
+    }
+
+    private void ClearAllInput()
+    {
+        if (CurrentFocusedInput == "ProductCode")
+        {
+            InputProductCode = "";
+            CurrentUnitPrice = 0;
+        }
+        else if (CurrentFocusedInput == "Quantity")
+        {
+            InputQuantityText = "1";
+        }
+    }
+}

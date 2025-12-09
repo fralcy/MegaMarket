@@ -8,7 +8,8 @@ builder.Services.AddControllers();
 
 // Register DbContext
 builder.Services.AddDbContext<MegaMarketDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+    x => x.MigrationsAssembly("MegaMarket.Data")));
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
