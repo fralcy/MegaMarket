@@ -210,4 +210,35 @@ public class Query
     {
         return await service.GetTopMovingProductsAsync(limit);
     }
+
+    // ==================== CUSTOMER DASHBOARD QUERIES ====================
+
+    [Authorize]
+    [GraphQLDescription("Lấy thống kê khách hàng và loyalty")]
+    public async Task<DTOs.Dashboard.Customer.CustomerDashboardDto> GetCustomerDashboard(
+        DTOs.Dashboard.Common.DateRangeEnum dateRange,
+        ClaimsPrincipal claimsPrincipal,
+        [Service] DashboardCustomerService service)
+    {
+        var currentRole = claimsPrincipal.FindFirst(ClaimTypes.Role)?.Value;
+        return await service.GetCustomerDashboardAsync(dateRange, currentRole);
+    }
+
+    [Authorize(Roles = new[] { "Admin" })]
+    [GraphQLDescription("Lấy top khách hàng theo doanh thu")]
+    public async Task<List<DTOs.Dashboard.Customer.TopCustomerDto>> GetTopCustomers(
+        DTOs.Dashboard.Common.DateRangeEnum dateRange,
+        int limit,
+        [Service] DashboardCustomerService service)
+    {
+        return await service.GetTopCustomersByRevenueAsync(dateRange, limit);
+    }
+
+    [Authorize]
+    [GraphQLDescription("Lấy phân bố xếp hạng khách hàng")]
+    public async Task<List<DTOs.Dashboard.Customer.CustomerRankDistributionDto>> GetCustomerRankDistribution(
+        [Service] DashboardCustomerService service)
+    {
+        return await service.GetCustomerRankDistributionAsync();
+    }
 }
