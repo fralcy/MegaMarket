@@ -1,0 +1,55 @@
+@if (IsLoading)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">@Title</h5>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <small class="text-muted">@Subtitle</small>
+            }
+        </div>
+        <div class="card-body text-center py-5">
+            <LoadingSpinner Message="Loading chart..." />
+        </div>
+    </div>
+}
+else if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="card border-danger">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">@Title</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-danger mb-0">
+                <span class="bi bi-exclamation-triangle me-2"></span>
+                @ErrorMessage
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">@Title</h5>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <small class="text-muted">@Subtitle</small>
+            }
+        </div>
+        <div class="card-body">
+            <div class="chart-container" style="position: relative; height: @Height;">
+                @ChildContent
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = "Chart";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public string Height { get; set; } = "300px";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

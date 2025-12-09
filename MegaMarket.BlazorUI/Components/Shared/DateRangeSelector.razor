@@ -1,0 +1,38 @@
+@using MegaMarket.BlazorUI.Models.Dashboard
+
+<div class="btn-group mb-3" role="group" aria-label="Date range selector">
+    <button type="button"
+            class="btn @(SelectedRange == DateRangeEnum.Today ? "btn-primary" : "btn-outline-primary")"
+            @onclick="() => OnRangeSelected(DateRangeEnum.Today)">
+        <span class="bi bi-calendar-day me-1"></span> Today
+    </button>
+    <button type="button"
+            class="btn @(SelectedRange == DateRangeEnum.ThisWeek ? "btn-primary" : "btn-outline-primary")"
+            @onclick="() => OnRangeSelected(DateRangeEnum.ThisWeek)">
+        <span class="bi bi-calendar-week me-1"></span> This Week
+    </button>
+    <button type="button"
+            class="btn @(SelectedRange == DateRangeEnum.ThisMonth ? "btn-primary" : "btn-outline-primary")"
+            @onclick="() => OnRangeSelected(DateRangeEnum.ThisMonth)">
+        <span class="bi bi-calendar-month me-1"></span> This Month
+    </button>
+    <button type="button"
+            class="btn @(SelectedRange == DateRangeEnum.ThisYear ? "btn-primary" : "btn-outline-primary")"
+            @onclick="() => OnRangeSelected(DateRangeEnum.ThisYear)">
+        <span class="bi bi-calendar me-1"></span> This Year
+    </button>
+</div>
+
+@code {
+    [Parameter] public DateRangeEnum SelectedRange { get; set; } = DateRangeEnum.Today;
+    [Parameter] public EventCallback<DateRangeEnum> OnRangeChanged { get; set; }
+
+    private async Task OnRangeSelected(DateRangeEnum range)
+    {
+        if (SelectedRange != range)
+        {
+            SelectedRange = range;
+            await OnRangeChanged.InvokeAsync(range);
+        }
+    }
+}

@@ -27,6 +27,9 @@ builder.Services.AddHttpClient("GraphQL", client =>
 // Add GraphQL client service
 builder.Services.AddScoped<GraphQLClient>();
 
+// Add ApexCharts service
+builder.Services.AddApexCharts();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
