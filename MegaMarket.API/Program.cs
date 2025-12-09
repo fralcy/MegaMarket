@@ -24,6 +24,7 @@ builder.Services.AddScoped<AuthService>();
 
 // Dashboard Services
 builder.Services.AddScoped<DashboardSalesService>();
+builder.Services.AddScoped<DashboardInventoryService>();
 
 // Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"]

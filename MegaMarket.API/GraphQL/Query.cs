@@ -160,4 +160,54 @@ public class Query
         var currentRole = claimsPrincipal.FindFirst(ClaimTypes.Role)?.Value;
         return await service.GetTopSellingProductsAsync(dateRange, limit, currentRole);
     }
+
+    // ==================== INVENTORY DASHBOARD QUERIES ====================
+
+    [Authorize]
+    [GraphQLDescription("Lấy thống kê tồn kho")]
+    public async Task<DTOs.Dashboard.Inventory.InventoryDashboardDto> GetInventoryDashboard(
+        ClaimsPrincipal claimsPrincipal,
+        [Service] DashboardInventoryService service)
+    {
+        var currentRole = claimsPrincipal.FindFirst(ClaimTypes.Role)?.Value;
+        return await service.GetInventoryDashboardAsync(currentRole);
+    }
+
+    [Authorize]
+    [GraphQLDescription("Lấy sản phẩm sắp hết hàng")]
+    public async Task<List<DTOs.Dashboard.Inventory.LowStockProductDto>> GetLowStockProducts(
+        int limit,
+        [Service] DashboardInventoryService service)
+    {
+        return await service.GetLowStockProductsAsync(limit);
+    }
+
+    [Authorize]
+    [GraphQLDescription("Lấy sản phẩm sắp hết hạn")]
+    public async Task<List<DTOs.Dashboard.Inventory.ExpiringProductDto>> GetExpiringProducts(
+        int daysThreshold,
+        int limit,
+        [Service] DashboardInventoryService service)
+    {
+        return await service.GetExpiringProductsAsync(daysThreshold, limit);
+    }
+
+    [Authorize]
+    [GraphQLDescription("Lấy thống kê tồn kho theo danh mục")]
+    public async Task<List<DTOs.Dashboard.Inventory.CategoryStockDto>> GetStockByCategory(
+        ClaimsPrincipal claimsPrincipal,
+        [Service] DashboardInventoryService service)
+    {
+        var currentRole = claimsPrincipal.FindFirst(ClaimTypes.Role)?.Value;
+        return await service.GetStockByCategoryAsync(currentRole);
+    }
+
+    [Authorize]
+    [GraphQLDescription("Lấy top sản phẩm bán chạy (30 ngày)")]
+    public async Task<List<DTOs.Dashboard.Inventory.TopMovingProductDto>> GetTopMovingProducts(
+        int limit,
+        [Service] DashboardInventoryService service)
+    {
+        return await service.GetTopMovingProductsAsync(limit);
+    }
 }
