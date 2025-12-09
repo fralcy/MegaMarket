@@ -1,357 +1,550 @@
 @page "/employee/dashboard"
 @attribute [Authorize(Roles = "Employee")]
 @inject Services.GraphQL.GraphQLClient GraphQLClient
-@inject AuthenticationStateProvider AuthStateProvider
+@using MegaMarket.BlazorUI.Models.Dashboard
+@using ApexCharts
 
 <div class="container-fluid mt-4">
     @* Header *@
-    <div class="mb-4">
-        <h2 class="text-gradient mb-1">My Dashboard</h2>
-        <p class="text-muted">Welcome back, @currentUserName!</p>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-gradient mb-1">Employee Dashboard</h2>
+            <p class="text-muted mb-0">Sales and inventory overview</p>
+        </div>
+        <DateRangeSelector SelectedRange="@selectedRange" OnRangeChanged="@HandleRangeChanged" />
     </div>
 
     @* Error Message *@
-    @if (!string.IsNullOrEmpty(errorMessage))
+    @if (!string.IsNullOrEmpty(globalErrorMessage))
     {
-        <ErrorAlert ErrorMessage="@errorMessage" OnDismiss="@(() => errorMessage = null)" />
+        <ErrorAlert ErrorMessage="@globalErrorMessage" OnDismiss="@(() => globalErrorMessage = null)" />
     }
 
-    @* Loading State *@
-    @if (isLoading)
-    {
-        <LoadingSpinner Message="Loading your dashboard..." />
-    }
-    else
-    {
-        @* Today's Status *@
-        <div class="row mb-4">
-            <div class="col-12">
-                @if (todayAttendance != null)
-                {
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-body p-4">
-                            <h5 class="mb-3"><span class="bi bi-calendar-check me-2"></span>Today's Status</h5>
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <div class="text-center p-3">
-                                        <div class="text-muted mb-1">Check-In</div>
-                                        <h4 class="mb-0">@todayAttendance.CheckIn.ToString("h:mm tt")</h4>
-                                        @if (todayAttendance.IsLate)
-                                        {
-                                            <StatusBadge Status="Late" />
-                                        }
-                                        else
-                                        {
-                                            <StatusBadge Status="On Time" />
-                                        }
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="text-center p-3">
-                                        <div class="text-muted mb-1">Check-Out</div>
-                                        <h4 class="mb-0">
-                                            @if (todayAttendance.CheckOut != null)
-                                            {
-                                                @todayAttendance.CheckOut.Value.ToString("h:mm tt")
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">Not yet</span>
-                                            }
-                                        </h4>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="text-center p-3">
-                                        <div class="text-muted mb-1">Shift</div>
-                                        <h4 class="mb-0 fs-6">@todayAttendance.ShiftType?.Name</h4>
-                                        <small class="text-muted">@FormatTime(todayAttendance.ShiftType?.StartTime) - @FormatTime(todayAttendance.ShiftType?.EndTime)</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="text-center p-3">
-                                        <div class="text-muted mb-1">Work Time</div>
-                                        <h4 class="mb-0">@GetWorkingDuration()</h4>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <div class="alert alert-info">
-                        <h5><span class="bi bi-info-circle me-2"></span>You haven't checked in today</h5>
-                        <p class="mb-2">Start your work day by checking in</p>
-                        <a href="/attendance/check-in-out" class="btn btn-primary">
-                            <span class="bi bi-calendar-check me-1"></span> Check In Now
-                        </a>
-                    </div>
-                }
-            </div>
-        </div>
+    @* ==================== SALES ANALYTICS ==================== *@
+    <div class="mb-5">
+        <h4 class="mb-3">
+            <span class="bi bi-graph-up me-2"></span>Sales & Revenue Overview
+        </h4>
 
-        @* Stats Row *@
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <StatsCard
-                    Title="This Month"
-                    Value="@monthlyAttendance.ToString()"
-                    SubLabel="Total days"
-                    Color="primary" />
-            </div>
-            <div class="col-md-3">
-                <StatsCard
-                    Title="On Time"
-                    Value="@onTimeCount.ToString()"
-                    SubLabel="@($"{onTimePercentage}% punctual")"
-                    Color="success" />
-            </div>
-            <div class="col-md-3">
-                <StatsCard
-                    Title="Total Hours"
-                    Value="@totalHours.ToString("F1")"
-                    SubLabel="This month"
-                    Color="info" />
-            </div>
-            <div class="col-md-3">
-                <StatsCard
-                    Title="Estimated Wage"
-                    Value="@($"${totalWage:F2}")"
-                    SubLabel="This month"
-                    Color="success" />
-            </div>
-        </div>
+        <DashboardSection IsLoading="@isSalesLoading"
+                          ErrorMessage="@salesErrorMessage"
+                          ShowRetryButton="true"
+                          OnRetry="@LoadSalesDashboard">
+            @if (salesData != null)
+            {
+                @* Revenue Stats Row *@
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <StatsCard
+                            Title="Total Revenue"
+                            Value="@($"${salesData.TotalRevenue:N2}")"
+                            SubLabel="@GetDateRangeLabel()"
+                            Color="success" />
+                    </div>
+                    <div class="col-md-4">
+                        <StatsCard
+                            Title="Total Invoices"
+                            Value="@salesData.TotalInvoices.ToString("N0")"
+                            SubLabel="Completed orders"
+                            Color="primary" />
+                    </div>
+                    <div class="col-md-4">
+                        <StatsCard
+                            Title="Average Order Value"
+                            Value="@($"${salesData.AverageOrderValue:N2}")"
+                            SubLabel="Per invoice"
+                            Color="info" />
+                    </div>
+                </div>
 
-        @* Recent Attendance & Quick Actions *@
-        <div class="row">
-            <div class="col-lg-6 mb-4">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><span class="bi bi-clock-history me-2"></span>Recent Attendance</h5>
+                @* Charts Row *@
+                <div class="row mb-4">
+                    @* Revenue Trend Chart *@
+                    <div class="col-lg-8 mb-3">
+                        <ChartCard Title="Revenue Trend" Subtitle="@GetDateRangeLabel()" Height="350px">
+                            @if (salesData.RevenueTrend.Any())
+                            {
+                                <ApexChart TItem="RevenueTrendDto"
+                                           Title="Revenue Over Time"
+                                           Options="@revenueTrendOptions">
+                                    <ApexPointSeries TItem="RevenueTrendDto"
+                                                     Items="@salesData.RevenueTrend"
+                                                     Name="Revenue"
+                                                     SeriesType="SeriesType.Area"
+                                                     XValue="@(e => e.Date)"
+                                                     YAggregate="@(e => e.Sum(f => (double)f.Revenue))"
+                                                     OrderBy="e => e.X" />
+                                </ApexChart>
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    <p class="text-muted">No revenue data available</p>
+                                </div>
+                            }
+                        </ChartCard>
+                    </div>
+
+                    @* Payment Method Breakdown *@
+                    <div class="col-lg-4 mb-3">
+                        <ChartCard Title="Payment Methods" Subtitle="Revenue distribution" Height="350px">
+                            @if (salesData.RevenueByPaymentMethod.Any())
+                            {
+                                <ApexChart TItem="RevenueByPaymentMethodDto"
+                                           Options="@paymentMethodOptions">
+                                    <ApexPointSeries TItem="RevenueByPaymentMethodDto"
+                                                     Items="@salesData.RevenueByPaymentMethod"
+                                                     Name="Revenue"
+                                                     SeriesType="SeriesType.Pie"
+                                                     XValue="@(e => e.PaymentMethod)"
+                                                     YAggregate="@(e => e.Sum(f => (double)f.Revenue))" />
+                                </ApexChart>
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    <p class="text-muted">No payment data available</p>
+                                </div>
+                            }
+                        </ChartCard>
+                    </div>
+                </div>
+
+                @* Top Selling Products *@
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <span class="bi bi-star me-2"></span>Top Selling Products
+                        </h5>
                     </div>
                     <div class="card-body">
-                        @if (recentAttendances == null || !recentAttendances.Any())
+                        @if (salesData.TopSellingProducts.Any())
                         {
-                            <p class="text-muted mb-0">No attendance records found</p>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th class="text-end">Quantity Sold</th>
+                                            <th class="text-end">Revenue</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var product in salesData.TopSellingProducts.Take(10))
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@product.ProductName</strong>
+                                                    <br />
+                                                    <small class="text-muted">ID: @product.ProductId</small>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="badge bg-primary">@product.QuantitySold.ToString("N0")</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <strong class="text-success">$@product.Revenue.ToString("N2")</strong>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
                         }
                         else
                         {
-                            <div class="list-group list-group-flush">
-                                @foreach (var attendance in recentAttendances.Take(5))
-                                {
-                                    <div class="list-group-item px-0">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong>@attendance.Date.ToString("MMM dd, yyyy")</strong>
-                                                <br />
-                                                <small class="text-muted">
-                                                    @attendance.ShiftType?.Name • @attendance.CheckIn.ToString("h:mm tt") - @(attendance.CheckOut?.ToString("h:mm tt") ?? "Ongoing")
-                                                </small>
-                                            </div>
-                                            <div>
-                                                @if (attendance.CheckOut == null)
-                                                {
-                                                    <StatusBadge Status="Pending" />
-                                                }
-                                                else if (attendance.IsLate)
-                                                {
-                                                    <StatusBadge Status="Late" />
-                                                }
-                                                else
-                                                {
-                                                    <StatusBadge Status="On Time" />
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
+                            <p class="text-muted mb-0">No sales data available</p>
                         }
                     </div>
                 </div>
-            </div>
+            }
+        </DashboardSection>
+    </div>
 
-            <div class="col-lg-6 mb-4">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><span class="bi bi-lightning me-2"></span>Quick Actions</h5>
+    @* ==================== INVENTORY ANALYTICS ==================== *@
+    <div class="mb-5">
+        <h4 class="mb-3">
+            <span class="bi bi-box-seam me-2"></span>Inventory & Stock Overview
+        </h4>
+
+        <DashboardSection IsLoading="@isInventoryLoading"
+                          ErrorMessage="@inventoryErrorMessage"
+                          ShowRetryButton="true"
+                          OnRetry="@LoadInventoryDashboard">
+            @if (inventoryData != null)
+            {
+                @* Inventory Stats Row *@
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <StatsCard
+                            Title="Total Products"
+                            Value="@inventoryData.TotalProducts.ToString("N0")"
+                            SubLabel="In catalog"
+                            Color="primary" />
                     </div>
-                    <div class="card-body">
-                        <div class="d-grid gap-3">
-                            <a href="/attendance/check-in-out" class="btn btn-outline-primary btn-lg">
-                                <span class="bi bi-calendar-check me-2"></span>
-                                Check In/Out
-                            </a>
-                            <a href="/attendance/history" class="btn btn-outline-success btn-lg">
-                                <span class="bi bi-clock-history me-2"></span>
-                                View Attendance History
-                            </a>
-                            <a href="/employee/profile" class="btn btn-outline-info btn-lg">
-                                <span class="bi bi-person me-2"></span>
-                                My Profile
-                            </a>
+                    <div class="col-md-3">
+                        <StatsCard
+                            Title="Categories"
+                            Value="@inventoryData.TotalCategories.ToString("N0")"
+                            SubLabel="Product categories"
+                            Color="info" />
+                    </div>
+                    <div class="col-md-3">
+                        <StatsCard
+                            Title="Low Stock Items"
+                            Value="@inventoryData.LowStockCount.ToString("N0")"
+                            SubLabel="Need attention"
+                            Color="warning" />
+                    </div>
+                    <div class="col-md-3">
+                        <StatsCard
+                            Title="Out of Stock"
+                            Value="@inventoryData.OutOfStockCount.ToString("N0")"
+                            SubLabel="Urgent restock"
+                            Color="danger" />
+                    </div>
+                </div>
+
+                @* Stock by Category Chart *@
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <ChartCard Title="Stock by Category" Subtitle="Inventory distribution" Height="300px">
+                            @if (inventoryData.StockByCategory.Any())
+                            {
+                                <ApexChart TItem="CategoryStockDto"
+                                           Options="@categoryStockOptions">
+                                    <ApexPointSeries TItem="CategoryStockDto"
+                                                     Items="@inventoryData.StockByCategory"
+                                                     Name="Quantity"
+                                                     SeriesType="SeriesType.Bar"
+                                                     XValue="@(e => e.CategoryName)"
+                                                     YAggregate="@(e => e.Sum(f => f.TotalQuantity))"
+                                                     OrderByDescending="e => e.Y" />
+                                </ApexChart>
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    <p class="text-muted">No category data available</p>
+                                </div>
+                            }
+                        </ChartCard>
+                    </div>
+                </div>
+
+                @* Alerts Row *@
+                <div class="row">
+                    @* Low Stock Products *@
+                    <div class="col-lg-6 mb-3">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="mb-0">
+                                    <span class="bi bi-exclamation-triangle me-2"></span>Low Stock Alert
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                @if (inventoryData.LowStockProducts.Any())
+                                {
+                                    <div class="list-group list-group-flush">
+                                        @foreach (var product in inventoryData.LowStockProducts.Take(8))
+                                        {
+                                            <div class="list-group-item px-0">
+                                                <div class="d-flex justify-content-between">
+                                                    <div>
+                                                        <strong>@product.ProductName</strong>
+                                                        <br />
+                                                        <small class="text-muted">@product.CategoryName</small>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <span class="badge bg-danger">@product.CurrentStock / @product.MinimumStock</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                    @if (inventoryData.LowStockProducts.Count > 8)
+                                    {
+                                        <div class="text-center mt-2">
+                                            <small class="text-muted">And @(inventoryData.LowStockProducts.Count - 8) more items...</small>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <p class="text-muted mb-0">All products are well stocked!</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Expiring Products *@
+                    <div class="col-lg-6 mb-3">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="mb-0">
+                                    <span class="bi bi-calendar-x me-2"></span>Expiring Soon
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                @if (inventoryData.ExpiringProducts.Any())
+                                {
+                                    <div class="list-group list-group-flush">
+                                        @foreach (var product in inventoryData.ExpiringProducts.Take(8))
+                                        {
+                                            <div class="list-group-item px-0">
+                                                <div class="d-flex justify-content-between">
+                                                    <div>
+                                                        <strong>@product.ProductName</strong>
+                                                        <br />
+                                                        <small class="text-muted">Qty: @product.Quantity</small>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <div class="badge bg-danger">@product.DaysUntilExpiry days</div>
+                                                        <br />
+                                                        <small class="text-muted">@product.ExpiryDate.ToString("MMM dd")</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                    @if (inventoryData.ExpiringProducts.Count > 8)
+                                    {
+                                        <div class="text-center mt-2">
+                                            <small class="text-muted">And @(inventoryData.ExpiringProducts.Count - 8) more items...</small>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <p class="text-muted mb-0">No products expiring soon</p>
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    }
+            }
+        </DashboardSection>
+    </div>
 </div>
 
 @code {
-    private bool isLoading = true;
-    private string? errorMessage;
-    private string currentUserName = "";
-    private int currentUserId = 0;
+    // State
+    private DateRangeEnum selectedRange = DateRangeEnum.Today;
+    private string? globalErrorMessage;
 
-    // Stats
-    private int monthlyAttendance = 0;
-    private int onTimeCount = 0;
-    private decimal totalHours = 0;
-    private decimal totalWage = 0;
-    private int onTimePercentage => monthlyAttendance > 0 ? (int)((double)onTimeCount / monthlyAttendance * 100) : 0;
+    // Sales Data
+    private bool isSalesLoading = true;
+    private string? salesErrorMessage;
+    private SalesDashboardDto? salesData;
 
-    // Data
-    private AttendanceDto? todayAttendance;
-    private List<AttendanceDto>? recentAttendances;
+    // Inventory Data
+    private bool isInventoryLoading = true;
+    private string? inventoryErrorMessage;
+    private InventoryDashboardDto? inventoryData;
+
+    // Chart Options
+    private ApexChartOptions<RevenueTrendDto> revenueTrendOptions = new()
+    {
+        Chart = new Chart
+        {
+            Toolbar = new Toolbar { Show = false },
+            Zoom = new Zoom { Enabled = false }
+        },
+        Stroke = new Stroke { Curve = Curve.Smooth, Width = 2 },
+        Datalavels = new DataLabels { Enabled = false },
+        Colors = new List<string> { "#28a745" },
+        Fill = new Fill
+        {
+            Type = new List<FillType> { FillType.Gradient },
+            Gradient = new FillGradient
+            {
+                ShadeIntensity = 1,
+                OpacityFrom = 0.7,
+                OpacityTo = 0.3
+            }
+        }
+    };
+
+    private ApexChartOptions<RevenueByPaymentMethodDto> paymentMethodOptions = new()
+    {
+        Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+        Legend = new Legend { Position = LegendPosition.Bottom },
+        Colors = new List<string> { "#007bff", "#28a745", "#ffc107", "#dc3545" }
+    };
+
+    private ApexChartOptions<CategoryStockDto> categoryStockOptions = new()
+    {
+        Chart = new Chart
+        {
+            Toolbar = new Toolbar { Show = false },
+            Zoom = new Zoom { Enabled = false }
+        },
+        PlotOptions = new PlotOptions
+        {
+            Bar = new PlotOptionsBar
+            {
+                Horizontal = true,
+                Distributed = true
+            }
+        },
+        Datalavels = new DataLabels { Enabled = false },
+        Legend = new Legend { Show = false },
+        Colors = new List<string> { "#007bff", "#6610f2", "#6f42c1", "#e83e8c", "#dc3545", "#fd7e14", "#ffc107", "#28a745" }
+    };
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDashboardData();
+        await LoadAllDashboards();
     }
 
-    private async Task LoadDashboardData()
+    private async Task LoadAllDashboards()
+    {
+        await Task.WhenAll(
+            LoadSalesDashboard(),
+            LoadInventoryDashboard()
+        );
+    }
+
+    private async Task LoadSalesDashboard()
     {
         try
         {
-            isLoading = true;
-            errorMessage = null;
+            isSalesLoading = true;
+            salesErrorMessage = null;
 
-            // Get current user info
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-            var userIdClaim = user.FindFirst("userId")?.Value;
-            var fullNameClaim = user.FindFirst("fullName")?.Value;
-
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out currentUserId))
-            {
-                errorMessage = "Unable to identify current user. Please log in again.";
-                return;
-            }
-
-            currentUserName = fullNameClaim ?? "User";
-
-            // Load user's attendance records
-            var attendancesQuery = $@"
-                query GetAttendancesByUser {{
-                    attendancesByUser(userId: {currentUserId}) {{
-                        attendanceId
-                        userId
-                        shiftTypeId
-                        date
-                        checkIn
-                        checkOut
-                        isLate
-                        shiftType {{
-                            shiftTypeId
-                            name
-                            startTime
-                            endTime
-                            wagePerHour
-                        }}
-                    }}
-                }}
+            var query = @"
+                query GetSalesDashboard($dateRange: DateRangeEnum!) {
+                    salesDashboard(dateRange: $dateRange) {
+                        totalRevenue
+                        totalInvoices
+                        averageOrderValue
+                        revenueByPaymentMethod {
+                            paymentMethod
+                            revenue
+                            invoiceCount
+                        }
+                        revenueTrend {
+                            date
+                            revenue
+                            invoiceCount
+                        }
+                        topSellingProducts {
+                            productId
+                            productName
+                            quantitySold
+                            revenue
+                        }
+                    }
+                }
             ";
 
-            var attendancesResponse = await GraphQLClient.QueryAsync<GetAttendancesByUserResponse>(attendancesQuery);
-            if (attendancesResponse.Errors == null || !attendancesResponse.Errors.Any())
+            var variables = new { dateRange = selectedRange.ToString().ToUpper() };
+            var response = await GraphQLClient.QueryAsync<SalesDashboardResponse>(query, variables);
+
+            if (response.Data?.SalesDashboard != null)
             {
-                var allAttendances = attendancesResponse.Data?.AttendancesByUser ?? new List<AttendanceDto>();
-
-                // Today's attendance
-                todayAttendance = allAttendances.FirstOrDefault(a => a.Date.Date == DateTime.Today);
-
-                // This month's stats
-                var monthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-                var monthRecords = allAttendances.Where(a => a.Date >= monthStart && a.Date <= DateTime.Today).ToList();
-                monthlyAttendance = monthRecords.Count;
-                onTimeCount = monthRecords.Count(a => !a.IsLate);
-
-                var completedMonthRecords = monthRecords.Where(a => a.CheckOut != null).ToList();
-                if (completedMonthRecords.Any())
-                {
-                    totalHours = (decimal)completedMonthRecords.Sum(a => (a.CheckOut!.Value - a.CheckIn).TotalHours);
-                    totalWage = completedMonthRecords.Sum(a =>
-                    {
-                        var duration = (a.CheckOut!.Value - a.CheckIn).TotalHours;
-                        return (decimal)duration * (a.ShiftType?.WagePerHour ?? 0);
-                    });
-                }
-
-                // Recent attendances (last 10, sorted by date)
-                recentAttendances = allAttendances
-                    .OrderByDescending(a => a.Date)
-                    .ToList();
+                salesData = response.Data.SalesDashboard;
+            }
+            else
+            {
+                salesErrorMessage = "No sales data returned from server";
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to load dashboard data: {ex.Message}";
+            salesErrorMessage = $"Failed to load sales data: {ex.Message}";
         }
         finally
         {
-            isLoading = false;
+            isSalesLoading = false;
         }
     }
 
-    private string GetWorkingDuration()
+    private async Task LoadInventoryDashboard()
     {
-        if (todayAttendance == null) return "0h 0m";
-
-        if (todayAttendance.CheckOut != null)
+        try
         {
-            var duration = todayAttendance.CheckOut.Value - todayAttendance.CheckIn;
-            return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+            isInventoryLoading = true;
+            inventoryErrorMessage = null;
+
+            var query = @"
+                query GetInventoryDashboard($dateRange: DateRangeEnum!) {
+                    inventoryDashboard(dateRange: $dateRange) {
+                        totalProducts
+                        totalCategories
+                        totalStockValue
+                        lowStockCount
+                        outOfStockCount
+                        lowStockProducts {
+                            productId
+                            productName
+                            currentStock
+                            minimumStock
+                            categoryName
+                        }
+                        expiringProducts {
+                            productId
+                            productName
+                            quantity
+                            expiryDate
+                            daysUntilExpiry
+                        }
+                        stockByCategory {
+                            categoryName
+                            totalQuantity
+                            productCount
+                        }
+                    }
+                }
+            ";
+
+            var variables = new { dateRange = selectedRange.ToString().ToUpper() };
+            var response = await GraphQLClient.QueryAsync<InventoryDashboardResponse>(query, variables);
+
+            if (response.Data?.InventoryDashboard != null)
+            {
+                inventoryData = response.Data.InventoryDashboard;
+            }
+            else
+            {
+                inventoryErrorMessage = "No inventory data returned from server";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            var duration = DateTime.Now - todayAttendance.CheckIn;
-            return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+            inventoryErrorMessage = $"Failed to load inventory data: {ex.Message}";
+        }
+        finally
+        {
+            isInventoryLoading = false;
         }
     }
 
-    private string FormatTime(TimeSpan? time)
+    private async Task HandleRangeChanged(DateRangeEnum newRange)
     {
-        if (time == null) return "N/A";
-        return DateTime.Today.Add(time.Value).ToString("h:mm tt");
+        selectedRange = newRange;
+        await LoadAllDashboards();
     }
 
-    // DTOs
-    public class ShiftTypeDto
+    private string GetDateRangeLabel()
     {
-        public int ShiftTypeId { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public TimeSpan StartTime { get; set; }
-        public TimeSpan EndTime { get; set; }
-        public decimal WagePerHour { get; set; }
-    }
-
-    public class AttendanceDto
-    {
-        public int AttendanceId { get; set; }
-        public int UserId { get; set; }
-        public int ShiftTypeId { get; set; }
-        public DateTime Date { get; set; }
-        public DateTime CheckIn { get; set; }
-        public DateTime? CheckOut { get; set; }
-        public bool IsLate { get; set; }
-        public ShiftTypeDto? ShiftType { get; set; }
+        return selectedRange switch
+        {
+            DateRangeEnum.Today => "Today",
+            DateRangeEnum.ThisWeek => "This Week",
+            DateRangeEnum.ThisMonth => "This Month",
+            DateRangeEnum.ThisYear => "This Year",
+            _ => "Unknown"
+        };
     }
 
     // GraphQL Response Types
-    private class GetAttendancesByUserResponse
+    private class SalesDashboardResponse
     {
-        public List<AttendanceDto>? AttendancesByUser { get; set; }
+        public SalesDashboardDto? SalesDashboard { get; set; }
+    }
+
+    private class InventoryDashboardResponse
+    {
+        public InventoryDashboardDto? InventoryDashboard { get; set; }
     }
 }
