@@ -1,4 +1,7 @@
 using MegaMarket.BlazorUI.Components;
+using MegaMarket.BlazorUI.Services.Auth;
+using MegaMarket.BlazorUI.Services.GraphQL;
+using Microsoft.AspNetCore.Components.Authorization;
 using MegaMarket.BlazorUI.Services;
 using MegaMarket.BlazorUI.Services.Products;
 using MegaMarket.BlazorUI.Services.Imports;
@@ -10,7 +13,31 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Add LocalStorage service
+builder.Services.AddScoped<LocalStorageService>();
+
+// Add Auth services
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
+builder.Services.AddAuthorizationCore();
+
+// Configure HttpClient for GraphQL
+builder.Services.AddHttpClient("GraphQL", client =>
+{
+    var graphqlEndpoint = builder.Configuration["GraphQL:Endpoint"] ?? "https://localhost:7284/graphql";
+    client.BaseAddress = new Uri(graphqlEndpoint);
+});
+
+// Add GraphQL client service
+builder.Services.AddScoped<GraphQLClient>();
+
+// Add ApexCharts service
+builder.Services.AddApexCharts();
+
+// Configure API Base URL
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7284/";
+
+// Register Product & Import Services with HttpClient
 builder.Services.AddHttpClient<ProductApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
@@ -29,6 +56,7 @@ builder.Services.AddHttpClient<ImportService>((sp, client) =>
     var baseUrl = configuration["ApiSettings:BaseUrl"] ?? configuration["ApiBaseUrl"] ?? "https://localhost:7284";
     client.BaseAddress = new Uri(baseUrl);
 });
+
 // Register HTTP Client
 builder.Services.AddHttpClient();
 
@@ -44,14 +72,14 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
 app.UseAntiforgery();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

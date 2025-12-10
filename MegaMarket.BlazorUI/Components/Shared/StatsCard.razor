@@ -1,0 +1,27 @@
+@* Stats Card for Dashboard *@
+
+<div class="card border-0 shadow-sm stats-card h-100">
+    <div class="card-header bg-@Color text-white">
+        <h5 class="mb-0">@Title</h5>
+    </div>
+    <div class="card-body">
+        <div class="p-3 bg-light rounded">
+            <p class="text-muted small mb-2">@SubLabel</p>
+            <h4 class="text-@Color mb-0">@Value</h4>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    [Parameter]
+    public string SubLabel { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Color { get; set; } = "primary"; // primary, success, danger, warning, info
+}

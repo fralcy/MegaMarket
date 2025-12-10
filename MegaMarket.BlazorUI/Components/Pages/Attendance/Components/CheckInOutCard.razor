@@ -1,0 +1,241 @@
+@* Check-In/Out Card Component *@
+@implements IDisposable
+
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="card border-0 shadow-lg">
+            <div class="card-header bg-primary text-white text-center py-4">
+                <h4 class="mb-0">
+                    <span class="bi bi-clock-history me-2"></span>
+                    @(IsCheckedIn ? "You are Checked In" : "Ready to Check In")
+                </h4>
+            </div>
+            <div class="card-body p-5">
+                @* Current Date and Time *@
+                <div class="text-center mb-4">
+                    <h1 class="display-4 mb-2">@currentTime.ToString("h:mm:ss tt")</h1>
+                    <p class="text-muted fs-5">@DateTime.Today.ToString("dddd, MMMM dd, yyyy")</p>
+                </div>
+
+                <hr class="my-4" />
+
+                @if (IsCheckedIn && TodayAttendance != null)
+                {
+                    @* Already Checked In - Show Details *@
+                    <div class="alert alert-success">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="bi bi-check-circle-fill fs-3 me-3"></span>
+                            <div>
+                                <h5 class="mb-0">Checked In</h5>
+                                <small>@TodayAttendance.CheckIn.ToString("h:mm tt")</small>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <strong>Shift:</strong> @TodayAttendance.ShiftType?.Name
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Status:</strong>
+                                @if (TodayAttendance.IsLate)
+                                {
+                                    <StatusBadge Status="Late" />
+                                }
+                                else
+                                {
+                                    <StatusBadge Status="On Time" />
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Shift Hours:</strong> @FormatTime(TodayAttendance.ShiftType?.StartTime) - @FormatTime(TodayAttendance.ShiftType?.EndTime)
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Wage:</strong> $@TodayAttendance.ShiftType?.WagePerHour.ToString("F2")/hour
+                            </div>
+                        </div>
+
+                        @if (!IsCheckedOut)
+                        {
+                            <div class="mt-3">
+                                <strong>Working Time:</strong> @GetWorkingDuration()
+                            </div>
+                        }
+                    </div>
+
+                    @if (IsCheckedOut)
+                    {
+                        <div class="alert alert-info">
+                            <div class="d-flex align-items-center">
+                                <span class="bi bi-check-circle fs-3 me-3"></span>
+                                <div>
+                                    <h5 class="mb-0">Checked Out</h5>
+                                    <small>@TodayAttendance.CheckOut?.ToString("h:mm tt")</small>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <strong>Total Work Time:</strong> @GetTotalWorkTime()
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @* Check Out Button *@
+                        <div class="text-center mt-4">
+                            <button class="btn btn-danger btn-lg btn-check-in" @onclick="HandleCheckOutClick" disabled="@isProcessing">
+                                @if (isProcessing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <span class="bi bi-box-arrow-right me-2"></span>
+                                Check Out Now
+                            </button>
+                        </div>
+                    }
+                }
+                else
+                {
+                    @* Not Checked In Yet - Show Shift Selector *@
+                    <div class="mb-4">
+                        <label class="form-label fs-5"><strong>Select Your Shift:</strong></label>
+                        <select class="form-select form-select-lg" @bind="selectedShiftTypeId">
+                            <option value="0">-- Choose a shift --</option>
+                            @if (AvailableShiftTypes != null)
+                            {
+                                @foreach (var shift in AvailableShiftTypes)
+                                {
+                                    <option value="@shift.ShiftTypeId">
+                                        @shift.Name (@FormatTime(shift.StartTime) - @FormatTime(shift.EndTime))
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    @if (selectedShiftTypeId > 0)
+                    {
+                        var selectedShift = AvailableShiftTypes?.FirstOrDefault(s => s.ShiftTypeId == selectedShiftTypeId);
+                        if (selectedShift != null)
+                        {
+                            <div class="alert alert-info">
+                                <strong>📋 Shift Details:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <li><strong>Name:</strong> @selectedShift.Name</li>
+                                    <li><strong>Hours:</strong> @FormatTime(selectedShift.StartTime) - @FormatTime(selectedShift.EndTime)</li>
+                                    <li><strong>Wage:</strong> $@selectedShift.WagePerHour.ToString("F2") per hour</li>
+                                </ul>
+                            </div>
+                        }
+                    }
+
+                    @* Check In Button *@
+                    <div class="text-center mt-4">
+                        <button class="btn btn-success btn-lg btn-check-in" @onclick="HandleCheckInClick" disabled="@(selectedShiftTypeId == 0 || isProcessing)">
+                            @if (isProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            <span class="bi bi-box-arrow-in-right me-2"></span>
+                            Check In Now
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public CheckInOut.UserDto? CurrentUser { get; set; }
+
+    [Parameter]
+    public CheckInOut.AttendanceDto? TodayAttendance { get; set; }
+
+    [Parameter]
+    public List<CheckInOut.ShiftTypeDto>? AvailableShiftTypes { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnCheckIn { get; set; }
+
+    [Parameter]
+    public EventCallback OnCheckOut { get; set; }
+
+    private DateTime currentTime = DateTime.Now;
+    private System.Threading.Timer? timer;
+    private int selectedShiftTypeId = 0;
+    private bool isProcessing = false;
+
+    private bool IsCheckedIn => TodayAttendance != null;
+    private bool IsCheckedOut => TodayAttendance?.CheckOut != null;
+
+    protected override void OnInitialized()
+    {
+        // Update clock every second
+        timer = new System.Threading.Timer(_ =>
+        {
+            currentTime = DateTime.Now;
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    private string FormatTime(TimeSpan? time)
+    {
+        if (time == null) return "N/A";
+        return DateTime.Today.Add(time.Value).ToString("h:mm tt");
+    }
+
+    private string GetWorkingDuration()
+    {
+        if (TodayAttendance == null) return "0h 0m";
+
+        var duration = DateTime.Now - TodayAttendance.CheckIn;
+        return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+    }
+
+    private string GetTotalWorkTime()
+    {
+        if (TodayAttendance?.CheckOut == null) return "0h 0m";
+
+        var duration = TodayAttendance.CheckOut.Value - TodayAttendance.CheckIn;
+        return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+    }
+
+    private async Task HandleCheckInClick()
+    {
+        if (selectedShiftTypeId == 0) return;
+
+        try
+        {
+            isProcessing = true;
+            if (OnCheckIn.HasDelegate)
+            {
+                await OnCheckIn.InvokeAsync(selectedShiftTypeId);
+            }
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task HandleCheckOutClick()
+    {
+        try
+        {
+            isProcessing = true;
+            if (OnCheckOut.HasDelegate)
+            {
+                await OnCheckOut.InvokeAsync();
+            }
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+}

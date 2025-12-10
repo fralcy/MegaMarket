@@ -1,0 +1,435 @@
+@page "/employee/profile"
+@attribute [Authorize]
+@inject Services.GraphQL.GraphQLClient GraphQLClient
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="container mt-4">
+    @* Header *@
+    <div class="mb-4">
+        <h2 class="text-gradient mb-1">My Profile</h2>
+        <p class="text-muted">View and manage your personal information</p>
+    </div>
+
+    @* Error Message *@
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <ErrorAlert ErrorMessage="@errorMessage" OnDismiss="@(() => errorMessage = null)" />
+    }
+
+    @* Success Message *@
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <strong>✓ Success:</strong> @successMessage
+            <button class="btn-close" @onclick="@(() => successMessage = null)"></button>
+        </div>
+    }
+
+    @* Loading State *@
+    @if (isLoading)
+    {
+        <LoadingSpinner Message="Loading your profile..." />
+    }
+    else if (currentUser != null)
+    {
+        <div class="row">
+            @* Profile Card *@
+            <div class="col-lg-4 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="avatar-circle mx-auto mb-3">
+                            @GetInitials(currentUser.FullName)
+                        </div>
+                        <h4 class="mb-1">@currentUser.FullName</h4>
+                        <p class="text-muted mb-3">@currentUser.Username</p>
+                        <StatusBadge Status="@currentUser.Role" />
+
+                        @if (!isEditing)
+                        {
+                            <div class="mt-4">
+                                <button class="btn btn-primary w-100" @onclick="EnableEditing">
+                                    <span class="bi bi-pencil me-1"></span> Edit Profile
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Quick Stats *@
+                <div class="card border-0 shadow-sm mt-3">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><span class="bi bi-graph-up me-2"></span>Quick Stats</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">This Month:</span>
+                            <strong>@monthlyAttendance days</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Total Hours:</span>
+                            <strong>@totalHours.ToString("F1") hrs</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Punctuality:</span>
+                            <strong class="text-success">@onTimePercentage%</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Profile Information *@
+            <div class="col-lg-8 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0"><span class="bi bi-person me-2"></span>Profile Information</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (isEditing)
+                        {
+                            <EditForm Model="editModel" OnValidSubmit="HandleSave">
+                                <DataAnnotationsValidator />
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                                        <InputText class="form-control" @bind-Value="editModel.FullName" />
+                                        <ValidationMessage For="@(() => editModel.FullName)" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Username</label>
+                                        <input type="text" class="form-control" value="@currentUser.Username" disabled />
+                                        <div class="form-text">Username cannot be changed</div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Phone Number</label>
+                                        <InputText class="form-control" @bind-Value="editModel.Phone" placeholder="e.g., 0123456789" />
+                                        <ValidationMessage For="@(() => editModel.Phone)" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Email</label>
+                                        <InputText class="form-control" @bind-Value="editModel.Email" placeholder="e.g., user@example.com" />
+                                        <ValidationMessage For="@(() => editModel.Email)" />
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">New Password</label>
+                                    <InputText type="password" class="form-control" @bind-Value="editModel.Password" placeholder="Leave blank to keep current password" />
+                                    <ValidationMessage For="@(() => editModel.Password)" />
+                                    <div class="form-text">Only fill this if you want to change your password</div>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                        @if (isSaving)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1"></span>
+                                        }
+                                        Save Changes
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" @onclick="CancelEditing">Cancel</button>
+                                </div>
+                            </EditForm>
+                        }
+                        else
+                        {
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted">Full Name</label>
+                                    <p class="mb-0"><strong>@currentUser.FullName</strong></p>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted">Username</label>
+                                    <p class="mb-0"><strong>@currentUser.Username</strong></p>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted">Phone Number</label>
+                                    <p class="mb-0"><strong>@(string.IsNullOrEmpty(currentUser.Phone) ? "Not provided" : currentUser.Phone)</strong></p>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted">Email</label>
+                                    <p class="mb-0"><strong>@(string.IsNullOrEmpty(currentUser.Email) ? "Not provided" : currentUser.Email)</strong></p>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted">Role</label>
+                                    <p class="mb-0"><StatusBadge Status="@currentUser.Role" /></p>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted">User ID</label>
+                                    <p class="mb-0"><strong>#@currentUser.UserId</strong></p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool isEditing = false;
+    private bool isSaving = false;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private UserDto? currentUser;
+    private ProfileEditModel editModel = new();
+
+    // Stats
+    private int monthlyAttendance = 0;
+    private decimal totalHours = 0;
+    private int onTimePercentage = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfile();
+    }
+
+    private async Task LoadProfile()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            // Get current user info
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdClaim = user.FindFirst("userId")?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                errorMessage = "Unable to identify current user. Please log in again.";
+                return;
+            }
+
+            // Load user details
+            var userQuery = $@"
+                query GetUser {{
+                    user(userId: {userId}) {{
+                        userId
+                        fullName
+                        username
+                        role
+                        phone
+                        email
+                    }}
+                }}
+            ";
+
+            var userResponse = await GraphQLClient.QueryAsync<GetUserResponse>(userQuery);
+            if (userResponse.Errors != null && userResponse.Errors.Any())
+            {
+                errorMessage = string.Join(", ", userResponse.Errors.Select(e => e.Message));
+            }
+            else
+            {
+                currentUser = userResponse.Data?.User;
+            }
+
+            // Load attendance stats
+            var attendancesQuery = $@"
+                query GetAttendancesByUser {{
+                    attendancesByUser(userId: {userId}) {{
+                        attendanceId
+                        date
+                        checkIn
+                        checkOut
+                        isLate
+                        shiftType {{
+                            wagePerHour
+                        }}
+                    }}
+                }}
+            ";
+
+            var attendancesResponse = await GraphQLClient.QueryAsync<GetAttendancesByUserResponse>(attendancesQuery);
+            if (attendancesResponse.Errors == null || !attendancesResponse.Errors.Any())
+            {
+                var allAttendances = attendancesResponse.Data?.AttendancesByUser ?? new List<AttendanceDto>();
+
+                // This month's stats
+                var monthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                var monthRecords = allAttendances.Where(a => a.Date >= monthStart && a.Date <= DateTime.Today).ToList();
+                monthlyAttendance = monthRecords.Count;
+
+                var onTimeCount = monthRecords.Count(a => !a.IsLate);
+                onTimePercentage = monthlyAttendance > 0 ? (int)((double)onTimeCount / monthlyAttendance * 100) : 0;
+
+                var completedMonthRecords = monthRecords.Where(a => a.CheckOut != null).ToList();
+                if (completedMonthRecords.Any())
+                {
+                    totalHours = (decimal)completedMonthRecords.Sum(a => (a.CheckOut!.Value - a.CheckIn).TotalHours);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load profile: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void EnableEditing()
+    {
+        if (currentUser == null) return;
+
+        editModel = new ProfileEditModel
+        {
+            FullName = currentUser.FullName,
+            Phone = currentUser.Phone ?? "",
+            Email = currentUser.Email ?? "",
+            Password = ""
+        };
+
+        isEditing = true;
+    }
+
+    private void CancelEditing()
+    {
+        isEditing = false;
+        editModel = new ProfileEditModel();
+    }
+
+    private async Task HandleSave()
+    {
+        if (currentUser == null) return;
+
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+            successMessage = null;
+
+            var passwordField = string.IsNullOrEmpty(editModel.Password) ? "" : $"password: \"{editModel.Password}\"";
+            var phoneField = string.IsNullOrEmpty(editModel.Phone) ? "" : $"phone: \"{editModel.Phone}\"";
+            var emailField = string.IsNullOrEmpty(editModel.Email) ? "" : $"email: \"{editModel.Email}\"";
+
+            var mutation = $@"
+                mutation UpdateUser {{
+                    updateUser(userId: {currentUser.UserId}, input: {{
+                        fullName: ""{editModel.FullName}""
+                        username: ""{currentUser.Username}""
+                        {passwordField}
+                        role: ""{currentUser.Role}""
+                        {phoneField}
+                        {emailField}
+                    }}) {{
+                        userId
+                        fullName
+                        username
+                        role
+                        phone
+                        email
+                    }}
+                }}
+            ";
+
+            var response = await GraphQLClient.MutateAsync<UpdateUserResponse>(mutation);
+
+            if (response.Errors != null && response.Errors.Any())
+            {
+                errorMessage = string.Join(", ", response.Errors.Select(e => e.Message));
+            }
+            else
+            {
+                currentUser = response.Data?.UpdateUser;
+                successMessage = "Profile updated successfully!";
+                isEditing = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to update profile: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private string GetInitials(string fullName)
+    {
+        if (string.IsNullOrEmpty(fullName)) return "??";
+
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+        {
+            return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpper();
+        }
+
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    // DTOs
+    public class UserDto
+    {
+        public int UserId { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+    }
+
+    public class AttendanceDto
+    {
+        public int AttendanceId { get; set; }
+        public DateTime Date { get; set; }
+        public DateTime CheckIn { get; set; }
+        public DateTime? CheckOut { get; set; }
+        public bool IsLate { get; set; }
+        public ShiftTypeDto? ShiftType { get; set; }
+    }
+
+    public class ShiftTypeDto
+    {
+        public decimal WagePerHour { get; set; }
+    }
+
+    public class ProfileEditModel
+    {
+        [Required(ErrorMessage = "Full name is required")]
+        [StringLength(100, ErrorMessage = "Full name cannot exceed 100 characters")]
+        public string FullName { get; set; } = string.Empty;
+
+        [Phone(ErrorMessage = "Invalid phone number format")]
+        public string? Phone { get; set; }
+
+        [EmailAddress(ErrorMessage = "Invalid email format")]
+        public string? Email { get; set; }
+
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be between 6 and 100 characters")]
+        public string? Password { get; set; }
+    }
+
+    // GraphQL Response Types
+    private class GetUserResponse
+    {
+        public UserDto? User { get; set; }
+    }
+
+    private class GetAttendancesByUserResponse
+    {
+        public List<AttendanceDto>? AttendancesByUser { get; set; }
+    }
+
+    private class UpdateUserResponse
+    {
+        public UserDto? UpdateUser { get; set; }
+    }
+}

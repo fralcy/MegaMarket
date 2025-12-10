@@ -1,0 +1,348 @@
+@page "/admin/employees"
+@attribute [Authorize(Roles = "Admin")]
+@using MegaMarket.BlazorUI.Services.GraphQL
+@inject GraphQLClient GraphQLClient
+@inject NavigationManager NavigationManager
+
+<div class="container-fluid">
+    @* Header *@
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-gradient">👥 Employee Management</h2>
+            <p class="text-muted small">Manage employees and their information</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="ShowCreateModal">
+                <span class="bi bi-plus-circle me-1"></span> Add Employee
+            </button>
+        </div>
+    </div>
+
+    @* Stats Cards *@
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <StatsCard Title="Total Employees"
+                       Value="@totalEmployees.ToString()"
+                       SubLabel="All users in system"
+                       Color="primary" />
+        </div>
+        <div class="col-md-4">
+            <StatsCard Title="Administrators"
+                       Value="@adminCount.ToString()"
+                       SubLabel="Admin role"
+                       Color="success" />
+        </div>
+        <div class="col-md-4">
+            <StatsCard Title="Regular Employees"
+                       Value="@employeeCount.ToString()"
+                       SubLabel="Employee role"
+                       Color="info" />
+        </div>
+    </div>
+
+    @* Main Content *@
+    <div class="row">
+        @* Employee List *@
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Employee List</h5>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <LoadingSpinner Message="Loading employees..." />
+                    }
+                    else if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <ErrorAlert ErrorMessage="@errorMessage" OnDismiss="ClearError" />
+                    }
+                    else if (employees == null || !employees.Any())
+                    {
+                        <EmptyState Icon="👤"
+                                    Title="No employees found"
+                                    Description="Add your first employee to get started"
+                                    ActionText="Add Employee"
+                                    OnAction="ShowCreateModal" />
+                    }
+                    else
+                    {
+                        <EmployeeList Employees="@employees"
+                                      OnEmployeeSelected="HandleEmployeeSelected"
+                                      OnEditEmployee="HandleEditEmployee"
+                                      OnDeleteEmployee="ShowDeleteConfirmation" />
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* Detail Panel *@
+        <div class="col-lg-4 mb-4">
+            @if (selectedEmployee != null)
+            {
+                <EmployeeDetailPanel Employee="@selectedEmployee"
+                                     OnEdit="() => HandleEditEmployee(selectedEmployee)"
+                                     OnDelete="() => ShowDeleteConfirmation(selectedEmployee)" />
+            }
+            else
+            {
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body d-flex align-items-center justify-content-center">
+                        <div class="text-center text-muted">
+                            <p style="font-size: 3em;">👈</p>
+                            <p>Select an employee to view details</p>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* Employee Form Modal *@
+@if (showFormModal)
+{
+    <EmployeeFormModal Employee="@employeeToEdit"
+                       IsVisible="@showFormModal"
+                       OnSave="HandleSaveEmployee"
+                       OnCancel="HideFormModal" />
+}
+
+@* Delete Confirmation Modal *@
+@if (showDeleteModal && employeeToDelete != null)
+{
+    <ConfirmDialog IsVisible="@showDeleteModal"
+                   Title="Delete Employee"
+                   Message="@($"Are you sure you want to delete {employeeToDelete.FullName}? This action cannot be undone and will delete all associated attendance records.")"
+                   ConfirmText="Delete"
+                   OnConfirm="HandleDeleteEmployee"
+                   OnCancel="HideDeleteModal" />
+}
+
+@code {
+    private List<EmployeeDto>? employees;
+    private EmployeeDto? selectedEmployee;
+    private EmployeeDto? employeeToEdit;
+    private EmployeeDto? employeeToDelete;
+
+    private bool isLoading = false;
+    private string? errorMessage;
+    private bool showFormModal = false;
+    private bool showDeleteModal = false;
+
+    private int totalEmployees => employees?.Count ?? 0;
+    private int adminCount => employees?.Count(e => e.Role == "Admin") ?? 0;
+    private int employeeCount => employees?.Count(e => e.Role == "Employee") ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployees();
+    }
+
+    private async Task LoadEmployees()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            var query = @"
+                query {
+                    users {
+                        userId
+                        fullName
+                        username
+                        role
+                        phone
+                        email
+                    }
+                }
+            ";
+
+            var response = await GraphQLClient.QueryAsync<UsersResponse>(query);
+
+            if (response.Data?.Users != null)
+            {
+                employees = response.Data.Users;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load employees: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void HandleEmployeeSelected(EmployeeDto employee)
+    {
+        selectedEmployee = employee;
+    }
+
+    private void ShowCreateModal()
+    {
+        employeeToEdit = null;
+        showFormModal = true;
+    }
+
+    private void HandleEditEmployee(EmployeeDto employee)
+    {
+        employeeToEdit = employee;
+        showFormModal = true;
+    }
+
+    private void HideFormModal()
+    {
+        showFormModal = false;
+        employeeToEdit = null;
+    }
+
+    private async Task HandleSaveEmployee(EmployeeFormData formData)
+    {
+        try
+        {
+            if (employeeToEdit == null)
+            {
+                // Create new employee
+                var mutation = @"
+                    mutation CreateUser($input: UserInputDto!) {
+                        createUser(input: $input) {
+                            userId
+                            fullName
+                            username
+                            role
+                            phone
+                            email
+                        }
+                    }
+                ";
+
+                var variables = new { input = formData };
+                await GraphQLClient.MutateAsync<CreateUserResponse>(mutation, variables);
+            }
+            else
+            {
+                // Update existing employee
+                var mutation = @"
+                    mutation UpdateUser($userId: Int!, $input: UserInputDto!) {
+                        updateUser(userId: $userId, input: $input) {
+                            userId
+                            fullName
+                            username
+                            role
+                            phone
+                            email
+                        }
+                    }
+                ";
+
+                var variables = new { userId = employeeToEdit.UserId, input = formData };
+                await GraphQLClient.MutateAsync<UpdateUserResponse>(mutation, variables);
+            }
+
+            HideFormModal();
+            await LoadEmployees();
+
+            // Clear selection if we updated the selected employee
+            if (selectedEmployee?.UserId == employeeToEdit?.UserId && employeeToEdit != null)
+            {
+                selectedEmployee = employees?.FirstOrDefault(e => e.UserId == employeeToEdit.UserId);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save employee: {ex.Message}";
+        }
+    }
+
+    private void ShowDeleteConfirmation(EmployeeDto employee)
+    {
+        employeeToDelete = employee;
+        showDeleteModal = true;
+    }
+
+    private void HideDeleteModal()
+    {
+        showDeleteModal = false;
+        employeeToDelete = null;
+    }
+
+    private async Task HandleDeleteEmployee()
+    {
+        if (employeeToDelete == null) return;
+
+        try
+        {
+            var mutation = @"
+                mutation DeleteUser($userId: Int!) {
+                    deleteUser(userId: $userId)
+                }
+            ";
+
+            var variables = new { userId = employeeToDelete.UserId };
+            await GraphQLClient.MutateAsync<DeleteUserResponse>(mutation, variables);
+
+            HideDeleteModal();
+            await LoadEmployees();
+
+            // Clear selection if we deleted the selected employee
+            if (selectedEmployee?.UserId == employeeToDelete.UserId)
+            {
+                selectedEmployee = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to delete employee: {ex.Message}";
+            HideDeleteModal();
+        }
+    }
+
+    private void ClearError()
+    {
+        errorMessage = null;
+    }
+
+    // DTOs
+    public class UsersResponse
+    {
+        public List<EmployeeDto> Users { get; set; } = new();
+    }
+
+    public class CreateUserResponse
+    {
+        public EmployeeDto CreateUser { get; set; } = new();
+    }
+
+    public class UpdateUserResponse
+    {
+        public EmployeeDto UpdateUser { get; set; } = new();
+    }
+
+    public class DeleteUserResponse
+    {
+        public bool DeleteUser { get; set; }
+    }
+
+    public class EmployeeDto
+    {
+        public int UserId { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+    }
+
+    public class EmployeeFormData
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string? Password { get; set; }
+        public string Role { get; set; } = "Employee";
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+    }
+}

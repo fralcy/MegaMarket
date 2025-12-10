@@ -1,0 +1,24 @@
+@* Shift Type Grid Component *@
+
+<div class="row g-4">
+    @foreach (var shiftType in ShiftTypes)
+    {
+        <div class="col-12 col-md-6 col-lg-4">
+            <ShiftTypeCard
+                ShiftType="@shiftType"
+                OnEdit="@(() => OnEdit.InvokeAsync(shiftType))"
+                OnDelete="@(() => OnDelete.InvokeAsync(shiftType))" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<ShiftTypeManagement.ShiftTypeDto> ShiftTypes { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<ShiftTypeManagement.ShiftTypeDto> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<ShiftTypeManagement.ShiftTypeDto> OnDelete { get; set; }
+}

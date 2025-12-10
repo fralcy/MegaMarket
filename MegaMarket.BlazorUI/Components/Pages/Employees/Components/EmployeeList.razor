@@ -1,0 +1,116 @@
+@* Employee List Table Component *@
+
+<div class="mb-3">
+    <input type="text" class="form-control" placeholder="🔍 Search by name or username..."
+           @bind-value="searchTerm" @bind-value:event="oninput" />
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>Full Name</th>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var employee in FilteredEmployees)
+            {
+                <tr @onclick="() => SelectEmployee(employee)" style="cursor: pointer;"
+                    class="@(IsSelected(employee) ? "table-active" : "")">
+                    <td>@employee.UserId</td>
+                    <td><strong>@employee.FullName</strong></td>
+                    <td>@employee.Username</td>
+                    <td><StatusBadge Status="@employee.Role" /></td>
+                    <td>@(employee.Phone ?? "-")</td>
+                    <td>@(employee.Email ?? "-")</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary me-1" @onclick:stopPropagation="true"
+                                @onclick="() => EditEmployee(employee)" title="Edit">
+                            <span class="bi bi-pencil"></span>
+                        </button>
+                        <button class="btn btn-sm btn-danger" @onclick:stopPropagation="true"
+                                @onclick="() => DeleteEmployee(employee)" title="Delete">
+                            <span class="bi bi-trash"></span>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (!FilteredEmployees.Any())
+{
+    <div class="alert alert-info">
+        No employees match your search criteria.
+    </div>
+}
+
+@code {
+    [Parameter]
+    public List<EmployeeManagement.EmployeeDto> Employees { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<EmployeeManagement.EmployeeDto> OnEmployeeSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<EmployeeManagement.EmployeeDto> OnEditEmployee { get; set; }
+
+    [Parameter]
+    public EventCallback<EmployeeManagement.EmployeeDto> OnDeleteEmployee { get; set; }
+
+    private string searchTerm = string.Empty;
+    private EmployeeManagement.EmployeeDto? selectedEmployee;
+
+    private List<EmployeeManagement.EmployeeDto> FilteredEmployees
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+                return Employees;
+
+            var term = searchTerm.ToLower();
+            return Employees.Where(e =>
+                e.FullName.ToLower().Contains(term) ||
+                e.Username.ToLower().Contains(term) ||
+                (e.Email?.ToLower().Contains(term) ?? false)
+            ).ToList();
+        }
+    }
+
+    private async Task SelectEmployee(EmployeeManagement.EmployeeDto employee)
+    {
+        selectedEmployee = employee;
+        if (OnEmployeeSelected.HasDelegate)
+        {
+            await OnEmployeeSelected.InvokeAsync(employee);
+        }
+    }
+
+    private async Task EditEmployee(EmployeeManagement.EmployeeDto employee)
+    {
+        if (OnEditEmployee.HasDelegate)
+        {
+            await OnEditEmployee.InvokeAsync(employee);
+        }
+    }
+
+    private async Task DeleteEmployee(EmployeeManagement.EmployeeDto employee)
+    {
+        if (OnDeleteEmployee.HasDelegate)
+        {
+            await OnDeleteEmployee.InvokeAsync(employee);
+        }
+    }
+
+    private bool IsSelected(EmployeeManagement.EmployeeDto employee)
+    {
+        return selectedEmployee?.UserId == employee.UserId;
+    }
+}
