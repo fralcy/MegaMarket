@@ -6,6 +6,10 @@ using MegaMarket.Data.Data;
 using MegaMarket.API.Services;
 using MegaMarket.API.GraphQL;
 using MegaMarket.API.GraphQL.Types;
+using MegaMarket.API.Services.Interfaces;
+using MegaMarket.API.Services.Implementations;
+using MegaMarket.API.Data;
+using MegaMarket.Data.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +20,23 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<MegaMarketDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Register Services
+// Product & Import Services
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IImportService, ImportService>();
+
+// Customer & Reward Services
+builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IPointTransactionRepository, PointTransactionRepository>();
+builder.Services.AddScoped<ICustomerRewardRepository, CustomerRewardRepository>();
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
+builder.Services.AddScoped<IPointTransactionService, PointTransactionService>();
+builder.Services.AddScoped<IRewardRepository, RewardRepository>();
+builder.Services.AddScoped<IRewardService, RewardService>();
+builder.Services.AddScoped<ICustomerRewardService, CustomerRewardService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+
+// Employee Services
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ShiftTypeService>();
 builder.Services.AddScoped<AttendanceService>();
@@ -27,6 +47,19 @@ builder.Services.AddScoped<DashboardSalesService>();
 builder.Services.AddScoped<DashboardInventoryService>();
 builder.Services.AddScoped<DashboardCustomerService>();
 builder.Services.AddScoped<DashboardEmployeeService>();
+
+// CORS (chỉ giữ 1 config)
+var allowedOrigins = builder.Configuration.GetSection("AllowedCorsOrigins").Get<string[]>() ??
+                     new[] { "https://localhost:7168", "http://localhost:5023", "https://localhost:5023" };
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 // Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"]
@@ -64,17 +97,6 @@ builder.Services
     .AddFiltering()
     .AddSorting();
 
-// CORS (nếu frontend và backend khác origin)
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
-
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -90,12 +112,18 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapGraphQL("/graphql");
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<MegaMarketDbContext>();
+    await DbSeeder.SeedAsync(dbContext);
+}
 
 app.Run();

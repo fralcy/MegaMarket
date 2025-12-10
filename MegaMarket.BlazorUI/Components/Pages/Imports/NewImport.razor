@@ -1,0 +1,642 @@
+@page "/imports/new"
+@rendermode InteractiveServer
+@page "/imports/{importId:int}/edit"
+@using MegaMarket.BlazorUI.Services.Products
+@using MegaMarket.BlazorUI.Services.Imports
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager Navigation
+@inject ProductService ProductService
+@inject ImportService ImportService
+
+<div class="new-import-page">
+    <div class="page-header d-flex align-items-center gap-3 mb-3">
+        <button class="btn btn-link text-dark px-0" @onclick="GoBack">
+            <span class="bi bi-arrow-left"></span>
+        </button>
+        <div>
+            <p class="eyebrow mb-1">New Import</p>
+            <h3 class="mb-0">Create a new stock import transaction</h3>
+        </div>
+    </div>
+
+    <div class="layout-grid">
+        <div class="card shadow-sm border-0 info-panel">
+            <div class="card-body">
+                <h5 class="mb-3">Import Information</h5>
+                <div class="mb-3">
+                    <label class="form-label">Supplier *</label>
+                    <select class="form-select" @bind="importModel.Supplier">
+                        <option value="">Select supplier</option>
+                        @foreach (var supplier in Suppliers)
+                        {
+                            <option value="@supplier">@supplier</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Import Date *</label>
+                    <div class="input-icon">
+                        <span class="bi bi-calendar"></span>
+                        <input type="date" class="form-control" @bind="importModel.ImportDate" @bind:format="yyyy-MM-dd" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Staff</label>
+                    <input class="form-control" value="Current User" disabled />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @bind="importModel.Status">
+                        <option>Draft</option>
+                        <option>Completed</option>
+                        <option>Cancelled</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 flex-grow-1">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Line Items</h5>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="AddItem">
+                        <span class="bi bi-plus-lg me-2"></span>Add Item
+                    </button>
+                </div>
+
+                <div class="table-responsive line-items">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Barcode</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th>Expiry Date</th>
+                                <th>Line Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in importModel.Items)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="product-cell">
+                                            <input class="form-control"
+                                                   placeholder="Search product..."
+                                                   value="@item.ProductName"
+                                                   @oninput="(e) => OnProductSearchChanged(item, e)"
+                                                   @onfocus="() => ShowSuggestions(item)"
+                                                   @onblur="() => HideSuggestions(item)" />
+
+                                            @if (item.ShowSuggestions)
+                                            {
+                                                <div class="product-suggestions shadow-sm">
+                                                    @if (loadingProducts)
+                                                    {
+                                                        <div class="suggestion-item muted">Loading products...</div>
+                                                    }
+                                                    else if (!item.Suggestions.Any())
+                                                    {
+                                                        <div class="suggestion-item muted">No matching products</div>
+                                                    }
+                                                    else
+                                                    {
+                                                        @foreach (var suggestion in item.Suggestions)
+                                                        {
+                                                            <button type="button" class="suggestion-item" @onclick="() => SelectProduct(item, suggestion)">
+                                                                <div class="d-flex justify-content-between align-items-start">
+                                                                    <div>
+                                                                        <div class="fw-semibold">@suggestion.Name</div>
+                                                                        <div class="suggestion-meta">
+                                                                            @if (!string.IsNullOrWhiteSpace(suggestion.Category))
+                                                                            {
+                                                                                <span>@suggestion.Category</span>
+                                                                                <span class="mx-1">|</span>
+                                                                            }
+                                                                            <span>@suggestion.Barcode</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="text-end">
+                                                                        <small class="text-muted d-block">@suggestion.UnitPrice.ToString("N0") đ</small>
+                                                                        <small class="text-muted">@BuildStockLabel(suggestion)</small>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="suggestion-meta mt-1">
+                                                                    @BuildExpiryLabel(suggestion)
+                                                                </div>
+                                                            </button>
+                                                        }
+                                                    }
+
+                                                    @if (!string.IsNullOrWhiteSpace(item.ProductName))
+                                                    {
+                                                        <button type="button" class="suggestion-item new" @onclick="() => UseAsNewProduct(item)">
+                                                            Use "@item.ProductName" as new product
+                                                        </button>
+                                                    }
+                                                </div>
+                                            }
+
+                                            @if (item.IsExistingProduct)
+                                            {
+                                                <small class="text-success d-block mt-1">Existing product selected</small>
+                                            }
+                                            else if (!string.IsNullOrWhiteSpace(item.ProductName))
+                                            {
+                                                <small class="text-muted d-block mt-1">New product entry</small>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <input class="form-control" placeholder="-" @bind="item.Barcode" />
+                                    </td>
+                                    <td style="max-width: 120px;">
+                                        <input type="number" min="1" class="form-control" @bind="item.Quantity" @bind:event="oninput" />
+                                    </td>
+                                    <td style="max-width: 140px;">
+                                        <input type="number" min="0" step="1000" class="form-control" @bind="item.UnitPrice" @bind:event="oninput" />
+                                    </td>
+                                    <td style="max-width: 150px;">
+                                        <input type="date" class="form-control" @bind="item.ExpiryDate" @bind:format="yyyy-MM-dd" />
+                                    </td>
+                                    <td class="fw-semibold">@item.LineTotal.ToString("N0") đ</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-link text-danger p-0" @onclick="() => RemoveItem(item)">
+                                            <span class="bi bi-trash"></span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-3 flex-wrap">
+                    <button class="btn btn-outline-secondary" @onclick="GoBack">Cancel</button>
+                    <button class="btn btn-outline-dark" @onclick="SaveDraft" disabled="@saving">Save as Draft</button>
+                    <button class="btn btn-dark" @onclick="SaveComplete" disabled="@saving">Save & Complete</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 summary">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="summary-icon">
+                        <span class="bi bi-currency-dollar"></span>
+                    </div>
+                    <div>
+                        <p class="text-muted mb-1">Total Cost</p>
+                        <h4 class="mb-0">@importModel.TotalCost.ToString("N0") đ</h4>
+                    </div>
+                </div>
+                <p class="mb-0 text-muted">@importModel.Items.Count item(s)</p>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(feedback))
+    {
+        <div class="alert alert-info mt-3" role="alert">
+            @feedback
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int? importId { get; set; }
+
+    private readonly List<string> Suppliers = new() { "Fresh Foods Co.", "Dairy Direct", "Global Groceries", "Premium Produce" };
+    private ImportDraft importModel = new()
+    {
+        ImportDate = DateTime.Today,
+        Status = "Draft"
+    };
+
+    private List<ProductDto> productCatalog = new();
+    private bool loadingProducts;
+    private bool saving;
+    private string? feedback;
+    private const int MinimumSearchLength = 2;
+    private bool isEditing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProductsAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (importId.HasValue)
+        {
+            await LoadImportForEdit(importId.Value);
+        }
+    }
+
+    private async Task LoadProductsAsync()
+    {
+        try
+        {
+            loadingProducts = true;
+            productCatalog = await ProductService.GetProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            feedback = $"Unable to load products right now: {ex.Message}";
+        }
+        finally
+        {
+            loadingProducts = false;
+        }
+    }
+
+    private async Task LoadImportForEdit(int id)
+    {
+        try
+        {
+            loadingProducts = true;
+            var detail = await ImportService.GetImportAsync(id);
+            if (detail is null)
+            {
+                feedback = $"Import #{id:0000} not found.";
+                Navigation.NavigateTo("/imports");
+                return;
+            }
+
+            importModel = new ImportDraft
+            {
+                Supplier = detail.Supplier,
+                ImportDate = detail.ImportDate,
+                Status = detail.Status,
+                Items = detail.Items.Select(i => new ImportLine
+                {
+                    ProductId = i.ProductId,
+                    ProductName = i.ProductName,
+                    Barcode = i.Barcode,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice,
+                    ExpiryDate = i.ExpiryDate,
+                    IsExistingProduct = true
+                }).ToList()
+            };
+
+            isEditing = true;
+        }
+        catch (Exception ex)
+        {
+            feedback = $"Unable to load import: {ex.Message}";
+        }
+        finally
+        {
+            loadingProducts = false;
+        }
+    }
+
+    private void AddItem()
+    {
+        importModel.Items.Add(new ImportLine());
+    }
+
+    private void RemoveItem(ImportLine item)
+    {
+        importModel.Items.Remove(item);
+    }
+
+    private Task SaveDraft() => SaveImportAsync("Draft");
+
+    private Task SaveComplete() => SaveImportAsync("Completed");
+
+    private async Task SaveImportAsync(string status)
+    {
+        if (saving)
+        {
+            return;
+        }
+
+        try
+        {
+            saving = true;
+            feedback = null;
+            var request = BuildCreateRequest(status);
+            ImportDetailDto result;
+
+            if (isEditing && importId.HasValue)
+            {
+                result = await ImportService.UpdateImportAsync(importId.Value, request);
+                feedback = $"Import #{result.ImportId:0000} updated.";
+            }
+            else
+            {
+                result = await ImportService.CreateImportAsync(request);
+                feedback = $"Import #{result.ImportId:0000} saved as {result.Status}.";
+                importId = result.ImportId;
+                isEditing = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            feedback = $"Save failed: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private ImportCreateRequest BuildCreateRequest(string status)
+    {
+        if (string.IsNullOrWhiteSpace(importModel.Supplier))
+        {
+            throw new InvalidOperationException("Supplier is required.");
+        }
+
+        var items = importModel.Items
+            .Where(i => !string.IsNullOrWhiteSpace(i.ProductName))
+            .Select(i => new ImportLineCreateRequest
+            {
+                ProductId = i.ProductId,
+                ProductName = i.ProductName.Trim(),
+                Barcode = string.IsNullOrWhiteSpace(i.Barcode) ? null : i.Barcode.Trim(),
+                Quantity = i.Quantity <= 0 ? 1 : i.Quantity,
+                UnitPrice = i.UnitPrice,
+                ExpiryDate = i.ExpiryDate
+            })
+            .ToList();
+
+        if (!items.Any())
+        {
+            throw new InvalidOperationException("Add at least one line item.");
+        }
+
+        return new ImportCreateRequest
+        {
+            Supplier = importModel.Supplier,
+            ImportDate = importModel.ImportDate == default ? DateTime.Today : importModel.ImportDate,
+            Status = status,
+            Staff = "Admin User",
+            Items = items
+        };
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/imports");
+
+    private void OnProductSearchChanged(ImportLine line, ChangeEventArgs args)
+    {
+        line.ProductName = args.Value?.ToString()?.Trim() ?? string.Empty;
+
+        if (line.IsExistingProduct)
+        {
+            line.Barcode = string.Empty;
+            line.UnitPrice = 0;
+            line.ExpiryDate = null;
+        }
+
+        line.ProductId = null;
+        line.IsExistingProduct = false;
+        UpdateSuggestions(line);
+    }
+
+    private void ShowSuggestions(ImportLine line)
+    {
+        UpdateSuggestions(line);
+    }
+
+    private async Task HideSuggestions(ImportLine line)
+    {
+        await Task.Delay(120);
+        line.ShowSuggestions = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateSuggestions(ImportLine line)
+    {
+        var query = line.ProductName?.Trim() ?? string.Empty;
+        var normalizedQuery = NormalizeSearchText(query);
+
+        line.Suggestions.Clear();
+
+        if (string.IsNullOrWhiteSpace(normalizedQuery) || normalizedQuery.Length < MinimumSearchLength)
+        {
+            line.ShowSuggestions = false;
+            return;
+        }
+
+        if (loadingProducts || productCatalog.Count == 0)
+        {
+            line.ShowSuggestions = true;
+            return;
+        }
+
+        var matches = SearchProducts(query, normalizedQuery);
+
+        foreach (var product in matches)
+        {
+            line.Suggestions.Add(product);
+        }
+
+        line.ShowSuggestions = true;
+    }
+
+    private void SelectProduct(ImportLine line, ProductDto product)
+    {
+        line.ProductId = product.ProductId;
+        line.ProductName = product.Name;
+        line.Barcode = product.Barcode;
+        line.UnitPrice = product.UnitPrice;
+        line.ExpiryDate = product.ExpiryDate;
+        line.IsExistingProduct = true;
+        line.ShowSuggestions = false;
+        line.Suggestions.Clear();
+    }
+
+    private void UseAsNewProduct(ImportLine line)
+    {
+        line.ProductId = null;
+        line.IsExistingProduct = false;
+        line.ShowSuggestions = false;
+        line.Suggestions.Clear();
+    }
+
+    private IEnumerable<ProductDto> SearchProducts(string query, string normalizedQuery)
+    {
+        var tokens = normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var condensedQuery = string.Concat(tokens);
+
+        return productCatalog
+            .Select(product =>
+            {
+                var normalizedName = NormalizeSearchText(product.Name);
+                var normalizedBarcode = NormalizeSearchText(product.Barcode).Replace(" ", string.Empty);
+                var normalizedCategory = NormalizeSearchText(product.Category);
+                var score = CalculateMatchScore(
+                    product,
+                    normalizedQuery,
+                    condensedQuery,
+                    tokens,
+                    normalizedName,
+                    normalizedBarcode,
+                    normalizedCategory);
+                return new { product, score };
+            })
+            .Where(result => result.score > 0)
+            .OrderByDescending(result => result.score)
+            .ThenBy(result => result.product.Name)
+            .ThenBy(result => result.product.Barcode)
+            .Take(8)
+            .Select(result => result.product);
+    }
+
+    private static int CalculateMatchScore(
+        ProductDto product,
+        string normalizedQuery,
+        string condensedQuery,
+        string[] tokens,
+        string normalizedName,
+        string normalizedBarcode,
+        string normalizedCategory)
+    {
+        var score = 0;
+
+        // Prioritize exact/prefix barcode hits, then name prefixes, then token coverage across name/category.
+        if (!string.IsNullOrWhiteSpace(normalizedBarcode))
+        {
+            if (normalizedBarcode == condensedQuery)
+            {
+                score += 1200;
+            }
+            else if (normalizedBarcode.StartsWith(condensedQuery))
+            {
+                score += 850;
+            }
+            else if (normalizedBarcode.Contains(condensedQuery))
+            {
+                score += 450;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(product.Name))
+        {
+            if (product.Name.StartsWith(normalizedQuery, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 600;
+            }
+            else if (product.Name.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 350;
+            }
+        }
+
+        var matchedTokens = 0;
+        foreach (var token in tokens)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                continue;
+            }
+
+            if (normalizedName.Contains(token))
+            {
+                score += 120;
+                matchedTokens++;
+            }
+            else if (!string.IsNullOrWhiteSpace(normalizedCategory) && normalizedCategory.Contains(token))
+            {
+                score += 80;
+                matchedTokens++;
+            }
+        }
+
+        if (matchedTokens == tokens.Length && tokens.Length > 0)
+        {
+            score += 120;
+        }
+
+        return score;
+    }
+
+    private static string NormalizeSearchText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var cleaned = new string(value
+            .Select(c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : ' ')
+            .ToArray());
+
+        return string.Join(' ', cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string BuildStockLabel(ProductDto product)
+    {
+        var label = $"Stock {product.QuantityInStock}";
+        if (product.MinQuantity > 0)
+        {
+            label += $" / Min {product.MinQuantity}";
+        }
+
+        if (product.QuantityInStock < product.MinQuantity)
+        {
+            label += " | Low";
+        }
+
+        return label;
+    }
+
+    private static string BuildExpiryLabel(ProductDto product)
+    {
+        if (!product.IsPerishable)
+        {
+            return "Non-perishable item";
+        }
+
+        if (!product.ExpiryDate.HasValue)
+        {
+            return "Expiry not set";
+        }
+
+        var days = (product.ExpiryDate.Value.Date - DateTime.Today).TotalDays;
+
+        if (days < 0)
+        {
+            return $"Expired on {product.ExpiryDate:yyyy-MM-dd}";
+        }
+
+        if (days <= 7)
+        {
+            return $"Expires soon ({product.ExpiryDate:yyyy-MM-dd})";
+        }
+
+        return $"Expires {product.ExpiryDate:yyyy-MM-dd}";
+    }
+
+    private class ImportDraft
+    {
+        public string Supplier { get; set; } = string.Empty;
+        public DateTime ImportDate { get; set; }
+        public string Status { get; set; } = "Draft";
+        public List<ImportLine> Items { get; set; } = new() { new ImportLine() };
+
+        public decimal TotalCost => Items.Sum(i => i.LineTotal);
+    }
+
+    private class ImportLine
+    {
+        public int? ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public string? Barcode { get; set; }
+        public int Quantity { get; set; } = 1;
+        public decimal UnitPrice { get; set; }
+        public DateTime? ExpiryDate { get; set; }
+        public bool IsExistingProduct { get; set; }
+        public bool ShowSuggestions { get; set; }
+        public List<ProductDto> Suggestions { get; } = new();
+        public decimal LineTotal => Quantity * UnitPrice;
+    }
+}

@@ -1,0 +1,472 @@
+﻿@page "/rewards"
+@using MegaMarket.BlazorUI.Services.CustomerLoyalty
+@inject RewardManagementService RewardService
+@inject ReportService ReportService
+@inject IJSRuntime JsRuntime
+@rendermode InteractiveServer
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>🎁 Reward Management</h2>
+            <p class="text-muted small">Manage loyalty rewards and incentives</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="OpenAddModal">
+                <span class="oi oi-plus"></span> Add Reward
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="alert alert-info">
+            <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            Loading rewards...
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <strong>Error:</strong> @errorMessage
+            <button class="btn-close" @onclick="() => { errorMessage = null; }"></button>
+        </div>
+    }
+
+    <!-- TOP REWARDS STATS -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">📊 Top 5 Most Redeemed Rewards</h5>
+                </div>
+                <div class="card-body p-0">
+                    @if (topRewards != null && topRewards.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Reward Name</th>
+                                        <th>Type</th>
+                                        <th>Times Redeemed</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var (reward, index) in topRewards.Select((r, i) => (r, i + 1)))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-primary">@index</span>
+                                            </td>
+                                            <td><strong>@reward.RewardName</strong></td>
+                                            <td>
+                                                <span class="badge @GetRewardTypeBadge(reward.RewardType)">@reward.RewardType</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-success">@reward.TotalRedeemed</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-3 text-center text-muted">
+                            <p>No reward data available</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">📈 Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <p class="text-muted small">Total Rewards</p>
+                        <h4 class="text-success">@(allRewards?.Count ?? 0)</h4>
+                    </div>
+                    <div class="mb-3">
+                        <p class="text-muted small">Active Rewards</p>
+                        <h4 class="text-info">@(allRewards?.Where(r => r.IsActive).Count() ?? 0)</h4>
+                    </div>
+                    <div class="mb-3">
+                        <p class="text-muted small">Low Stock</p>
+                        <h4 class="text-warning">@(allRewards?.Where(r => r.QuantityAvailable <= 5).Count() ?? 0)</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- REWARD LIST SECTION -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <input type="text" class="form-control" placeholder="Search by name..."
+                           @bind="searchTerm" @bind:event="oninput" @onchange="OnSearchChanged" />
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @onchange="OnFilterTypeChanged">
+                        <option value="">All Types</option>
+                        <option value="Gift">Gift</option>
+                        <option value="Discount">Discount</option>
+                        <option value="Voucher">Voucher</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-secondary w-100" @onclick="ReloadData">🔄 Refresh</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            @if (filteredRewards != null && filteredRewards.Count > 0)
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th width="10%">Type</th>
+                                <th width="10%">Points</th>
+                                <th width="12%">Available</th>
+                                <th width="15%" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var reward in filteredRewards)
+                            {
+                                <tr>
+                                    <td><strong>@reward.Name</strong></td>
+                                    <td>
+                                        <small>@(string.IsNullOrEmpty(reward.Description) ? "N/A" : reward.Description)</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetTypeBadge(reward.RewardType)">@reward.RewardType</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">@reward.PointCost</span>
+                                    </td>
+                                    <td>
+                                        <span class="@(reward.QuantityAvailable > 0 ? "badge bg-success" : "badge bg-danger")">
+                                            @reward.QuantityAvailable
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-info" @onclick="() => OpenEditModal(reward)">✎ Edit</button>
+                                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteReward(reward.RewardId)">🗑 Delete</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="p-4 text-center text-muted">
+                    <p>No rewards found.</p>
+                </div>
+            }
+        </div>
+        <div class="card-footer bg-light text-muted small">
+            Showing <strong>@(filteredRewards?.Count ?? 0)</strong> of <strong>@(allRewards?.Count ?? 0)</strong> rewards
+            <div class="float-end">
+                <button class="btn btn-sm btn-outline-secondary @(currentPage == 1 ? "disabled" : "")" @onclick="PreviousPage">← Previous</button>
+                <button class="btn btn-sm btn-outline-secondary @(((currentPage * pageSize) >= allRewards.Count) ? "disabled" : "")" @onclick="NextPage">Next →</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+@if (showModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">@(isEditing ? "Edit Reward" : "Add New Reward")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label class="form-label">Reward Name *</label>
+                        <input type="text" class="form-control" @bind="formData.Name" placeholder="Enter reward name" />
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" @bind="formData.Description" rows="3" placeholder="Enter description"></textarea>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="form-label">Points Required *</label>
+                        <input type="number" class="form-control" @bind="formData.PointCost" min="0" />
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="form-label">Type *</label>
+                        <select class="form-select" @bind="formData.RewardType">
+                            <option value="Gift">Gift</option>
+                            <option value="Discount">Discount</option>
+                            <option value="Voucher">Voucher</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="form-label">Value</label>
+                        <input type="number" class="form-control" @bind="formData.Value" step="0.01" />
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="form-label">Quantity Available *</label>
+                        <input type="number" class="form-control" @bind="formData.QuantityAvailable" min="0" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="SaveReward" disabled="@(string.IsNullOrEmpty(formData.Name) || formData.PointCost <= 0)">
+                        @(isEditing ? "Update" : "Add") Reward
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="CloseModal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<RewardManagementDto> allRewards = new();
+    private List<RewardManagementDto> filteredRewards = new();
+    private List<TopRewardDto> topRewards = new();
+    private RewardManagementDto formData = new();
+    private string searchTerm = "";
+    private string filterType = "";
+    private bool isLoading = true;
+    private bool isEditing = false;
+    private bool showModal = false;
+    private string? errorMessage = null;
+    private int currentPage = 1;
+    private int pageSize = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadData();
+    }
+
+    private async Task ReloadData()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            allRewards = await RewardService.GetAllRewardsAsync();
+            System.Diagnostics.Debug.WriteLine($"[RewardManagement] Loaded {allRewards.Count} rewards");
+            
+            topRewards = await ReportService.GetTopRewardsAsync(5);
+            System.Diagnostics.Debug.WriteLine($"[RewardManagement] Received {topRewards?.Count ?? 0} top rewards");
+
+            // Fallback: nếu API không trả dữ liệu hoặc empty, không hiển thị
+            if (topRewards == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[RewardManagement] topRewards is null, setting to empty list");
+                topRewards = new();
+            }
+            else if (topRewards.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine("[RewardManagement] topRewards is empty");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[RewardManagement] Sorting {topRewards.Count} rewards by TotalRedeemed");
+                // sắp xếp lại theo TotalRedeemed giảm dần
+                topRewards = topRewards.OrderByDescending(r => r.TotalRedeemed).ToList();
+                System.Diagnostics.Debug.WriteLine($"[RewardManagement] After sorting: {topRewards.Count} rewards");
+                foreach (var r in topRewards)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  - {r.RewardName}: {r.TotalRedeemed} times redeemed");
+                }
+            }
+
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[RewardManagement] Error: {ex.Message}\n{ex.StackTrace}");
+            errorMessage = ex.Message;
+            topRewards = new();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = allRewards
+            .Where(r =>
+                (string.IsNullOrWhiteSpace(searchTerm) || r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+                (string.IsNullOrWhiteSpace(filterType) || r.RewardType == filterType)
+            )
+            .ToList();
+
+        // Pagination: show 10 items per page
+        filteredRewards = filtered
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private void NextPage()
+    {
+        if ((currentPage * pageSize) < allRewards.Count)
+        {
+            currentPage++;
+            ApplyFilters();
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            ApplyFilters();
+        }
+    }
+
+    private void OpenAddModal()
+    {
+        formData = new RewardManagementDto();
+        isEditing = false;
+        showModal = true;
+    }
+
+    private void OpenEditModal(RewardManagementDto reward)
+    {
+        formData = new RewardManagementDto
+        {
+            RewardId = reward.RewardId,
+            Name = reward.Name,
+            Description = reward.Description,
+            PointCost = reward.PointCost,
+            RewardType = reward.RewardType,
+            Value = reward.Value,
+            QuantityAvailable = reward.QuantityAvailable,
+            IsActive = reward.IsActive
+        };
+        isEditing = true;
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        formData = new();
+    }
+
+    private async Task SaveReward()
+    {
+        if (string.IsNullOrWhiteSpace(formData.Name) || formData.PointCost <= 0) return;
+
+        errorMessage = null;
+        try
+        {
+            if (isEditing)
+            {
+                var updateDto = new UpdateRewardDto
+                {
+                    Name = formData.Name,
+                    Description = formData.Description,
+                    PointCost = formData.PointCost,
+                    RewardType = formData.RewardType,
+                    Value = formData.Value,
+                    QuantityAvailable = formData.QuantityAvailable
+                };
+                await RewardService.UpdateRewardAsync(formData.RewardId, updateDto);
+            }
+            else
+            {
+                var createDto = new CreateRewardDto
+                {
+                    Name = formData.Name,
+                    Description = formData.Description,
+                    PointCost = formData.PointCost,
+                    RewardType = formData.RewardType,
+                    Value = formData.Value,
+                    QuantityAvailable = formData.QuantityAvailable
+                };
+                await RewardService.CreateRewardAsync(createDto);
+            }
+            CloseModal();
+            await ReloadData();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving reward: {ex.Message}";
+        }
+    }
+
+    private async Task DeleteReward(int id)
+    {
+        if (!await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this reward?")) return;
+
+        errorMessage = null;
+        try
+        {
+            await RewardService.DeleteRewardAsync(id);
+            await ReloadData();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting reward: {ex.Message}";
+        }
+    }
+
+    private string GetTypeBadge(string? type) => type switch
+    {
+        "Gift" => "bg-success",
+        "Discount" => "bg-warning text-dark",
+        "Voucher" => "bg-primary",
+        _ => "bg-light text-dark"
+    };
+
+    private string GetRewardTypeBadge(string? type) => type switch
+    {
+        "Gift" => "bg-success",
+        "Discount" => "bg-warning text-dark",
+        "Voucher" => "bg-primary",
+        _ => "bg-light text-dark"
+    };
+
+    private void OnSearchChanged()
+    {
+        currentPage = 1;
+        ApplyFilters();
+    }
+
+    private void OnFilterChanged()
+    {
+        currentPage = 1;
+        ApplyFilters();
+    }
+
+    private void OnFilterTypeChanged(ChangeEventArgs e)
+    {
+        filterType = e.Value?.ToString() ?? "";
+        currentPage = 1;
+        ApplyFilters();
+    }
+}
