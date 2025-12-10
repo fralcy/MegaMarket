@@ -15,4 +15,9 @@
     <Folder Include="Services\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\MegaMarket.API\MegaMarket.API.csproj" />
+    <ProjectReference Include="..\MegaMarket.Data\MegaMarket.Data.csproj" />
+  </ItemGroup>
+
 </Project>

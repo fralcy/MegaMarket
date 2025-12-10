@@ -1,10 +1,11 @@
 ﻿@page "/"
 @using System.Globalization
+@using MegaMarket.Data.Models
 
 <div class="checkout-container">
     <h2>Quầy Thanh Toán Siêu Thị</h2>
 
-    @if (!IsPaymentScreenVisible)
+    @if (!IsPaymentScreenVisible && LastCompletedInvoice == null)
     {
         <div class="product-list-area">
             <h3>Danh Sách Sản Phẩm</h3>
@@ -55,6 +56,11 @@
                 </div>
 
                 <div class="input-group">
+                    <label> Tên Sản Phẩm:</label>
+                    <span>@CurrentProductName</span>
+                </div>
+
+                <div class="input-group">
                     <label>Đơn Giá:</label>
                     <span class="display-price">@FormatCurrency(CurrentUnitPrice)</span>
                 </div>
@@ -96,75 +102,139 @@
             <button class="btn-secondary" @onclick="CancelTransaction" disabled="@(!CartItems.Any())">Hủy Bỏ</button>
         </div>
     }
-    else
+    else if (LastCompletedInvoice == null)
     {
-        <div class="payment-screen">
-            <h3>Chi Tiết Thanh Toán</h3>
+        <div class="payment-screen-wrapper">
+            <div class="payment-screen single-column">
 
-            <div class="payment-methods">
-                <button class="@(SelectedPaymentMethod == PaymentMethod.Cash ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Cash)">Tiền mặt</button>
-                <button class="@(SelectedPaymentMethod == PaymentMethod.BankTransfer ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.BankTransfer)">Chuyển khoản</button>
-                <button class="@(SelectedPaymentMethod == PaymentMethod.Card ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Card)">Thẻ</button>
-            </div>
+                <h3>Chi Tiết Thanh Toán</h3>
 
-            <div class="financial-summary">
-                <div class="summary-row">
-                    <span class="summary-label">Giá gốc:</span>
-                    <span class="summary-value">@FormatCurrency(OriginalPrice)</span>
-                </div>
-                <div class="summary-row">
-                    <span class="summary-label">Khuyến mãi:</span>
-                    <span class="summary-value negative">@FormatCurrency(DiscountAmountCalculated)</span>
-                </div>
-                <div class="summary-row">
-                    <span class="summary-label">Làm tròn:</span>
-                    <span class="summary-value">@FormatCurrency(RoundingAmount)</span>
+                <div class="payment-methods">
+                    <button class="@(SelectedPaymentMethod == PaymentMethod.Cash ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Cash)">Tiền mặt</button>
+                    <button class="@(SelectedPaymentMethod == PaymentMethod.BankTransfer ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.BankTransfer)">Chuyển khoản</button>
+                    <button class="@(SelectedPaymentMethod == PaymentMethod.Card ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Card)">Thẻ</button>
                 </div>
 
-                <hr style="grid-column: 1 / -1; margin: 5px 0;" />
-
-                <div class="summary-row">
-                    <span class="summary-label"><strong>CẦN THU:</strong></span>
-                    <span class="summary-value total negative">@FormatCurrency(AmountToCollect)</span>
-                </div>
-
-                @if (SelectedPaymentMethod == PaymentMethod.Cash)
-                {
-                    <div class="payment-input-group" style="grid-column: 1 / -1;">
-                        <label for="amountPaid">Đã Thu (Khách Trả):</label>
-                        <input id="amountPaid"
-                               type="number"
-                               value="@AmountPaidInput.ToString("N0", new CultureInfo("vi-VN"))"
-                               @onchange="HandleAmountPaidInput"
-                               placeholder="Nhập số tiền khách trả" />
-                    </div>
-                }
-                else
-                {
+                <div class="financial-summary">
                     <div class="summary-row">
-                        <span class="summary-label">Đã thu:</span>
-                        <span class="summary-value">@FormatCurrency(PaidAmountDisplay)</span>
+                        <span class="summary-label">Giá gốc:</span>
+                        <span class="summary-value">@FormatCurrency(OriginalPrice)</span>
                     </div>
-                }
+                    <div class="summary-row">
+                        <span class="summary-label">Khuyến mãi:</span>
+                        <span class="summary-value negative">@FormatCurrency(DiscountAmountCalculated)</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Làm tròn:</span>
+                        <span class="summary-value">@FormatCurrency(RoundingAmount)</span>
+                    </div>
 
-                <div class="summary-row">
-                    <span class="summary-label">Còn thiếu:</span>
-                    <span class="summary-value negative">@FormatCurrency(AmountMissing)</span>
+                    <hr style="grid-column: 1 / -1; margin: 5px 0;" />
+
+                    <div class="summary-row">
+                        <span class="summary-label"><strong>CẦN THU:</strong></span>
+                        <span class="summary-value total negative">@FormatCurrency(AmountToCollect)</span>
+                    </div>
+
+                    @if (SelectedPaymentMethod == PaymentMethod.Cash)
+                    {
+                        <div class="payment-input-group" style="grid-column: 1 / -1;">
+                            <label for="amountPaid">Đã Thu (Khách Trả):</label>
+                            <input id="amountPaid"
+                                   type="number"
+                                   value="@AmountPaidInput.ToString("N0", new CultureInfo("vi-VN"))"
+                                   @onchange="HandleAmountPaidInput"
+                                   placeholder="Nhập số tiền khách trả" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="summary-row">
+                            <span class="summary-label">Đã thu:</span>
+                            <span class="summary-value">@FormatCurrency(PaidAmountDisplay)</span>
+                        </div>
+                    }
+
+                    <div class="summary-row">
+                        <span class="summary-label">Còn thiếu:</span>
+                        <span class="summary-value negative">@FormatCurrency(AmountMissing)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-label">Tiền thừa:</span>
+                        <span class="summary-value positive">@FormatCurrency(ChangeAmount)</span>
+                    </div>
                 </div>
 
-                <div class="summary-row">
-                    <span class="summary-label">Tiền thừa:</span>
-                    <span class="summary-value positive">@FormatCurrency(ChangeAmount)</span>
+                <div class="promo-details">
+                    <strong>Chi tiết Khuyến mãi:</strong> @DiscountDetails
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn-primary" @onclick="FinalizePayment" disabled="@(AmountMissing > 0)">HOÀN TẤT</button>
+                    <button class="btn-secondary" @onclick="CancelPaymentScreen">HỦY THANH TOÁN</button>
+                </div>
+            </div>
+        </div>
+    }
+    else if (LastCompletedInvoice != null)
+    {
+        <div class="invoice-completed-view">
+
+            <div class="invoice-confirmation-panel">
+                <h4>Giao dịch hoàn tất!</h4>
+                <p>Hóa đơn #@LastCompletedInvoice.InvoiceId đã được thanh toán.</p>
+
+                <div class="receipt-actions">
+                    <button class="btn-primary" @onclick="PrintReceipt">🖨️ IN HÓA ĐƠN</button>
+                    <button class="btn-success" @onclick="ResetToNewTransaction">⬅️ QUAY VỀ</button>
                 </div>
             </div>
 
-            <div class="promo-details">
-                <strong>Chi tiết Khuyến mãi:</strong> @DiscountDetails
-            </div>
+            <div class="receipt-preview-panel">
+                <div class="print-content">
+                    <div class="receipt-header">
+                        <strong>HÓA ĐƠN SIÊU THỊ MAXIMART</strong><br />
+                        <small>Địa chỉ: 123 Lê Lợi, TP.HCM</small>
+                    </div>
 
-            <div class="action-buttons">
-                <button class="btn-primary" @onclick="FinalizePayment" disabled="@(AmountMissing > 0)">HOÀN TẤT</button>
-                <button class="btn-secondary" @onclick="CancelPaymentScreen">HỦY THANH TOÁN</button>
+                    <div class="receipt-divider"></div>
+
+                    <div class="receipt-line"><span>Mã HĐ:</span> <span>#@LastCompletedInvoice.InvoiceId</span></div>
+                    <div class="receipt-line"><span>Ngày:</span> <span>@LastCompletedInvoice.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</span></div>
+                    <div class="receipt-line"><span>NV:</span> <span>@LastCompletedInvoice.User.Username</span></div>
+                    <div class="receipt-line"><span>PTTT:</span> <span>@LastCompletedInvoice.PaymentMethod</span></div>
+
+                    <div class="receipt-divider"></div>
+
+                    @foreach (var detail in LastCompletedInvoice.InvoiceDetails)
+                    {
+                        var totalPerItem = detail.Quantity * detail.UnitPrice;
+                        <div class="receipt-line">
+                            <span style="max-width: 60%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">@detail.Product.Name</span>
+                            <span>@detail.Quantity x @FormatCurrency(detail.UnitPrice)</span>
+                        </div>
+                        <div class="receipt-line">
+                            <span style="font-size: 0.8em; color: #6c757d;">KM: @FormatCurrency(detail.DiscountPerUnit)</span>
+                            <span style="text-align: right;">@FormatCurrency(detail.Quantity * (detail.UnitPrice - detail.DiscountPerUnit))</span>
+                        </div>
+                    }
+
+                    <div class="receipt-divider"></div>
+
+                    <div class="receipt-line"><span>Tổng (trước KM):</span> <span>@FormatCurrency(LastCompletedInvoice.TotalBeforeDiscount)</span></div>
+                    <div class="receipt-line"><span>Khuyến mãi:</span> <span class="negative">@FormatCurrency(LastCompletedInvoice.TotalBeforeDiscount - LastCompletedInvoice.TotalAmount)</span></div>
+                    <div class="receipt-line receipt-total"><span>TỔNG CỘNG:</span> <span>@FormatCurrency(LastCompletedInvoice.TotalAmount)</span></div>
+
+                    <div class="receipt-divider"></div>
+
+                    <div class="receipt-line"><span>Khách trả:</span> <span>@FormatCurrency(LastCompletedInvoice.ReceivedAmount)</span></div>
+                    <div class="receipt-line"><span>Tiền thừa:</span> <span class="positive">@FormatCurrency(LastCompletedInvoice.ChangeAmount)</span></div>
+
+                    <div class="receipt-footer">
+                        <p>Cảm ơn quý khách!</p>
+                    </div>
+                </div>
             </div>
         </div>
     }
@@ -186,13 +256,77 @@
     }
 
     // Mock Database sản phẩm
-    private readonly Dictionary<string, (string Name, decimal Price)> ProductDB = new Dictionary<string, (string, decimal)>
+    public static class ProductMockData
     {
-        { "1001", ("Sữa Vinamilk 1L", 35000) },
-        { "1002", ("Bánh Mì Sandwich", 25000) },
-        { "1003", ("Trứng Gà 10 Quả", 40000) },
-        { "1004", ("Nước Suối 500ml", 8000) }
-    };
+        public static List<Product> GetProducts()
+        {
+            return new List<Product>
+            {
+                new Product
+                {
+                    ProductId = 1001,
+                    Barcode = "893456700001",
+                    Name = "Nước Giải Khát Có Ga - Vị Cam",
+                    Category = "Đồ uống",
+                    UnitPrice = 12500.00M,
+                    QuantityInStock = 150,
+                    MinQuantity = 50,
+                    IsPerishable = false,
+                    ExpiryDate = DateTime.Now.AddYears(1) // Hạn sử dụng xa
+                },
+                new Product
+                {
+                    ProductId = 1002,
+                    Barcode = "893521190010",
+                    Name = "Sữa Tươi Tiệt Trùng Nguyên Kem",
+                    Category = "Sữa và chế phẩm",
+                    UnitPrice = 35000.50M,
+                    QuantityInStock = 75,
+                    MinQuantity = 30,
+                    IsPerishable = true, // Sản phẩm dễ hỏng
+                    ExpiryDate = DateTime.Now.AddMonths(1) // Hạn sử dụng gần hơn
+                },
+                new Product
+                {
+                    ProductId = 1003,
+                    Barcode = "489123456789",
+                    Name = "Bánh Quy Bơ Cao Cấp 500g",
+                    Category = "Thực phẩm khô",
+                    UnitPrice = 58000.00M,
+                    QuantityInStock = 200,
+                    MinQuantity = 100,
+                    IsPerishable = false,
+                    ExpiryDate = DateTime.Now.AddMonths(8)
+                },
+                new Product
+                {
+                    ProductId = 1004,
+                    Barcode = "978654321000",
+                    Name = "Bàn Chải Đánh Răng Lông Mềm",
+                    Category = "Chăm sóc cá nhân",
+                    UnitPrice = 18000.00M,
+                    QuantityInStock = 30, // Số lượng trong kho thấp
+                    MinQuantity = 50, // Cần đặt hàng thêm
+                    IsPerishable = false,
+                    ExpiryDate = null // Không có hạn sử dụng
+                },
+                new Product
+                {
+                    ProductId = 1005,
+                    Barcode = "880998877665",
+                    Name = "Thịt Bò Mỹ Đông Lạnh (1kg)",
+                    Category = "Thực phẩm tươi sống",
+                    UnitPrice = 245999.00M,
+                    QuantityInStock = 45,
+                    MinQuantity = 20,
+                    IsPerishable = true, // Sản phẩm dễ hỏng
+                    ExpiryDate = DateTime.Now.AddDays(90) // Hạn sử dụng trong 3 tháng
+                }
+            };
+        }
+    }
+
+    private Dictionary<string, Product> ProductDB = ProductMockData.GetProducts().ToDictionary(p => p.Barcode, p => p);
 
     // -----------------------------------------------------------------------
     // ENUM VÀ STATE (Trạng thái)
@@ -209,6 +343,7 @@
     private string InputProductCode { get; set; } = "";
     private string InputQuantityText { get; set; } = "1";
     private decimal CurrentUnitPrice { get; set; } = 0;
+    private string CurrentProductName { get; set; } = "";
     private string CurrentFocusedInput { get; set; } = "ProductCode";
 
     // Trạng thái màn hình thanh toán
@@ -216,6 +351,7 @@
     private PaymentMethod SelectedPaymentMethod { get; set; } = PaymentMethod.Cash;
     private decimal AmountPaidInput { get; set; } = 0;
     private string DiscountDetails { get; set; } = "Không có khuyến mãi nào được áp dụng.";
+    private Invoice? LastCompletedInvoice { get; set; }
 
 
     // -----------------------------------------------------------------------
@@ -243,7 +379,9 @@
     // -----------------------------------------------------------------------
     // HÀM XỬ LÝ SỰ KIỆN
     // -----------------------------------------------------------------------
-
+    
+	[Inject]
+    public IJSRuntime JSRuntime { get; set; } = default!;
     // Định dạng tiền tệ
     private string FormatCurrency(decimal amount)
     {
@@ -295,11 +433,13 @@
     {
         if (ProductDB.TryGetValue(InputProductCode, out var productInfo))
         {
-            CurrentUnitPrice = productInfo.Price;
+            CurrentUnitPrice = productInfo.UnitPrice;
+			CurrentProductName = productInfo.Name;
         }
         else
         {
             CurrentUnitPrice = 0;
+			CurrentProductName = "";
         }
     }
 
@@ -338,7 +478,7 @@
                 ProductId = InputProductCode,
                 Name = productInfo.Name,
                 Quantity = InputQuantity,
-                UnitPrice = productInfo.Price
+                UnitPrice = productInfo.UnitPrice
             });
         }
 
@@ -346,6 +486,7 @@
         InputProductCode = "";
         InputQuantityText = "1";
         CurrentUnitPrice = 0;
+		CurrentProductName = "";
         CurrentFocusedInput = "ProductCode";
 
         CalculateFinancialSummary(); // <-- CẬP NHẬT TRẠNG THÁI TÀI CHÍNH
@@ -394,22 +535,71 @@
         Console.WriteLine("Hủy thanh toán, quay lại màn hình giỏ hàng.");
     }
 
+    private Invoice CreateCompletedInvoiceObject()
+    {
+        // Giả lập dữ liệu cần thiết cho Invoice
+        int newId = new Random().Next(2000, 5000);
+        var user = new User { UserId = 1, Username = "Lê Văn Tèo" }; // Giả lập thu ngân
+        var customer = new Customer { CustomerId = 1, FullName = "Khách hàng" }; // Giả lập khách hàng
+
+        // Tạo chi tiết hóa đơn từ CartItems
+        var invoiceDetails = CartItems.Select(item => new InvoiceDetail
+        {
+            InvoiceId = newId,
+            ProductId = int.TryParse(item.ProductId, out var pid) ? pid : 0,
+            Quantity = item.Quantity,
+            UnitPrice = item.UnitPrice,
+            DiscountPerUnit = 0, // Mock: DiscountPerUnit = 0
+            Product = ProductDB.ContainsKey(item.ProductId) ? ProductDB[item.ProductId] : new Product { Name = item.Name }
+        }).ToList();
+
+        return new Invoice
+        {
+            InvoiceId = newId,
+            UserId = user.UserId,
+            CustomerId = customer.CustomerId,
+            CreatedAt = DateTime.Now,
+            TotalBeforeDiscount = OriginalPrice,
+            TotalAmount = AmountToCollect, // Số tiền sau KM và làm tròn
+            PaymentMethod = SelectedPaymentMethod.ToString(),
+            ReceivedAmount = AmountPaidInput,
+            ChangeAmount = ChangeAmount,
+            Status = "Paid",
+            PromotionId = DiscountAmountCalculated > 0 ? 99 : null, // Mock Promotion ID
+            User = user,
+            Customer = customer,
+            Promotion = DiscountAmountCalculated > 0 ? new Promotion { Name = "Khuyến mãi Chung" } : null,
+            InvoiceDetails = invoiceDetails
+        };
+    }
+
     // Hàm mới: Hoàn tất thanh toán
     private void FinalizePayment()
     {
         if (AmountPaidInput >= AmountToCollect)
         {
             Console.WriteLine($"Giao dịch THÀNH CÔNG! Phương thức: {SelectedPaymentMethod}. Cần thu: {FormatCurrency(AmountToCollect)}. Khách trả: {FormatCurrency(AmountPaidInput)}. Tiền thừa: {FormatCurrency(ChangeAmount)}");
-
-            CancelTransaction();
+            LastCompletedInvoice = CreateCompletedInvoiceObject();
             IsPaymentScreenVisible = false;
-            AmountPaidInput = 0;
-            SelectedPaymentMethod = PaymentMethod.Cash;
         }
         else
         {
             Console.WriteLine("Lỗi: Số tiền đã thu không đủ để thanh toán.");
         }
+    }
+
+    private void ResetToNewTransaction()
+    {
+        // Dọn dẹp trạng thái
+        CancelTransaction(); // Xóa giỏ hàng, reset input
+
+        LastCompletedInvoice = null; // Trở về màn hình giỏ hàng
+        IsPaymentScreenVisible = false;
+        AmountPaidInput = 0;
+        SelectedPaymentMethod = PaymentMethod.Cash;
+        DiscountDetails = "Không có khuyến mãi nào được áp dụng.";
+
+        Console.WriteLine("Quay về giao dịch mới.");
     }
 
     private void SetPaymentMethod(PaymentMethod method)
@@ -450,6 +640,7 @@
         InputProductCode = "";
         InputQuantityText = "1";
         CurrentUnitPrice = 0;
+		CurrentProductName = "";
 
         CalculateFinancialSummary(); // Reset lại số tiền
 
@@ -500,10 +691,22 @@
         {
             InputProductCode = "";
             CurrentUnitPrice = 0;
+			CurrentProductName = "";
         }
         else if (CurrentFocusedInput == "Quantity")
         {
             InputQuantityText = "1";
         }
+    }
+
+    private async Task PrintReceipt()
+    {
+        if (LastCompletedInvoice == null) return;
+
+        // **Lưu ý:** Cần CSS media print để chỉ in phần hóa đơn
+        await JSRuntime.InvokeVoidAsync("alert", $"Đang gửi lệnh in hóa đơn #{LastCompletedInvoice.InvoiceId}");
+
+        // Giả lập lệnh in
+        // await JSRuntime.InvokeVoidAsync("window.print");
     }
 }

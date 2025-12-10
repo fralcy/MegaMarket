@@ -50,11 +50,22 @@ h1:focus {
     border-color: #929292;
 }
 
+/* Áp dụng cho phần tử <main> */
+main {
+    display: flex; /* Biến main thành flex container */
+    flex-direction: column; /* Sắp xếp nội dung theo chiều dọc */
+    justify-content: center; /* Căn giữa nội dung theo chiều dọc */
+    align-items: center; /* Căn giữa nội dung theo chiều ngang */
+    height: 100vh; /* Quan trọng: Thiết lập chiều cao để căn giữa theo chiều dọc hoạt động */
+    width: 100%; /* Đảm bảo chiếm toàn bộ chiều rộng có sẵn */
+    flex-grow: 1; /* Để main chiếm phần không gian còn lại trong .page */
+}
+
 /* Checkout Styles */
 .checkout-container {
     max-width: 1200px;
-    margin: 20px auto;
-    padding: 20px;
+    margin: 10px auto;
+    padding: 10px;
     border: 1px solid #ccc;
     border-radius: 8px;
     display: grid;
@@ -513,4 +524,35 @@ hr {
 .receipt-total {
     font-weight: bold;
     font-size: 1.1em;
+}
+
+.invoice-completed-view {
+    grid-column: 1 / -1; /* Chiếm toàn bộ chiều ngang của .checkout-container */
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Chia thành 2 cột: Confirmation/Actions và Receipt */
+    gap: 30px;
+    padding: 20px 0;
+    align-items: flex-start; /* Quan trọng để nội dung không bị kéo dài */
+}
+
+.invoice-confirmation-panel {
+    padding: 30px;
+    border: 2px solid #28a745;
+    border-radius: 8px;
+    background-color: #e6ffed;
+    text-align: center;
+    /* Đảm bảo nó không bị kéo dài quá */
+}
+
+.receipt-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.receipt-preview-panel {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
 }
