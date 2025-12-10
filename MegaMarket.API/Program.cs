@@ -1,13 +1,17 @@
-using Microsoft.EntityFrameworkCore;
 using MegaMarket.Data.Data;
+using MegaMarket.Data.DataAccess;
+using MegaMarket.Data.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+builder.Services.AddScoped<InvoiceDAO>();
 
 // Register DbContext
-builder.Services.AddDbContext<MegaMarketDbContext>(options =>
+builder.Services.AddDbContextFactory<MegaMarketDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
     x => x.MigrationsAssembly("MegaMarket.Data")));
 

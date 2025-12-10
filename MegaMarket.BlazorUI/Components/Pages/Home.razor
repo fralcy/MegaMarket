@@ -1,4 +1,6 @@
 ﻿@page "/"
+
+@inject IHttpClientFactory HttpClientFactory
 @using System.Globalization
 @using MegaMarket.Data.Models
 
@@ -379,8 +381,8 @@
     // -----------------------------------------------------------------------
     // HÀM XỬ LÝ SỰ KIỆN
     // -----------------------------------------------------------------------
-    
-	[Inject]
+
+    [Inject]
     public IJSRuntime JSRuntime { get; set; } = default!;
     // Định dạng tiền tệ
     private string FormatCurrency(decimal amount)
@@ -434,12 +436,12 @@
         if (ProductDB.TryGetValue(InputProductCode, out var productInfo))
         {
             CurrentUnitPrice = productInfo.UnitPrice;
-			CurrentProductName = productInfo.Name;
+            CurrentProductName = productInfo.Name;
         }
         else
         {
             CurrentUnitPrice = 0;
-			CurrentProductName = "";
+            CurrentProductName = "";
         }
     }
 
@@ -486,7 +488,7 @@
         InputProductCode = "";
         InputQuantityText = "1";
         CurrentUnitPrice = 0;
-		CurrentProductName = "";
+        CurrentProductName = "";
         CurrentFocusedInput = "ProductCode";
 
         CalculateFinancialSummary(); // <-- CẬP NHẬT TRẠNG THÁI TÀI CHÍNH
@@ -550,7 +552,10 @@
             Quantity = item.Quantity,
             UnitPrice = item.UnitPrice,
             DiscountPerUnit = 0, // Mock: DiscountPerUnit = 0
-            Product = ProductDB.ContainsKey(item.ProductId) ? ProductDB[item.ProductId] : new Product { Name = item.Name }
+            // Product = ProductDB.ContainsKey(item.ProductId) ? ProductDB[item.ProductId] : new Product { Name = item.Name },
+            Product = null!,
+			Invoice = null!,
+			Promotion = null
         }).ToList();
 
         return new Invoice
@@ -566,21 +571,34 @@
             ChangeAmount = ChangeAmount,
             Status = "Paid",
             PromotionId = DiscountAmountCalculated > 0 ? 99 : null, // Mock Promotion ID
-            User = user,
-            Customer = customer,
+            User = null!,
+            Customer = null,
             Promotion = DiscountAmountCalculated > 0 ? new Promotion { Name = "Khuyến mãi Chung" } : null,
             InvoiceDetails = invoiceDetails
         };
     }
 
     // Hàm mới: Hoàn tất thanh toán
-    private void FinalizePayment()
+    private async void FinalizePayment()
     {
         if (AmountPaidInput >= AmountToCollect)
         {
             Console.WriteLine($"Giao dịch THÀNH CÔNG! Phương thức: {SelectedPaymentMethod}. Cần thu: {FormatCurrency(AmountToCollect)}. Khách trả: {FormatCurrency(AmountPaidInput)}. Tiền thừa: {FormatCurrency(ChangeAmount)}");
-            LastCompletedInvoice = CreateCompletedInvoiceObject();
-            IsPaymentScreenVisible = false;
+            var newInvoice = CreateCompletedInvoiceObject();
+            var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
+            var response = await httpClient.PostAsJsonAsync("api/Invoice", newInvoice);
+            if (response.IsSuccessStatusCode)
+            {
+                LastCompletedInvoice = await response.Content.ReadFromJsonAsync<Invoice>();
+                IsPaymentScreenVisible = false;
+                Console.WriteLine($"Hóa đơn #{LastCompletedInvoice.InvoiceId} đã được lưu vào hệ thống.");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.Error.WriteLine($"Lỗi khi lưu hóa đơn (Status: {response.StatusCode}): {errorContent}");
+                return;
+            }
         }
         else
         {
