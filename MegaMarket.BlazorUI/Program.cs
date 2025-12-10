@@ -1,10 +1,20 @@
 using MegaMarket.BlazorUI.Components;
+using MegaMarket.BlazorUI.Services.CustomerLoyalty;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Register HTTP Client
+builder.Services.AddHttpClient();
+
+// Register Customer Loyalty Services
+builder.Services.AddScoped<CustomerService>();
+builder.Services.AddScoped<LoyaltyService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<RewardManagementService>();
 
 var app = builder.Build();
 

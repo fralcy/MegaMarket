@@ -12,7 +12,7 @@ public class Customer
     [Required]
     [StringLength(100)]
     [Column("full_name")]
-    public string FullName { get; set; } = string.Empty;
+    public string? FullName { get; set; }
 
     [StringLength(15)]
     [Column("phone")]
