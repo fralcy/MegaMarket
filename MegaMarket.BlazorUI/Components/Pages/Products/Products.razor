@@ -1,0 +1,591 @@
+@page "/products"
+@rendermode InteractiveServer
+@using MegaMarket.BlazorUI.Services.Products
+@inject ProductService ProductService
+
+<div class="products-page">
+    <div class="page-header card shadow-sm border-0">
+        <div class="d-flex align-items-center gap-3">
+            <div class="header-icon">
+                <span class="bi bi-box-seam"></span>
+            </div>
+            <div>
+                <h1 class="page-title mb-1">Product Management</h1>
+                <p class="text-muted mb-0">Manage your inventory and product catalog</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="filters card shadow-sm border-0">
+        <div class="filter-layout">
+            <div class="filter-main">
+                <div class="input-icon">
+                    <span class="bi bi-search"></span>
+                    <input class="form-control" placeholder="Search by name, barcode, category..."
+                           @bind="searchTerm" @bind:event="oninput" @bind:after="OnFiltersChanged" />
+                </div>
+                <select class="form-select" @onchange="OnCategoryChanged">
+                    <option value="all">All Categories</option>
+                    @foreach (var cat in categories)
+                    {
+                        <option value="@cat">@cat</option>
+                    }
+                </select>
+                <div class="toggle-row">
+                    <label class="switch-toggle">
+                        <input type="checkbox" @bind="showLowStockOnly" @bind:event="onchange" @bind:after="OnFiltersChanged" />
+                        <span class="switch"></span>
+                        <span class="toggle-label">Low stock only</span>
+                    </label>
+                    <label class="switch-toggle">
+                        <input type="checkbox" @bind="showPerishableOnly" @bind:event="onchange" @bind:after="OnFiltersChanged" />
+                        <span class="switch"></span>
+                        <span class="toggle-label">Perishable only</span>
+                    </label>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <select class="form-select form-select-sm page-size" @onchange="OnPageSizeChanged">
+                    <option value="15">15 / page</option>
+                    <option value="20">20 / page</option>
+                </select>
+                <button class="btn btn-outline-secondary" @onclick="ReloadAsync" disabled="@isLoading">
+                    <span class="bi bi-arrow-clockwise me-1"></span>
+                </button>
+                <button class="btn btn-dark" @onclick="OpenCreateModal">
+                    <span class="bi bi-plus-lg me-1"></span> Add Product
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats row g-3">
+        <div class="col-lg-3 col-sm-6">
+            <div class="stat-card">
+                <span class="label">Total products</span>
+                <h4>@products.Count</h4>
+                <small class="text-muted">All SKUs loaded</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-sm-6">
+            <div class="stat-card">
+                <span class="label">Low stock</span>
+                <h4 class="text-danger">@products.Count(IsLowStock)</h4>
+                <small class="text-muted">Qty &lt; Min Qty</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-sm-6">
+            <div class="stat-card">
+                <span class="label">Perishable</span>
+                <h4 class="text-warning">@products.Count(p => p.IsPerishable)</h4>
+                <small class="text-muted">Freshness monitored</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-sm-6">
+            <div class="stat-card">
+                <span class="label">Expiring &lt;= 7d</span>
+                <h4 class="text-info">@products.Count(p => GetExpiryStatus(p) == ExpiryStatus.NearExpiry)</h4>
+                <small class="text-muted">Plan markdowns</small>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Oops!</strong> @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm border-0 table-card">
+        <div class="card-body p-0">
+            @if (isLoading)
+            {
+                <div class="loading-state">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-2 mb-0">Loading products...</p>
+                </div>
+            }
+            else if (!filteredProducts.Any())
+            {
+                <div class="p-4 text-center text-muted">
+                    <p class="mb-2">No products match your filters.</p>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="ResetFilters">Reset filters</button>
+                </div>
+            }
+            else
+            {
+                <ProductTable Products="PagedProducts"
+                              SortColumn="sortColumn"
+                              SortAscending="sortAscending"
+                              OnSort="ChangeSort"
+                              OnEdit="OpenEditModal"
+                              OnView="OpenDetails"
+                              OnDelete="ConfirmDelete"
+                              RowClassSelector="GetRowCss"
+                              BadgeSelector="BuildBadges" />
+
+                <div class="d-flex justify-content-between align-items-center flex-wrap px-3 py-3 border-top gap-2">
+                    <small class="text-muted">Showing @PagedProducts.Count() of @filteredProducts.Count products</small>
+                    <div class="pagination-controls">
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="PrevPage" disabled="@(currentPage == 1)">Prev</button>
+                        <span class="mx-2">Page @currentPage / @TotalPages</span>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="NextPage" disabled="@(currentPage >= TotalPages)">Next</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (showFormModal)
+{
+    <div class="modal-overlay" @onclick="CloseFormModal">
+        <div class="modal-panel" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div>
+                    <p class="eyebrow mb-1">@((isEditing ? "Update" : "Create") + " product")</p>
+                    <h4 class="mb-0">@((isEditing ? "Edit product details" : "New product"))</h4>
+                </div>
+                <button class="btn-close" @onclick="CloseFormModal"></button>
+            </div>
+            <div class="modal-body">
+                <ProductForm Model="formModel"
+                             IsEditing="isEditing"
+                             IsSaving="isSaving"
+                             OnValidSubmit="HandleSubmit"
+                             OnCancel="CloseFormModal" />
+            </div>
+        </div>
+    </div>
+}
+
+<ProductDetails Product="detailProduct" IsOpen="showDetails" OnClose="CloseDetails" />
+
+@if (confirmDeleteTarget is not null)
+{
+    <div class="modal-overlay" @onclick="CloseConfirmDelete">
+        <div class="modal-panel confirm" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div>
+                    <p class="eyebrow mb-1">Delete product</p>
+                    <h4 class="mb-0 text-danger">Are you sure?</h4>
+                </div>
+                <button class="btn-close" @onclick="CloseConfirmDelete"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">You're about to delete <strong>@confirmDeleteTarget.Name</strong> (<code>@confirmDeleteTarget.Barcode</code>).</p>
+                <div class="d-flex gap-2 justify-content-end">
+                    <button class="btn btn-outline-secondary" @onclick="CloseConfirmDelete">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteConfirmed">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="toast-container">
+    @foreach (var toast in toasts)
+    {
+        <div class="toast-item @toast.Variant">
+            <span class="me-2">@toast.Message</span>
+            <button class="btn btn-sm btn-link text-light p-0" @onclick="() => DismissToast(toast)">×</button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ProductDto> products = new();
+    private List<ProductDto> filteredProducts = new();
+    private IReadOnlyList<string> categories = Array.Empty<string>();
+
+    private string searchTerm = string.Empty;
+    private string selectedCategory = "all";
+    private bool showLowStockOnly;
+    private bool showPerishableOnly;
+    private string sortColumn = "name";
+    private bool sortAscending = true;
+    private int currentPage = 1;
+    private int pageSize = 15;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string? errorMessage;
+
+    private bool showFormModal;
+    private bool isEditing;
+    private ProductInputModel formModel = new();
+
+    private bool showDetails;
+    private ProductDto? detailProduct;
+
+    private ProductDto? confirmDeleteTarget;
+
+    private readonly List<ToastMessage> toasts = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProductsAsync();
+    }
+
+    private async Task LoadProductsAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            products = await ProductService.GetProductsAsync();
+            BuildCategories();
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void BuildCategories()
+    {
+        categories = products
+            .Where(p => !string.IsNullOrWhiteSpace(p.Category))
+            .Select(p => p.Category!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(c => c)
+            .ToList();
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<ProductDto> query = products;
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(p =>
+                p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                p.Barcode.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                (p.Category?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedCategory) && selectedCategory != "all")
+        {
+            query = query.Where(p => p.Category != null && p.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (showLowStockOnly)
+        {
+            query = query.Where(IsLowStock);
+        }
+
+        if (showPerishableOnly)
+        {
+            query = query.Where(p => p.IsPerishable);
+        }
+
+        query = Sort(query);
+
+        filteredProducts = query.ToList();
+        currentPage = Math.Clamp(currentPage, 1, TotalPages);
+    }
+
+    private IEnumerable<ProductDto> Sort(IEnumerable<ProductDto> query) =>
+        sortColumn switch
+        {
+            "name" => sortAscending ? query.OrderBy(p => p.Name) : query.OrderByDescending(p => p.Name),
+            "category" => sortAscending ? query.OrderBy(p => p.Category) : query.OrderByDescending(p => p.Category),
+            "unit_price" => sortAscending ? query.OrderBy(p => p.UnitPrice) : query.OrderByDescending(p => p.UnitPrice),
+            "quantity" => sortAscending ? query.OrderBy(p => p.QuantityInStock) : query.OrderByDescending(p => p.QuantityInStock),
+            "expiry" => sortAscending ? query.OrderBy(p => p.ExpiryDate ?? DateTime.MaxValue) : query.OrderByDescending(p => p.ExpiryDate ?? DateTime.MinValue),
+            _ => query
+        };
+
+    private IEnumerable<ProductDto> PagedProducts => filteredProducts
+        .Skip((currentPage - 1) * pageSize)
+        .Take(pageSize);
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(filteredProducts.Count / (double)pageSize));
+
+    private void ChangeSort(string column)
+    {
+        if (sortColumn == column)
+        {
+            sortAscending = !sortAscending;
+        }
+        else
+        {
+            sortColumn = column;
+            sortAscending = true;
+        }
+        ApplyFilters();
+    }
+
+    private void OnCategoryChanged(ChangeEventArgs args)
+    {
+        selectedCategory = args.Value?.ToString() ?? "all";
+        currentPage = 1;
+        ApplyFilters();
+    }
+
+    private void OnFiltersChanged()
+    {
+        currentPage = 1;
+        ApplyFilters();
+    }
+
+    private void OnPageSizeChanged(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var size))
+        {
+            pageSize = size;
+        }
+        currentPage = 1;
+        ApplyFilters();
+    }
+
+    private void ResetFilters()
+    {
+        searchTerm = string.Empty;
+        selectedCategory = "all";
+        showLowStockOnly = false;
+        showPerishableOnly = false;
+        ApplyFilters();
+    }
+
+    private void NextPage()
+    {
+        if (currentPage < TotalPages)
+        {
+            currentPage++;
+        }
+    }
+
+    private void PrevPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+        }
+    }
+
+    private void OpenCreateModal()
+    {
+        isEditing = false;
+        formModel = new ProductInputModel
+        {
+            QuantityInStock = 0,
+            MinQuantity = 0,
+            DiscountPercent = 0,
+            UnitPrice = 0
+        };
+        showFormModal = true;
+    }
+
+    private void OpenEditModal(ProductDto product)
+    {
+        isEditing = true;
+        formModel = new ProductInputModel
+        {
+            ProductId = product.ProductId,
+            Barcode = product.Barcode,
+            Name = product.Name,
+            Category = product.Category,
+            UnitLabel = product.UnitLabel,
+            OriginalPrice = product.OriginalPrice,
+            UnitPrice = product.UnitPrice,
+            DiscountPercent = product.DiscountPercent,
+            QuantityInStock = product.QuantityInStock,
+            MinQuantity = product.MinQuantity,
+            IsPerishable = product.IsPerishable,
+            ExpiryDate = product.ExpiryDate,
+            ImageUrl = product.ImageUrl
+        };
+        showFormModal = true;
+    }
+
+    private void CloseFormModal()
+    {
+        showFormModal = false;
+        formModel = new ProductInputModel();
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSaving = true;
+        try
+        {
+            if (isEditing && formModel.ProductId > 0)
+            {
+                await ProductService.UpdateProductAsync(formModel.ProductId, formModel);
+                ShowToast("Product updated", "success");
+            }
+            else
+            {
+                await ProductService.CreateProductAsync(formModel);
+                ShowToast("Product created", "success");
+            }
+
+            CloseFormModal();
+            await LoadProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowToast("Operation failed: " + ex.Message, "error");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void OpenDetails(ProductDto product)
+    {
+        detailProduct = product;
+        showDetails = true;
+    }
+
+    private void CloseDetails()
+    {
+        showDetails = false;
+        detailProduct = null;
+    }
+
+    private void ConfirmDelete(ProductDto product)
+    {
+        confirmDeleteTarget = product;
+    }
+
+    private void CloseConfirmDelete()
+    {
+        confirmDeleteTarget = null;
+    }
+
+    private async Task DeleteConfirmed()
+    {
+        if (confirmDeleteTarget is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await ProductService.DeleteProductAsync(confirmDeleteTarget.ProductId);
+            ShowToast("Product deleted", "success");
+            confirmDeleteTarget = null;
+            await LoadProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowToast("Delete failed: " + ex.Message, "error");
+        }
+    }
+
+    private string GetRowCss(ProductDto product)
+    {
+        var classes = new List<string>();
+
+        if (IsLowStock(product))
+        {
+            classes.Add("low-stock");
+        }
+
+        var expiry = GetExpiryStatus(product);
+        if (expiry == ExpiryStatus.Expired)
+        {
+            classes.Add("expired");
+        }
+        else if (expiry == ExpiryStatus.NearExpiry)
+        {
+            classes.Add("near-expiry");
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private IEnumerable<ProductTable.BadgeModel> BuildBadges(ProductDto product)
+    {
+        var badges = new List<ProductTable.BadgeModel>();
+
+        if (IsLowStock(product))
+        {
+            badges.Add(new ProductTable.BadgeModel("Low stock", "bg-danger"));
+        }
+
+        if (product.IsPerishable)
+        {
+            badges.Add(new ProductTable.BadgeModel("Perishable", "bg-warning text-dark"));
+        }
+
+        var expiry = GetExpiryStatus(product);
+        if (expiry == ExpiryStatus.Expired)
+        {
+            badges.Add(new ProductTable.BadgeModel("Expired", "bg-dark"));
+        }
+        else if (expiry == ExpiryStatus.NearExpiry)
+        {
+            badges.Add(new ProductTable.BadgeModel("Near expiry", "bg-info text-dark"));
+        }
+
+        return badges;
+    }
+
+    private bool IsLowStock(ProductDto product) => product.QuantityInStock < product.MinQuantity;
+
+    private ExpiryStatus GetExpiryStatus(ProductDto product)
+    {
+        if (!product.IsPerishable || !product.ExpiryDate.HasValue)
+        {
+            return ExpiryStatus.None;
+        }
+
+        var days = (product.ExpiryDate.Value.Date - DateTime.Today).TotalDays;
+
+        if (days < 0)
+        {
+            return ExpiryStatus.Expired;
+        }
+
+        if (days <= 7)
+        {
+            return ExpiryStatus.NearExpiry;
+        }
+
+        return ExpiryStatus.Fresh;
+    }
+
+    private void ShowToast(string message, string variant)
+    {
+        var toast = new ToastMessage(message, variant);
+        toasts.Add(toast);
+        StateHasChanged();
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(4000);
+            await InvokeAsync(() => DismissToast(toast));
+        });
+    }
+
+    private void DismissToast(ToastMessage toast)
+    {
+        toasts.Remove(toast);
+        StateHasChanged();
+    }
+
+    private async Task ReloadAsync()
+    {
+        await LoadProductsAsync();
+    }
+
+    private record ToastMessage(string Message, string Variant);
+
+    private enum ExpiryStatus
+    {
+        None,
+        Fresh,
+        NearExpiry,
+        Expired
+    }
+}

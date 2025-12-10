@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using MegaMarket.Data.Data;
+using MegaMarket.API.Services.Interfaces;
+using MegaMarket.API.Services.Implementations;
+using MegaMarket.API.Data;
 using MegaMarket.Data.Repositories;
 using MegaMarket.API.Services;
 
@@ -8,9 +11,23 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
-// Register DbContext
+// Register DbContext and services
 builder.Services.AddDbContext<MegaMarketDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IImportService, ImportService>();
+
+var allowedOrigins = builder.Configuration.GetSection("AllowedCorsOrigins").Get<string[]>() ??
+                     new[] { "https://localhost:7168", "http://localhost:5023", "https://localhost:5023" };
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 
 //Add Repositories and Services
@@ -42,6 +59,14 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
+app.UseCors("AllowFrontend");
+
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<MegaMarketDbContext>();
+    await DbSeeder.SeedAsync(dbContext);
+}
 
 app.Run();
