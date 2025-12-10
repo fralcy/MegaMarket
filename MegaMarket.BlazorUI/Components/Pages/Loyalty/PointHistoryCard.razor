@@ -1,0 +1,66 @@
+@using MegaMarket.BlazorUI.Services.CustomerLoyalty
+
+<div class="card">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">?? Points History</h5>
+    </div>
+    <div class="card-body p-0">
+        @if (History != null && History.Count > 0)
+        {
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th class="text-end">Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var history in History)
+                        {
+                            <tr>
+                                <td>
+                                    <small>@history.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                                </td>
+                                <td>
+                                    <span class="badge @GetTypeBadgeClass(history.TransactionType)">
+                                        @history.TransactionType
+                                    </span>
+                                </td>
+                                <td>
+                                    <small>@history.Description</small>
+                                </td>
+                                <td class="text-end">
+                                    <strong class="@(history.PointChange > 0 ? "text-success" : "text-danger")">
+                                        @(history.PointChange > 0 ? "+" : "")@history.PointChange
+                                    </strong>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="p-4 text-center text-muted">
+                <p class="mb-0">No points history</p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public List<PointHistoryDto>? History { get; set; }
+
+    private string GetTypeBadgeClass(string? type) => type switch
+    {
+        "Earn" => "bg-success",
+        "Redeem" => "bg-danger",
+        "Adjust" => "bg-warning text-dark",
+        _ => "bg-light text-dark"
+    };
+}

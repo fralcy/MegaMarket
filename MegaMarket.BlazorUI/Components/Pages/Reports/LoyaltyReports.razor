@@ -1,0 +1,174 @@
+@page "/reports/loyalty"
+@using MegaMarket.BlazorUI.Services.CustomerLoyalty
+@inject ReportService ReportService
+@rendermode InteractiveServer
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>?? Loyalty Reports</h2>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary" @onclick="RefreshReports">
+                ?? Refresh
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="alert alert-info">
+            <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            Loading reports...
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @errorMessage
+            <button class="btn btn-sm btn-outline-danger float-end" @onclick="() => { errorMessage = null; }">?</button>
+        </div>
+    }
+
+    <!-- Reports Grid -->
+    <div class="row g-4">
+        <!-- Top Customers Report -->
+        <div class="col-lg-6">
+            <TopCustomersReport TopCustomers="topCustomers" IsLoading="isLoading" />
+        </div>
+
+        <!-- Top Rewards Report -->
+        <div class="col-lg-6">
+            <TopRewardsReport TopRewards="topRewards" IsLoading="isLoading" />
+        </div>
+    </div>
+
+    <!-- Points Summary Report -->
+    <div class="row g-4 mt-2">
+        <div class="col-12">
+            <PointsSummaryReport PointsSummary="pointsSummary" IsLoading="isLoading" />
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row g-4 mt-2">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Total Customers</h6>
+                    <h3 class="text-primary">@(topCustomers?.Count ?? 0)</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Total Rewards</h6>
+                    <h3 class="text-success">@(topRewards?.Count ?? 0)</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Total Earned</h6>
+                    <h3 class="text-info">@GetTotalEarned().ToString("N0")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Total Redeemed</h6>
+                    <h3 class="text-danger">@GetTotalRedeemed().ToString("N0")</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<TopCustomerDto>? topCustomers = null;
+    private List<TopRewardDto>? topRewards = null;
+    private List<PointsSummaryDto>? pointsSummary = null;
+    private bool isLoading = true;
+    private string? errorMessage = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshReports();
+    }
+
+    private async Task RefreshReports()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            var tasks = new List<Task>
+            {
+                LoadTopCustomers(),
+                LoadTopRewards(),
+                LoadPointsSummary()
+            };
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading reports: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadTopCustomers()
+    {
+        try
+        {
+            topCustomers = await ReportService.GetTopCustomersAsync(10);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Error loading top customers: {ex.Message}");
+        }
+    }
+
+    private async Task LoadTopRewards()
+    {
+        try
+        {
+            topRewards = await ReportService.GetTopRewardsAsync(10);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Error loading top rewards: {ex.Message}");
+        }
+    }
+
+    private async Task LoadPointsSummary()
+    {
+        try
+        {
+            pointsSummary = await ReportService.GetPointsSummaryAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Error loading points summary: {ex.Message}");
+        }
+    }
+
+    private int GetTotalEarned()
+    {
+        return pointsSummary?.FirstOrDefault(p => p.TransactionType == "Earn")?.TotalPoints ?? 0;
+    }
+
+    private int GetTotalRedeemed()
+    {
+        var total = pointsSummary?.FirstOrDefault(p => p.TransactionType == "Redeem")?.TotalPoints ?? 0;
+        return Math.Abs(total);
+    }
+}

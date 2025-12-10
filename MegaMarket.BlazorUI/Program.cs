@@ -2,6 +2,7 @@ using MegaMarket.BlazorUI.Components;
 using MegaMarket.BlazorUI.Services;
 using MegaMarket.BlazorUI.Services.Products;
 using MegaMarket.BlazorUI.Services.Imports;
+using MegaMarket.BlazorUI.Services.CustomerLoyalty;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,14 @@ builder.Services.AddHttpClient<ImportService>((sp, client) =>
     var baseUrl = configuration["ApiSettings:BaseUrl"] ?? configuration["ApiBaseUrl"] ?? "https://localhost:7284";
     client.BaseAddress = new Uri(baseUrl);
 });
+// Register HTTP Client
+builder.Services.AddHttpClient();
+
+// Register Customer Loyalty Services
+builder.Services.AddScoped<CustomerService>();
+builder.Services.AddScoped<LoyaltyService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<RewardManagementService>();
 
 var app = builder.Build();
 

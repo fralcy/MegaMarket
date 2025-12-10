@@ -3,6 +3,8 @@ using MegaMarket.Data.Data;
 using MegaMarket.API.Services.Interfaces;
 using MegaMarket.API.Services.Implementations;
 using MegaMarket.API.Data;
+using MegaMarket.Data.Repositories;
+using MegaMarket.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +28,19 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 });
+
+
+//Add Repositories and Services
+builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IPointTransactionRepository, PointTransactionRepository>();
+builder.Services.AddScoped<ICustomerRewardRepository, CustomerRewardRepository>();
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
+builder.Services.AddScoped<IPointTransactionService, PointTransactionService>();
+builder.Services.AddScoped<IRewardRepository, RewardRepository>();
+builder.Services.AddScoped<IRewardService, RewardService>();
+builder.Services.AddScoped<ICustomerRewardService, CustomerRewardService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
