@@ -27,9 +27,8 @@ public static class TestData
                 FullName = "Nguyen Van A",
                 Phone = "0901234567",
                 Email = "nguyenvana@email.com",
-                Address = "123 Le Loi, Q1, HCMC",
-                TotalPoints = 1000,
-                IsActive = true
+                Points = 1000,
+                Rank = "Gold"
             },
             new Customer
             {
@@ -37,9 +36,8 @@ public static class TestData
                 FullName = "Tran Thi B",
                 Phone = "0907654321",
                 Email = "tranthib@email.com",
-                Address = "456 Nguyen Hue, Q1, HCMC",
-                TotalPoints = 500,
-                IsActive = true
+                Points = 500,
+                Rank = "Silver"
             },
             new Customer
             {
@@ -47,9 +45,8 @@ public static class TestData
                 FullName = "Le Van C",
                 Phone = "0912345678",
                 Email = "levanc@email.com",
-                Address = "789 Hai Ba Trung, Q3, HCMC",
-                TotalPoints = 2000,
-                IsActive = true
+                Points = 2000,
+                Rank = "Platinum"
             }
         };
 
@@ -212,16 +209,15 @@ public static class TestData
         string fullName = "Test Customer",
         string phone = "0900000000",
         string? email = null,
-        int totalPoints = 0)
+        int points = 0)
     {
         return new Customer
         {
             FullName = fullName,
             Phone = phone,
             Email = email ?? $"{phone}@test.com",
-            Address = "Test Address",
-            TotalPoints = totalPoints,
-            IsActive = true
+            Points = points,
+            Rank = "Silver"
         };
     }
 

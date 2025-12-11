@@ -124,10 +124,14 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapGraphQL("/graphql");
 
-using (var scope = app.Services.CreateScope())
+// Seed database only in non-testing environments
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<MegaMarketDbContext>();
-    await DbSeeder.SeedAsync(dbContext);
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<MegaMarketDbContext>();
+        await DbSeeder.SeedAsync(dbContext);
+    }
 }
 
 app.Run();
