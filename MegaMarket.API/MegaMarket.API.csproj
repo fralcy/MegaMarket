@@ -4,14 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
-  
-  <ItemGroup>
-    <Compile Remove="Helpers\**" />
-    <Content Remove="Helpers\**" />
-    <EmbeddedResource Remove="Helpers\**" />
-    <None Remove="Helpers\**" />
-  </ItemGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="HotChocolate.AspNetCore" Version="13.9.0" />
@@ -36,6 +29,5 @@
     <Folder Include="DTOs\Exports\" />
     <Folder Include="DTOs\Inventory\" />
     <Folder Include="DTOs\Products\" />
-    <Folder Include="Helpers\" />
   </ItemGroup>
 </Project>

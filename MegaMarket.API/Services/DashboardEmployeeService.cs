@@ -41,24 +41,24 @@ public class DashboardEmployeeService
 
         // Tính tổng số giờ làm việc
         var totalHoursWorked = await attendanceQuery
-            .Where(a => a.CheckOut != null)
-            .Select(a => EF.Functions.DateDiffMinute(a.CheckIn, a.CheckOut.Value) / 60.0)
+            .Where(a => a.CheckIn != null && a.CheckOut != null)
+            .Select(a => EF.Functions.DateDiffMinute(a.CheckIn.Value, a.CheckOut.Value) / 60.0)
             .SumAsync();
 
         // Attendance by shift
         var attendanceByShift = await attendanceQuery
             .Include(a => a.ShiftType)
-            .GroupBy(a => new { a.ShiftType.ShiftName, a.ShiftType.WagePerHour })
+            .GroupBy(a => new { a.ShiftType.Name, a.ShiftType.WagePerHour })
             .Select(g => new AttendanceByShiftDto
             {
-                ShiftName = g.Key.ShiftName,
+                ShiftName = g.Key.Name,
                 AttendanceCount = g.Count(),
                 OnTimeCount = g.Count(a => !a.IsLate),
                 LateCount = g.Count(a => a.IsLate),
-                TotalHoursWorked = g.Where(a => a.CheckOut != null)
-                    .Sum(a => EF.Functions.DateDiffMinute(a.CheckIn, a.CheckOut.Value) / 60.0),
-                TotalWages = g.Where(a => a.CheckOut != null)
-                    .Sum(a => EF.Functions.DateDiffMinute(a.CheckIn, a.CheckOut.Value) / 60.0 * g.Key.WagePerHour)
+                TotalHoursWorked = g.Where(a => a.CheckIn != null && a.CheckOut != null)
+                    .Sum(a => EF.Functions.DateDiffMinute(a.CheckIn.Value, a.CheckOut.Value) / 60.0),
+                TotalWages = (decimal)g.Where(a => a.CheckIn != null && a.CheckOut != null)
+                    .Sum(a => EF.Functions.DateDiffMinute(a.CheckIn.Value, a.CheckOut.Value) / 60.0 * (double)g.Key.WagePerHour)
             })
             .ToListAsync();
 
@@ -107,12 +107,12 @@ public class DashboardEmployeeService
                 UserId = g.Key.UserId,
                 Username = g.Key.Username,
                 FullName = g.Key.FullName,
-                DaysWorked = g.Select(a => a.CheckIn.Date).Distinct().Count(),
-                TotalHoursWorked = g.Where(a => a.CheckOut != null)
-                    .Sum(a => EF.Functions.DateDiffMinute(a.CheckIn, a.CheckOut.Value) / 60.0),
+                DaysWorked = g.Where(a => a.CheckIn != null).Select(a => a.CheckIn!.Value.Date).Distinct().Count(),
+                TotalHoursWorked = g.Where(a => a.CheckIn != null && a.CheckOut != null)
+                    .Sum(a => EF.Functions.DateDiffMinute(a.CheckIn.Value, a.CheckOut.Value) / 60.0),
                 LateCount = g.Count(a => a.IsLate),
-                TotalWages = g.Where(a => a.CheckOut != null)
-                    .Sum(a => EF.Functions.DateDiffMinute(a.CheckIn, a.CheckOut.Value) / 60.0 * a.ShiftType.WagePerHour),
+                TotalWages = (decimal)g.Where(a => a.CheckIn != null && a.CheckOut != null)
+                    .Sum(a => (double)EF.Functions.DateDiffMinute(a.CheckIn.Value, a.CheckOut.Value) / 60.0 * (double)a.ShiftType.WagePerHour),
                 AttendanceRate = g.Count() > 0 ? (double)g.Count(a => !a.IsLate) / g.Count() * 100 : 0
             })
             .OrderByDescending(e => e.TotalHoursWorked)
@@ -138,12 +138,12 @@ public class DashboardEmployeeService
         var lateCount = attendances.Count(a => a.IsLate);
 
         var totalHoursWorked = attendances
-            .Where(a => a.CheckOut != null)
-            .Sum(a => (a.CheckOut.Value - a.CheckIn).TotalHours);
+            .Where(a => a.CheckIn != null && a.CheckOut != null)
+            .Sum(a => (a.CheckOut!.Value - a.CheckIn!.Value).TotalHours);
 
         var totalWages = attendances
-            .Where(a => a.CheckOut != null)
-            .Sum(a => (a.CheckOut.Value - a.CheckIn).TotalHours * (double)a.ShiftType.WagePerHour);
+            .Where(a => a.CheckIn != null && a.CheckOut != null)
+            .Sum(a => (a.CheckOut!.Value - a.CheckIn!.Value).TotalHours * (double)a.ShiftType.WagePerHour);
 
         return new AttendanceRateDto
         {
