@@ -1,0 +1,57 @@
+@* Attendance Statistics Component *@
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <StatsCard
+            Title="Total Records"
+            Value="@totalRecords.ToString()"
+            SubLabel="Attendance entries"
+            Color="primary" />
+    </div>
+    <div class="col-md-3">
+        <StatsCard
+            Title="On Time"
+            Value="@onTimeCount.ToString()"
+            SubLabel="@($"{onTimePercentage}% of total")"
+            Color="success" />
+    </div>
+    <div class="col-md-3">
+        <StatsCard
+            Title="Late Arrivals"
+            Value="@lateCount.ToString()"
+            SubLabel="@($"{latePercentage}% of total")"
+            Color="warning" />
+    </div>
+    <div class="col-md-3">
+        <StatsCard
+            Title="Total Hours"
+            Value="@totalHours.ToString("F1")"
+            SubLabel="Work hours"
+            Color="info" />
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public List<AttendanceHistory.AttendanceDto>? Attendances { get; set; }
+
+    private int totalRecords => Attendances?.Count ?? 0;
+    private int onTimeCount => Attendances?.Count(a => !a.IsLate && a.CheckOut != null) ?? 0;
+    private int lateCount => Attendances?.Count(a => a.IsLate) ?? 0;
+    private int onTimePercentage => totalRecords > 0 ? (int)((double)onTimeCount / totalRecords * 100) : 0;
+    private int latePercentage => totalRecords > 0 ? (int)((double)lateCount / totalRecords * 100) : 0;
+
+    private decimal totalHours
+    {
+        get
+        {
+            if (Attendances == null || !Attendances.Any()) return 0;
+
+            var hours = Attendances
+                .Where(a => a.CheckOut != null)
+                .Sum(a => (a.CheckOut!.Value - a.CheckIn).TotalHours);
+
+            return (decimal)hours;
+        }
+    }
+}

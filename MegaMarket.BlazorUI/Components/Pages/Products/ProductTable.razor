@@ -1,0 +1,141 @@
+@using MegaMarket.BlazorUI.Services.Products
+
+<div class="table-responsive">
+    <table class="table align-middle product-table mb-0">
+        <thead>
+            <tr>
+                <th class="col-image">Image</th>
+                <th class="col-barcode">Barcode</th>
+                <th>
+                    <button class="sort" @onclick="SortByName">
+                        Name <span class="@GetSortIcon("name")"></span>
+                    </button>
+                </th>
+                <th>
+                    <button class="sort" @onclick="SortByCategory">
+                        Category <span class="@GetSortIcon("category")"></span>
+                    </button>
+                </th>
+                <th>
+                    <button class="sort" @onclick="SortByUnitPrice">
+                        Unit Price <span class="@GetSortIcon("unit_price")"></span>
+                    </button>
+                </th>
+                <th>
+                    <button class="sort" @onclick="SortByQuantity">
+                        Stock <span class="@GetSortIcon("quantity")"></span>
+                    </button>
+                </th>
+                <th>
+                    <button class="sort" @onclick="SortByExpiry">
+                        Expiry Date <span class="@GetSortIcon("expiry")"></span>
+                    </button>
+                </th>
+                <th>Unit</th>
+                <th>Original</th>
+                <th>Discount</th>
+                <th>Min Qty</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in Products)
+            {
+                <tr class="@RowClassSelector?.Invoke(product)">
+                    <td class="col-image">
+                        <div class="thumb">
+                            @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
+                            {
+                                <img src="@product.ImageUrl"
+                                     alt="@product.Name"
+                                     loading="lazy" />
+                            }
+                            else
+                            {
+                                <span class="bi bi-box"></span>
+                            }
+                        </div>
+                    </td>
+                    <td class="text-muted small">@(string.IsNullOrWhiteSpace(product.Barcode) ? "-" : product.Barcode)</td>
+                    <td>
+                        <div class="fw-semibold">@product.Name</div>
+                    </td>
+                    <td>@(string.IsNullOrWhiteSpace(product.Category) ? "-" : product.Category)</td>
+                    <td>@product.UnitPrice.ToString("C")</td>
+                    <td class="fw-semibold">@product.QuantityInStock</td>
+                    <td>@(product.ExpiryDate?.ToString("yyyy-MM-dd") ?? "-")</td>
+                    <td>@(string.IsNullOrWhiteSpace(product.UnitLabel) ? "-" : product.UnitLabel)</td>
+                    <td>
+                        @if (product.OriginalPrice.HasValue)
+                        {
+                            <span class="text-muted text-decoration-line-through">@product.OriginalPrice.Value.ToString("C")</span>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
+                    <td>@(product.DiscountPercent.HasValue ? $"{product.DiscountPercent.Value}%" : "-")</td>
+                    <td>@product.MinQuantity</td>
+                    <td>
+                        @if (BadgeSelector is not null)
+                        {
+                            <div class="badge-row">
+                                @foreach (var badge in BadgeSelector(product))
+                                {
+                                    <span class="badge @badge.CssClass">@badge.Label</span>
+                                }
+                            </div>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <div class="action-icons">
+                            <button class="icon-btn" title="View" @onclick="() => OnView.InvokeAsync(product)">
+                                <span class="bi bi-eye"></span>
+                            </button>
+                            <button class="icon-btn" title="Edit" @onclick="() => OnEdit.InvokeAsync(product)">
+                                <span class="bi bi-pencil"></span>
+                            </button>
+                            <button class="icon-btn danger" title="Delete" @onclick="() => OnDelete.InvokeAsync(product)">
+                                <span class="bi bi-trash"></span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter] public IEnumerable<ProductDto> Products { get; set; } = Enumerable.Empty<ProductDto>();
+    [Parameter] public EventCallback<string> OnSort { get; set; }
+    [Parameter] public string SortColumn { get; set; } = string.Empty;
+    [Parameter] public bool SortAscending { get; set; }
+    [Parameter] public EventCallback<ProductDto> OnEdit { get; set; }
+    [Parameter] public EventCallback<ProductDto> OnView { get; set; }
+    [Parameter] public EventCallback<ProductDto> OnDelete { get; set; }
+    [Parameter] public Func<ProductDto, string>? RowClassSelector { get; set; }
+    [Parameter] public Func<ProductDto, IEnumerable<ProductTable.BadgeModel>>? BadgeSelector { get; set; }
+
+    public record BadgeModel(string Label, string CssClass);
+
+    private Task Sort(string column) => OnSort.InvokeAsync(column);
+
+    private Task SortByName() => Sort("name");
+    private Task SortByCategory() => Sort("category");
+    private Task SortByUnitPrice() => Sort("unit_price");
+    private Task SortByQuantity() => Sort("quantity");
+    private Task SortByExpiry() => Sort("expiry");
+
+    private string GetSortIcon(string column)
+    {
+        if (!string.Equals(SortColumn, column, StringComparison.OrdinalIgnoreCase))
+        {
+            return "bi bi-arrow-down-up text-muted";
+        }
+
+        return SortAscending ? "bi bi-sort-down" : "bi bi-sort-up";
+    }
+}

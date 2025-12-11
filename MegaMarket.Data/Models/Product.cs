@@ -26,6 +26,8 @@ public class Product
     [Column("unit_price", TypeName = "decimal(10,2)")]
     public decimal UnitPrice { get; set; }
 
+
+
     [Column("quantity_in_stock")]
     public int QuantityInStock { get; set; } = 0;
 
@@ -38,7 +40,23 @@ public class Product
     [Column("is_perishable")]
     public bool IsPerishable { get; set; } = false;
 
-    // Navigation properties
+    // NEW
+    [StringLength(500)]
+    [Column("image_url")]
+    public string? ImageUrl { get; set; }
+
+    [StringLength(50)]
+    [Column("unit_label")]
+    public string? UnitLabel { get; set; }
+
+    [Column("original_price", TypeName = "decimal(10,2)")]
+    public decimal? OriginalPrice { get; set; }
+
+    [Column("discount_percent")]
+    public int? DiscountPercent { get; set; }
+
+
+
     public ICollection<ImportDetail> ImportDetails { get; set; } = new List<ImportDetail>();
     public ICollection<InvoiceDetail> InvoiceDetails { get; set; } = new List<InvoiceDetail>();
     public ICollection<OrderRequest> OrderRequests { get; set; } = new List<OrderRequest>();

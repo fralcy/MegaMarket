@@ -1,0 +1,335 @@
+@page "/attendance/history"
+@attribute [Authorize]
+@inject Services.GraphQL.GraphQLClient GraphQLClient
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="container-fluid mt-4">
+    @* Header *@
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-gradient mb-1">Attendance History</h2>
+            <p class="text-muted">View and track attendance records</p>
+        </div>
+    </div>
+
+    @* Error Message *@
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <ErrorAlert ErrorMessage="@errorMessage" OnDismiss="@(() => errorMessage = null)" />
+    }
+
+    @* Loading State *@
+    @if (isLoading)
+    {
+        <LoadingSpinner Message="Loading attendance history..." />
+    }
+    else
+    {
+        @* Stats Cards *@
+        <AttendanceStats Attendances="@filteredAttendances" />
+
+        @* Filters *@
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">From Date</label>
+                        <input type="date" class="form-control" @bind="filterFromDate" @bind:after="ApplyFilters" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">To Date</label>
+                        <input type="date" class="form-control" @bind="filterToDate" @bind:after="ApplyFilters" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Shift Type</label>
+                        <select class="form-select" @bind="filterShiftTypeId" @bind:after="ApplyFilters">
+                            <option value="0">All Shifts</option>
+                            @if (shiftTypes != null)
+                            {
+                                @foreach (var shift in shiftTypes)
+                                {
+                                    <option value="@shift.ShiftTypeId">@shift.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" @bind="filterStatus" @bind:after="ApplyFilters">
+                            <option value="All">All Status</option>
+                            <option value="OnTime">On Time</option>
+                            <option value="Late">Late</option>
+                            <option value="Incomplete">Incomplete</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="ClearFilters">
+                        <span class="bi bi-x-circle me-1"></span> Clear Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @* Attendance Table *@
+        @if (filteredAttendances == null || !filteredAttendances.Any())
+        {
+            <EmptyState
+                Icon="📅"
+                Title="No Attendance Records Found"
+                Description="No attendance records match your current filters." />
+        }
+        else
+        {
+            <AttendanceTable Attendances="@filteredAttendances" />
+        }
+    }
+</div>
+
+@code {
+    private List<AttendanceDto>? allAttendances;
+    private List<AttendanceDto>? filteredAttendances;
+    private List<ShiftTypeDto>? shiftTypes;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    // Filters
+    private DateTime? filterFromDate;
+    private DateTime? filterToDate;
+    private int filterShiftTypeId = 0;
+    private string filterStatus = "All";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            // Get current user info
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdClaim = user.FindFirst("userId")?.Value;
+            var roleClaim = user.FindFirst("role")?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                errorMessage = "Unable to identify current user. Please log in again.";
+                return;
+            }
+
+            // Load attendance records based on role
+            string attendanceQuery;
+            if (roleClaim == "Admin")
+            {
+                // Admin can see all attendance records
+                attendanceQuery = @"
+                    query GetAllAttendances {
+                        attendances {
+                            attendanceId
+                            userId
+                            shiftTypeId
+                            date
+                            checkIn
+                            checkOut
+                            isLate
+                            user {
+                                userId
+                                fullName
+                                username
+                            }
+                            shiftType {
+                                shiftTypeId
+                                name
+                                startTime
+                                endTime
+                                wagePerHour
+                            }
+                        }
+                    }
+                ";
+
+                var response = await GraphQLClient.QueryAsync<GetAllAttendancesResponse>(attendanceQuery);
+                if (response.Errors != null && response.Errors.Any())
+                {
+                    errorMessage = string.Join(", ", response.Errors.Select(e => e.Message));
+                }
+                else
+                {
+                    allAttendances = response.Data?.Attendances ?? new List<AttendanceDto>();
+                }
+            }
+            else
+            {
+                // Employee can only see their own records
+                attendanceQuery = $@"
+                    query GetAttendancesByUser {{
+                        attendancesByUser(userId: {userId}) {{
+                            attendanceId
+                            userId
+                            shiftTypeId
+                            date
+                            checkIn
+                            checkOut
+                            isLate
+                            shiftType {{
+                                shiftTypeId
+                                name
+                                startTime
+                                endTime
+                                wagePerHour
+                            }}
+                        }}
+                    }}
+                ";
+
+                var response = await GraphQLClient.QueryAsync<GetAttendancesByUserResponse>(attendanceQuery);
+                if (response.Errors != null && response.Errors.Any())
+                {
+                    errorMessage = string.Join(", ", response.Errors.Select(e => e.Message));
+                }
+                else
+                {
+                    allAttendances = response.Data?.AttendancesByUser ?? new List<AttendanceDto>();
+                }
+            }
+
+            // Load shift types for filter
+            var shiftTypesQuery = @"
+                query GetShiftTypes {
+                    shiftTypes {
+                        shiftTypeId
+                        name
+                        startTime
+                        endTime
+                        wagePerHour
+                    }
+                }
+            ";
+
+            var shiftTypesResponse = await GraphQLClient.QueryAsync<GetShiftTypesResponse>(shiftTypesQuery);
+            if (shiftTypesResponse.Errors == null || !shiftTypesResponse.Errors.Any())
+            {
+                shiftTypes = shiftTypesResponse.Data?.ShiftTypes ?? new List<ShiftTypeDto>();
+            }
+
+            // Initialize filters with default date range (last 30 days)
+            filterToDate = DateTime.Today;
+            filterFromDate = DateTime.Today.AddDays(-30);
+
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        if (allAttendances == null)
+        {
+            filteredAttendances = new List<AttendanceDto>();
+            return;
+        }
+
+        var query = allAttendances.AsEnumerable();
+
+        // Filter by date range
+        if (filterFromDate.HasValue)
+        {
+            query = query.Where(a => a.Date.Date >= filterFromDate.Value.Date);
+        }
+
+        if (filterToDate.HasValue)
+        {
+            query = query.Where(a => a.Date.Date <= filterToDate.Value.Date);
+        }
+
+        // Filter by shift type
+        if (filterShiftTypeId > 0)
+        {
+            query = query.Where(a => a.ShiftTypeId == filterShiftTypeId);
+        }
+
+        // Filter by status
+        if (filterStatus == "OnTime")
+        {
+            query = query.Where(a => !a.IsLate && a.CheckOut != null);
+        }
+        else if (filterStatus == "Late")
+        {
+            query = query.Where(a => a.IsLate);
+        }
+        else if (filterStatus == "Incomplete")
+        {
+            query = query.Where(a => a.CheckOut == null);
+        }
+
+        filteredAttendances = query.OrderByDescending(a => a.Date).ToList();
+    }
+
+    private void ClearFilters()
+    {
+        filterFromDate = DateTime.Today.AddDays(-30);
+        filterToDate = DateTime.Today;
+        filterShiftTypeId = 0;
+        filterStatus = "All";
+        ApplyFilters();
+    }
+
+    // DTOs
+    public class AttendanceDto
+    {
+        public int AttendanceId { get; set; }
+        public int UserId { get; set; }
+        public int ShiftTypeId { get; set; }
+        public DateTime Date { get; set; }
+        public DateTime CheckIn { get; set; }
+        public DateTime? CheckOut { get; set; }
+        public bool IsLate { get; set; }
+        public UserDto? User { get; set; }
+        public ShiftTypeDto? ShiftType { get; set; }
+    }
+
+    public class UserDto
+    {
+        public int UserId { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+    }
+
+    public class ShiftTypeDto
+    {
+        public int ShiftTypeId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public TimeSpan StartTime { get; set; }
+        public TimeSpan EndTime { get; set; }
+        public decimal WagePerHour { get; set; }
+    }
+
+    // GraphQL Response Types
+    private class GetAllAttendancesResponse
+    {
+        public List<AttendanceDto>? Attendances { get; set; }
+    }
+
+    private class GetAttendancesByUserResponse
+    {
+        public List<AttendanceDto>? AttendancesByUser { get; set; }
+    }
+
+    private class GetShiftTypesResponse
+    {
+        public List<ShiftTypeDto>? ShiftTypes { get; set; }
+    }
+}

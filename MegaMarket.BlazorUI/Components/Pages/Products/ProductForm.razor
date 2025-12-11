@@ -1,0 +1,104 @@
+@using MegaMarket.BlazorUI.Services.Products
+
+<EditForm Model="Model" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label">Barcode *</label>
+            <InputText class="form-control" @bind-Value="Model.Barcode" />
+            <ValidationMessage For="@(() => Model.Barcode)" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Name *</label>
+            <InputText class="form-control" @bind-Value="Model.Name" />
+            <ValidationMessage For="@(() => Model.Name)" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Category</label>
+            <InputText class="form-control" @bind-Value="Model.Category" />
+            <ValidationMessage For="@(() => Model.Category)" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Unit label</label>
+            <InputText class="form-control" @bind-Value="Model.UnitLabel" placeholder="e.g. chai, gói" />
+            <ValidationMessage For="@(() => Model.UnitLabel)" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Unit price *</label>
+            <InputNumber class="form-control" @bind-Value="Model.UnitPrice" />
+            <ValidationMessage For="@(() => Model.UnitPrice)" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Original price</label>
+            <InputNumber class="form-control" @bind-Value="Model.OriginalPrice" />
+            <ValidationMessage For="@(() => Model.OriginalPrice)" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Discount %</label>
+            <InputNumber class="form-control" @bind-Value="Model.DiscountPercent" />
+            <ValidationMessage For="@(() => Model.DiscountPercent)" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Image URL</label>
+            <InputText class="form-control" @bind-Value="Model.ImageUrl" />
+            <ValidationMessage For="@(() => Model.ImageUrl)" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Quantity in stock *</label>
+            <InputNumber class="form-control" @bind-Value="Model.QuantityInStock" />
+            <ValidationMessage For="@(() => Model.QuantityInStock)" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Min quantity *</label>
+            <InputNumber class="form-control" @bind-Value="Model.MinQuantity" />
+            <ValidationMessage For="@(() => Model.MinQuantity)" />
+        </div>
+        <div class="col-md-6">
+            <div class="form-check mt-4">
+                <InputCheckbox class="form-check-input" @bind-Value="Model.IsPerishable" @onchange="OnPerishableChanged" />
+                <label class="form-check-label">Perishable</label>
+            </div>
+        </div>
+        @if (Model.IsPerishable)
+        {
+            <div class="col-md-6">
+                <label class="form-label">Expiry date *</label>
+                <InputDate class="form-control" @bind-Value="Model.ExpiryDate" />
+                <ValidationMessage For="@(() => Model.ExpiryDate)" />
+            </div>
+        }
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnCancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled="@IsSaving">
+            @(IsSaving ? "Saving..." : (IsEditing ? "Update" : "Create"))
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public ProductInputModel Model { get; set; } = new();
+    [Parameter] public bool IsEditing { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+
+    private async Task HandleSubmit()
+    {
+        if (OnValidSubmit.HasDelegate)
+        {
+            await OnValidSubmit.InvokeAsync();
+        }
+    }
+
+    private void OnPerishableChanged(ChangeEventArgs _)
+    {
+        if (!Model.IsPerishable)
+        {
+            Model.ExpiryDate = null;
+        }
+    }
+}

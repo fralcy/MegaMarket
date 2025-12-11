@@ -1,0 +1,674 @@
+﻿@page "/loyalty"
+@using MegaMarket.BlazorUI.Services.CustomerLoyalty
+@inject CustomerService CustomerService
+@inject LoyaltyService LoyaltyService
+@inject ReportService ReportService
+@rendermode InteractiveServer
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-gradient">👑 Loyalty Dashboard</h2>
+            <p class="text-muted small">Manage customer loyalty and reward programs</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="alert alert-info">
+            <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            Loading customer data...
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <strong>⚠️ Error:</strong> @errorMessage
+            <button class="btn-close" @onclick="() => { errorMessage = null; }"></button>
+        </div>
+    }
+
+    <!-- POINTS SUMMARY STATS -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">📊 Points Summary</h5>
+                </div>
+                <div class="card-body">
+                    @if (pointsSummary != null && pointsSummary.Count > 0)
+                    {
+                        <div class="row g-3">
+                            @foreach (var stat in pointsSummary)
+                            {
+                                <div class="col-md-4">
+                                    <div class="p-3 bg-light rounded">
+                                        <p class="text-muted small mb-2">
+                                            @if (stat.TransactionType == "Earn")
+                                            {
+                                                <span>⬆️ Total Earned</span>
+                                            }
+                                            else if (stat.TransactionType == "Redeem")
+                                            {
+                                                <span>⬇️ Total Redeemed</span>
+                                            }
+                                            else
+                                            {
+                                                <span>🔧 @stat.TransactionType</span>
+                                            }
+                                        </p>
+                                        <h4 class="@(stat.TransactionType == "Earn" ? "text-success" : "text-danger")">
+                                            @stat.TotalPoints
+                                        </h4>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No points data available</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Selection Section -->
+    <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-header bg-gradient-primary text-white border-0 rounded-top">
+            <h5 class="mb-0">🔍 Select Customer</h5>
+        </div>
+        <div class="card-body">
+            <!-- Search Bar -->
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label class="form-label fw-bold">🔎 Search by Name or Phone</label>
+                    <input 
+                        type="text" 
+                        class="form-control form-control-lg" 
+                        placeholder="Type customer name or phone number..."
+                        @bind="searchTerm"
+                        @bind:event="oninput"
+                        @onchange="ApplySearch" />
+                </div>
+            </div>
+
+            <!-- Customer List Table -->
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th width="10%">Points</th>
+                            <th width="10%">Rank</th>
+                            <th width="12%" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (paginatedCustomers != null && paginatedCustomers.Count > 0)
+                        {
+                            @foreach (var customer in paginatedCustomers)
+                            {
+                                <tr class="@(selectedCustomer?.CustomerId == customer.CustomerId ? "table-active" : "")" 
+                                    style="cursor: pointer;" 
+                                    @onclick="() => SelectAndLoad(customer)">
+                                    <td><strong>@customer.FullName</strong></td>
+                                    <td>@customer.Phone</td>
+                                    <td>@customer.Email</td>
+                                    <td>
+                                        <span class="badge bg-success">@customer.Points</span>
+                                    </td>
+                                    <td>
+                                        @RenderRankBadge(customer.Rank)
+                                    </td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-primary" 
+                                                @onclick="() => SelectAndLoad(customer)"
+                                                @onclick:stopPropagation>
+                                            📊 View
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    No customers found
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            @if (filteredCustomers != null && filteredCustomers.Count > pageSize)
+            {
+                <nav class="mt-3" aria-label="Page navigation">
+                    <ul class="pagination mb-0">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="PreviousPage" disabled="@(currentPage == 1)">Previous</button>
+                        </li>
+                        
+                        @for (int i = 1; i <= totalPages; i++)
+                        {
+                            int pageNum = i;
+                            <li class="page-item @(currentPage == pageNum ? "active" : "")">
+                                <button class="page-link" @onclick="() => GoToPage(pageNum)">@pageNum</button>
+                            </li>
+                        }
+                        
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="NextPage" disabled="@(currentPage == totalPages)">Next</button>
+                        </li>
+                    </ul>
+                </nav>
+            }
+
+            <!-- Info Text -->
+            <div class="mt-3 text-muted small">
+                <p>📌 Click on a row or <strong>View</strong> button to load customer details</p>
+                <p>Showing <strong>@(paginatedCustomers?.Count ?? 0)</strong> of <strong>@(filteredCustomers?.Count ?? 0)</strong> customers (Page @currentPage/@totalPages)</p>
+            </div>
+        </div>
+    </div>
+
+    @if (selectedCustomer != null && loyaltyLoaded)
+    {
+        <!-- Customer Profile & Summary -->
+        <div class="row mb-4">
+            <!-- Customer Profile Card -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-center mb-3">
+                            <div class="avatar-circle mx-auto mb-3" style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 2em; color: white;">👤</span>
+                            </div>
+                            <h4>@selectedCustomer.FullName</h4>
+                            <p class="text-muted mb-3">@GetRankTitle(selectedCustomer.Rank)</p>
+                            @RenderRankBadge(selectedCustomer.Rank)
+                        </div>
+
+                        <hr />
+
+                        <div class="mb-3">
+                            <label class="text-muted small">Phone</label>
+                            <p class="mb-2"><strong>📞 @selectedCustomer.Phone</strong></p>
+                            
+                            <label class="text-muted small">Email</label>
+                            <p class="mb-2"><strong>✉️ @selectedCustomer.Email</strong></p>
+                            
+                            <label class="text-muted small">Member Status</label>
+                            <p><strong>⭐ Active Member</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Points & Stats -->
+            <div class="col-lg-8">
+                <div class="row g-3 mb-3">
+                    <!-- Current Points -->
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm bg-success-light">
+                            <div class="card-body text-center">
+                                <p class="text-muted small mb-2">💰 Current Points</p>
+                                <h2 class="text-success" style="font-size: 3em;">@selectedCustomer.Points</h2>
+                                <small class="text-muted">Available to spend</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Redeem Button -->
+                    <div class="col-md-6">
+                        <button class="btn btn-lg btn-warning w-100 h-100" 
+                                style="border-radius: 8px;"
+                                @onclick="OpenRedeemModal">
+                            <span style="font-size: 1.5em;">🎁</span>
+                            <div>Redeem Reward</div>
+                            <small>Use points to get rewards</small>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <p class="text-muted small mb-2">📈 Total Earned</p>
+                                <h5 class="text-info">@GetTotalEarned()</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <p class="text-muted small mb-2">📉 Total Redeemed</p>
+                                <h5 class="text-danger">@GetTotalRedeemed()</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <p class="text-muted small mb-2">🎁 Rewards Claimed</p>
+                                <h5 class="text-primary">@(customerRewards?.Count ?? 0)</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History & Rewards Section -->
+        <div class="row g-4">
+            <!-- Points History -->
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-light border-0">
+                        <h5 class="mb-0">📜 Recent Points Activity</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (pointHistory != null && pointHistory.Count > 0)
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var history in pointHistory.Take(8))
+                                {
+                                    <div class="list-group-item px-4 py-3 border-bottom">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1">
+                                                    @GetHistoryIcon(history.TransactionType) @history.TransactionType
+                                                </h6>
+                                                <small class="text-muted">@history.Description</small>
+                                            </div>
+                                            <span class="badge @GetHistoryBadgeClass(history.TransactionType)" style="font-size: 0.9em;">
+                                                @(history.PointChange > 0 ? "+" : "")@history.PointChange
+                                            </span>
+                                        </div>
+                                        <small class="text-muted d-block mt-2">
+                                            📅 @history.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                        </small>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="p-4 text-center text-muted">
+                                <p>No points activity yet</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Rewards -->
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-light border-0">
+                        <h5 class="mb-0">🎁 My Rewards</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (customerRewards != null && customerRewards.Count > 0)
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var reward in customerRewards.Take(8))
+                                {
+                                    <div class="list-group-item px-4 py-3 border-bottom">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1">@reward.RewardName</h6>
+                                                <small class="text-muted">
+                                                    Redeemed: @reward.RedeemedAt.ToString("dd/MM/yyyy")
+                                                </small>
+                                            </div>
+                                            <div>
+                                                @RenderRewardStatusBadge(reward.Status)
+                                            </div>
+                                        </div>
+                                        
+                                        @* Actions based on status *@
+                                        @if (reward.Status == "Pending")
+                                        {
+                                            <div class="mt-2">
+                                                <button class="btn btn-sm btn-success" @onclick="() => ClaimReward(reward.RedemptionId)">
+                                                    ✓ Claim
+                                                </button>
+                                            </div>
+                                        }
+                                        else if (reward.Status == "Claimed")
+                                        {
+                                            <div class="mt-2">
+                                                <button class="btn btn-sm btn-info" 
+                                                        @onclick="() => UseReward(reward.RedemptionId)"
+                                                        disabled="@(reward.InvoiceId == null)"
+                                                    >
+                                                    💳 Apply to Invoice
+                                                </button>
+                                                @if (reward.InvoiceId == null)
+                                                {
+                                                    <small class="text-muted ms-2">Chờ thanh toán...</small>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="p-4 text-center text-muted">
+                                <p>No rewards yet. Start redeeming! 🎯</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Redeem Modal -->
+@if (showRedeemModal && selectedCustomer != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0">
+                <div class="modal-header bg-warning text-dark border-0">
+                    <h5 class="modal-title">🎁 Redeem Reward</h5>
+                    <button type="button" class="btn-close" @onclick="CloseRedeemModal"></button>
+                </div>
+                <div class="modal-body">
+                    <RedeemModal 
+                        CustomerId="selectedCustomer.CustomerId"
+                        CurrentPoints="selectedCustomer.Points"
+                        OnRedeemSuccess="HandleRedeemSuccess"
+                        OnCancel="CloseRedeemModal" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+
+    .bg-success-light {
+        background-color: rgba(25, 135, 84, 0.1) !important;
+    }
+
+    .text-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .avatar-circle {
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(102, 126, 234, 0.1);
+        cursor: pointer;
+    }
+
+    .table-active {
+        background-color: rgba(102, 126, 234, 0.2) !important;
+    }
+</style>
+
+@code {
+    private List<CustomerDto> allCustomers = new();
+    private List<CustomerDto> filteredCustomers = new();
+    private List<CustomerDto> paginatedCustomers = new();
+    private CustomerDto? selectedCustomer = null;
+    private List<CustomerRewardDto> customerRewards = new();
+    private List<PointHistoryDto> pointHistory = new();
+    private List<PointsSummaryDto> pointsSummary = new();
+    private string searchTerm = "";
+    private bool isLoading = true;
+    private bool loyaltyLoaded = false;
+    private bool showRedeemModal = false;
+    private string? errorMessage = null;
+    
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllCustomers();
+        await LoadPointsSummary();
+    }
+
+    private async Task LoadPointsSummary()
+    {
+        try
+        {
+            pointsSummary = await ReportService.GetPointsSummaryAsync();
+        }
+        catch (Exception ex)
+        {
+            // Silent fail - không hiển thị error nếu không lấy được stats
+        }
+    }
+
+    private async Task LoadAllCustomers()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            allCustomers = await CustomerService.GetAllCustomersAsync();
+            ApplySearch();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading customers: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplySearch()
+    {
+        currentPage = 1;
+        
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredCustomers = allCustomers;
+        }
+        else
+        {
+            filteredCustomers = allCustomers
+                .Where(c => 
+                    c.FullName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                    c.Phone?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true
+                )
+                .ToList();
+        }
+        
+        UpdatePagination();
+    }
+
+    private void UpdatePagination()
+    {
+        totalPages = (filteredCustomers?.Count ?? 0 + pageSize - 1) / pageSize;
+        if (totalPages == 0) totalPages = 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        
+        paginatedCustomers = filteredCustomers?
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList() ?? new();
+    }
+
+    private void NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            UpdatePagination();
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            UpdatePagination();
+        }
+    }
+
+    private void GoToPage(int page)
+    {
+        currentPage = page;
+        UpdatePagination();
+    }
+
+    private async Task SelectAndLoad(CustomerDto customer)
+    {
+        selectedCustomer = customer;
+        await LoadCustomerLoyalty();
+    }
+
+    private async Task LoadCustomerLoyalty()
+    {
+        if (selectedCustomer == null) return;
+
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            customerRewards = await LoyaltyService.GetCustomerRewardsAsync(selectedCustomer.CustomerId);
+            pointHistory = await LoyaltyService.GetPointHistoryAsync(selectedCustomer.CustomerId);
+            loyaltyLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading loyalty data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OpenRedeemModal()
+    {
+        showRedeemModal = true;
+    }
+
+    private void CloseRedeemModal()
+    {
+        showRedeemModal = false;
+    }
+
+    private async Task HandleRedeemSuccess()
+    {
+        CloseRedeemModal();
+        if (selectedCustomer != null)
+        {
+            await LoadCustomerLoyalty();
+        }
+    }
+
+    private string GetRankTitle(string? rank) => rank switch
+    {
+        "Gold" => "Gold Member",
+        "Silver" => "Silver Member",
+        "Platinum" => "Platinum VIP",
+        _ => "Member"
+    };
+
+    private string GetRankBadgeClass(string? rank) => rank switch
+    {
+        "Gold" => "bg-warning text-dark",
+        "Silver" => "bg-secondary",
+        "Platinum" => "bg-info",
+        _ => "bg-light text-dark"
+    };
+
+    private string GetHistoryIcon(string? type) => type switch
+    {
+        "Earn" => "⬆️",
+        "Redeem" => "⬇️",
+        "Adjust" => "🔧",
+        _ => "❓"
+    };
+
+    private string GetHistoryBadgeClass(string? type) => type switch
+    {
+        "Earn" => "bg-success",
+        "Redeem" => "bg-danger",
+        "Adjust" => "bg-warning text-dark",
+        _ => "bg-light text-dark"
+    };
+
+    private RenderFragment RenderRankBadge(string? rank) => @<span class="badge @GetRankBadgeClass(rank)" style="font-size: 0.9em;">@rank</span>;
+
+    private RenderFragment RenderRewardStatusBadge(string? status) => @<span class="badge @GetStatusBadgeClass(status)">@status</span>;
+
+    private string GetStatusBadgeClass(string? status) => status switch
+    {
+        "Pending" => "bg-warning text-dark",
+        "Claimed" => "bg-info",
+        "Used" => "bg-success",
+        _ => "bg-light text-dark"
+    };
+
+    private int GetTotalEarned()
+    {
+        return pointHistory?.Where(p => p.TransactionType == "Earn").Sum(p => p.PointChange) ?? 0;
+    }
+
+    private int GetTotalRedeemed()
+    {
+        var total = pointHistory?.Where(p => p.TransactionType == "Redeem").Sum(p => p.PointChange) ?? 0;
+        return Math.Abs(total);
+    }
+
+    private async Task ClaimReward(int redemptionId)
+    {
+        errorMessage = null;
+        try
+        {
+            await LoyaltyService.ClaimRewardAsync(redemptionId);
+            await LoadCustomerLoyalty(); // Refresh data
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error claiming reward: {ex.Message}";
+        }
+    }
+
+    private async Task UseReward(int redemptionId)
+    {
+        errorMessage = null;
+        try
+        {
+            await LoyaltyService.UseRewardAsync(redemptionId);
+            await LoadCustomerLoyalty(); // Refresh data
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error using reward: {ex.Message}";
+        }
+    }
+}

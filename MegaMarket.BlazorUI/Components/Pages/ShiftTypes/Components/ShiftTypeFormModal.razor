@@ -1,0 +1,226 @@
+@* Shift Type Form Modal Component *@
+
+@if (IsVisible)
+{
+    <div class="modal show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <EditForm Model="formModel" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            @(IsEditMode ? $"Edit Shift Type: {ShiftType?.Name}" : "Add New Shift Type")
+                        </h5>
+                        <button type="button" class="btn-close" @onclick="HandleCancel"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">
+                                <strong>Error:</strong> @errorMessage
+                            </div>
+                        }
+
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="name" class="form-label">Shift Name <span class="text-danger">*</span></label>
+                                <InputText id="name" class="form-control" @bind-Value="formModel.Name" placeholder="e.g., Morning Shift, Night Shift" />
+                                <ValidationMessage For="@(() => formModel.Name)" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="startTime" class="form-label">Start Time <span class="text-danger">*</span></label>
+                                <InputText id="startTime" type="time" class="form-control" @bind-Value="formModel.StartTime" />
+                                <ValidationMessage For="@(() => formModel.StartTime)" />
+                                <div class="form-text">When does this shift start?</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="endTime" class="form-label">End Time <span class="text-danger">*</span></label>
+                                <InputText id="endTime" type="time" class="form-control" @bind-Value="formModel.EndTime" />
+                                <ValidationMessage For="@(() => formModel.EndTime)" />
+                                <div class="form-text">When does this shift end?</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="wagePerHour" class="form-label">Wage Per Hour ($) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <InputNumber id="wagePerHour" class="form-control" @bind-Value="formModel.WagePerHour" placeholder="0.00" />
+                                </div>
+                                <ValidationMessage For="@(() => formModel.WagePerHour)" />
+                                <div class="form-text">Hourly wage rate for this shift</div>
+                            </div>
+                        </div>
+
+                        @* Preview Card *@
+                        @if (!string.IsNullOrEmpty(formModel.Name) && !string.IsNullOrEmpty(formModel.StartTime) && !string.IsNullOrEmpty(formModel.EndTime))
+                        {
+                            <div class="alert alert-info">
+                                <strong>📋 Preview:</strong> @formModel.Name from @formModel.StartTime to @formModel.EndTime
+                                (@GetDurationPreview() hours) at $@formModel.WagePerHour/hour
+                            </div>
+                        }
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="HandleCancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                            }
+                            <span>@(IsEditMode ? "Update Shift Type" : "Create Shift Type")</span>
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop show"></div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public ShiftTypeManagement.ShiftTypeDto? ShiftType { get; set; }
+
+    [Parameter]
+    public EventCallback<ShiftTypeManagement.ShiftTypeFormData> OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private ShiftTypeFormModel formModel = new();
+    private bool isSaving = false;
+    private string? errorMessage;
+
+    private bool IsEditMode => ShiftType != null;
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible)
+        {
+            if (ShiftType != null)
+            {
+                // Edit mode - populate form with shift type data
+                formModel = new ShiftTypeFormModel
+                {
+                    Name = ShiftType.Name,
+                    StartTime = FormatTimeSpan(ShiftType.StartTime),
+                    EndTime = FormatTimeSpan(ShiftType.EndTime),
+                    WagePerHour = ShiftType.WagePerHour
+                };
+            }
+            else
+            {
+                // Create mode - reset form
+                formModel = new ShiftTypeFormModel();
+            }
+
+            errorMessage = null;
+        }
+    }
+
+    private string FormatTimeSpan(TimeSpan time)
+    {
+        return time.ToString(@"hh\:mm");
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+
+            // Validate times
+            if (!TimeSpan.TryParse(formModel.StartTime, out var startTime))
+            {
+                errorMessage = "Invalid start time format";
+                return;
+            }
+
+            if (!TimeSpan.TryParse(formModel.EndTime, out var endTime))
+            {
+                errorMessage = "Invalid end time format";
+                return;
+            }
+
+            // Check if end time is after start time (considering overnight shifts)
+            if (startTime == endTime)
+            {
+                errorMessage = "Start time and end time cannot be the same";
+                return;
+            }
+
+            var formData = new ShiftTypeManagement.ShiftTypeFormData
+            {
+                Name = formModel.Name,
+                StartTime = formModel.StartTime,
+                EndTime = formModel.EndTime,
+                WagePerHour = formModel.WagePerHour
+            };
+
+            if (OnSave.HasDelegate)
+            {
+                await OnSave.InvokeAsync(formData);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    private string GetDurationPreview()
+    {
+        if (TimeSpan.TryParse(formModel.StartTime, out var start) && TimeSpan.TryParse(formModel.EndTime, out var end))
+        {
+            var duration = end - start;
+            if (duration.TotalHours < 0)
+            {
+                duration = duration.Add(TimeSpan.FromHours(24));
+            }
+            return duration.TotalHours.ToString("F1");
+        }
+        return "0";
+    }
+
+    public class ShiftTypeFormModel
+    {
+        [Required(ErrorMessage = "Shift name is required")]
+        [StringLength(100, ErrorMessage = "Shift name cannot exceed 100 characters")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Start time is required")]
+        public string StartTime { get; set; } = "09:00";
+
+        [Required(ErrorMessage = "End time is required")]
+        public string EndTime { get; set; } = "17:00";
+
+        [Required(ErrorMessage = "Wage per hour is required")]
+        [Range(0.01, 1000.00, ErrorMessage = "Wage must be between $0.01 and $1000.00")]
+        public decimal WagePerHour { get; set; } = 15.00m;
+    }
+}

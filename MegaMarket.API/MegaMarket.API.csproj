@@ -1,12 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
-
+  
   <ItemGroup>
+    <Compile Remove="Helpers\**" />
+    <Content Remove="Helpers\**" />
+    <EmbeddedResource Remove="Helpers\**" />
+    <None Remove="Helpers\**" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="HotChocolate.AspNetCore" Version="13.9.0" />
+    <PackageReference Include="HotChocolate.Data.EntityFramework" Version="13.9.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.21" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.21" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.21">
@@ -15,16 +24,18 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.21" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\MegaMarket.Data\MegaMarket.Data.csproj" />
   </ItemGroup>
-
+  
   <ItemGroup>
-    <Folder Include="DTOs\" />
+    <Folder Include="DTOs\Imports\" />
+    <Folder Include="DTOs\Exports\" />
+    <Folder Include="DTOs\Inventory\" />
+    <Folder Include="DTOs\Products\" />
     <Folder Include="Helpers\" />
-    <Folder Include="Services\" />
   </ItemGroup>
-
 </Project>

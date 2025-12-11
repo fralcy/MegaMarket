@@ -1,0 +1,54 @@
+@if (IsLoading)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <LoadingSpinner Message="@LoadingMessage" />
+        </div>
+    </div>
+}
+else if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="card border-danger">
+        <div class="card-body">
+            <ErrorAlert ErrorMessage="@ErrorMessage" OnDismiss="@HandleErrorDismiss" />
+            @if (ShowRetryButton)
+            {
+                <div class="text-center mt-3">
+                    <button class="btn btn-outline-primary" @onclick="HandleRetry">
+                        <span class="bi bi-arrow-clockwise me-1"></span> Retry
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public string LoadingMessage { get; set; } = "Loading...";
+    [Parameter] public bool ShowRetryButton { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnErrorDismiss { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    private async Task HandleErrorDismiss()
+    {
+        if (OnErrorDismiss.HasDelegate)
+        {
+            await OnErrorDismiss.InvokeAsync();
+        }
+    }
+
+    private async Task HandleRetry()
+    {
+        if (OnRetry.HasDelegate)
+        {
+            await OnRetry.InvokeAsync();
+        }
+    }
+}

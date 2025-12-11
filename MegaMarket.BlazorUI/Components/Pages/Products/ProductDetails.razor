@@ -1,0 +1,79 @@
+@using MegaMarket.BlazorUI.Services.Products
+
+@if (IsOpen && Product is not null)
+{
+    <div class="modal-overlay detail-modal"
+         style="position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:1050; padding:1rem;"
+         @onclick="OnClose">
+        <div class="modal-panel detail-panel"
+             style="background:#fff; border-radius:14px; width:min(900px,100%); max-height:85vh; overflow-y:auto; box-shadow:0 15px 45px rgba(0,0,0,0.15); padding:1.25rem 1.25rem 1rem;"
+             @onclick:stopPropagation="true">
+            <div class="detail-header d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="eyebrow mb-1">Product detail</p>
+                    <h5 class="mb-0">@Product.Name</h5>
+                    <small class="text-muted">Barcode: @Product.Barcode</small>
+                </div>
+                <button class="btn-close" @onclick="OnClose"></button>
+            </div>
+
+            <div class="detail-grid" style="display:grid; grid-template-columns:minmax(260px,1fr) minmax(280px,1fr); gap:1rem;">
+                @if (!string.IsNullOrWhiteSpace(Product.ImageUrl))
+                {
+                    <div class="detail-image" style="border:1px solid #e3e8f0; border-radius:12px; overflow:hidden; background:#f8fafc; max-height:320px;">
+                        <img src="@Product.ImageUrl" alt="@Product.Name" loading="lazy" style="width:100%; height:auto; display:block; object-fit:cover;" />
+                    </div>
+                }
+
+                <div class="detail-body" style="display:grid; gap:0.75rem;">
+                    <div class="detail-row" style="display:flex; justify-content:space-between; border-bottom:1px dashed #ecf1f6; padding-bottom:0.5rem;">
+                        <span class="label" style="color:#6c757d; font-size:0.9rem;">Category</span>
+                        <span>@(string.IsNullOrWhiteSpace(Product.Category) ? "-" : Product.Category)</span>
+                    </div>
+                    <div class="detail-row" style="display:flex; justify-content:space-between; border-bottom:1px dashed #ecf1f6; padding-bottom:0.5rem;">
+                        <span class="label" style="color:#6c757d; font-size:0.9rem;">Unit label</span>
+                        <span>@(string.IsNullOrWhiteSpace(Product.UnitLabel) ? "-" : Product.UnitLabel)</span>
+                    </div>
+                    <div class="detail-row" style="display:flex; justify-content:space-between; border-bottom:1px dashed #ecf1f6; padding-bottom:0.5rem;">
+                        <span class="label" style="color:#6c757d; font-size:0.9rem;">Unit price</span>
+                        <span>@Product.UnitPrice.ToString("C")</span>
+                    </div>
+                    <div class="detail-row" style="display:flex; justify-content:space-between; border-bottom:1px dashed #ecf1f6; padding-bottom:0.5rem;">
+                        <span class="label" style="color:#6c757d; font-size:0.9rem;">Original price</span>
+                        <span>@(Product.OriginalPrice?.ToString("C") ?? "-")</span>
+                    </div>
+                    <div class="detail-row" style="display:flex; justify-content:space-between; border-bottom:1px dashed #ecf1f6; padding-bottom:0.5rem;">
+                        <span class="label" style="color:#6c757d; font-size:0.9rem;">Discount</span>
+                        <span>@(Product.DiscountPercent.HasValue ? $"{Product.DiscountPercent.Value}%" : "-")</span>
+                    </div>
+                    <div class="detail-row" style="display:flex; justify-content:space-between; border-bottom:1px dashed #ecf1f6; padding-bottom:0.5rem;">
+                        <span class="label" style="color:#6c757d; font-size:0.9rem;">Stock</span>
+                        <span>@Product.QuantityInStock</span>
+                    </div>
+                    <div class="detail-row" style="display:flex; justify-content:space-between; border-bottom:1px dashed #ecf1f6; padding-bottom:0.5rem;">
+                        <span class="label" style="color:#6c757d; font-size:0.9rem;">Min quantity</span>
+                        <span>@Product.MinQuantity</span>
+                    </div>
+                    <div class="detail-row" style="display:flex; justify-content:space-between; border-bottom:1px dashed #ecf1f6; padding-bottom:0.5rem;">
+                        <span class="label" style="color:#6c757d; font-size:0.9rem;">Perishable</span>
+                        <span>@(Product.IsPerishable ? "Yes" : "No")</span>
+                    </div>
+                    <div class="detail-row" style="display:flex; justify-content:space-between; border-bottom:1px dashed #ecf1f6; padding-bottom:0.5rem;">
+                        <span class="label" style="color:#6c757d; font-size:0.9rem;">Expiry</span>
+                        <span>@(Product.ExpiryDate?.ToString("yyyy-MM-dd") ?? "-")</span>
+                    </div>
+                    <div class="detail-row" style="display:flex; justify-content:space-between; border-bottom:1px dashed #ecf1f6; padding-bottom:0.5rem;">
+                        <span class="label" style="color:#6c757d; font-size:0.9rem;">Image</span>
+                        <span>@(string.IsNullOrWhiteSpace(Product.ImageUrl) ? "-" : Product.ImageUrl)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public ProductDto? Product { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+}

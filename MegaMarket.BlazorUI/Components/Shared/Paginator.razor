@@ -1,0 +1,94 @@
+@* Pagination Component *@
+
+@if (TotalPages > 1)
+{
+    <nav class="mt-3" aria-label="Page navigation">
+        <ul class="pagination pagination-sm justify-content-center mb-0">
+            <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                <button class="page-link" @onclick="() => ChangePage(CurrentPage - 1)" disabled="@(CurrentPage == 1)">
+                    Previous
+                </button>
+            </li>
+
+            @if (TotalPages <= 7)
+            {
+                @for (int i = 1; i <= TotalPages; i++)
+                {
+                    var pageNumber = i;
+                    <li class="page-item @(CurrentPage == pageNumber ? "active" : "")">
+                        <button class="page-link" @onclick="() => ChangePage(pageNumber)">
+                            @pageNumber
+                        </button>
+                    </li>
+                }
+            }
+            else
+            {
+                @* Show first page *@
+                <li class="page-item @(CurrentPage == 1 ? "active" : "")">
+                    <button class="page-link" @onclick="() => ChangePage(1)">1</button>
+                </li>
+
+                @if (CurrentPage > 3)
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                }
+
+                @* Show pages around current page *@
+                @for (int i = Math.Max(2, CurrentPage - 1); i <= Math.Min(TotalPages - 1, CurrentPage + 1); i++)
+                {
+                    var pageNumber = i;
+                    <li class="page-item @(CurrentPage == pageNumber ? "active" : "")">
+                        <button class="page-link" @onclick="() => ChangePage(pageNumber)">
+                            @pageNumber
+                        </button>
+                    </li>
+                }
+
+                @if (CurrentPage < TotalPages - 2)
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                }
+
+                @* Show last page *@
+                <li class="page-item @(CurrentPage == TotalPages ? "active" : "")">
+                    <button class="page-link" @onclick="() => ChangePage(TotalPages)">
+                        @TotalPages
+                    </button>
+                </li>
+            }
+
+            <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                <button class="page-link" @onclick="() => ChangePage(CurrentPage + 1)" disabled="@(CurrentPage == TotalPages)">
+                    Next
+                </button>
+            </li>
+        </ul>
+    </nav>
+}
+
+@code {
+    [Parameter]
+    public int CurrentPage { get; set; } = 1;
+
+    [Parameter]
+    public int TotalPages { get; set; } = 1;
+
+    [Parameter]
+    public EventCallback<int> OnPageChange { get; set; }
+
+    private async Task ChangePage(int page)
+    {
+        if (page < 1 || page > TotalPages || page == CurrentPage)
+            return;
+
+        if (OnPageChange.HasDelegate)
+        {
+            await OnPageChange.InvokeAsync(page);
+        }
+    }
+}
