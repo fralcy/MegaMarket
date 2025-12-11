@@ -44,9 +44,6 @@ builder.Services.AddHttpClient("GraphQL", client =>
 // Add GraphQL client service
 builder.Services.AddScoped<GraphQLClient>();
 
-// Add ApexCharts service
-builder.Services.AddApexCharts();
-
 // Configure API Base URL
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7284/";
 
