@@ -1,5 +1,6 @@
-﻿using MegaMarket.Data.Models;
-using MegaMarket.Data.Repositories;
+﻿using MegaMarket.API.DTOs.Invoice;
+using MegaMarket.API.Services.Interfaces;
+using MegaMarket.Data.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,20 +10,20 @@ namespace MegaMarket.API.Controllers
     [ApiController]
     public class InvoiceController : ControllerBase
     {
-        private IInvoiceRepository _repository;
-        public InvoiceController(IInvoiceRepository repository)
+        private readonly IInvoiceService _service;
+        public InvoiceController(IInvoiceService service)
         {
-            _repository = repository;
+            _service = service;
         }
 
         // POST: InvoiceController/Create
         [HttpPost]
-        public async Task<ActionResult<Invoice>> SaveInvoice([FromBody]Invoice invoice)
+        public async Task<ActionResult> SaveInvoice([FromBody]InvoiceRequestDto invoice)
         {
             try
             {
-                await _repository.SaveInvoice(invoice);
-                return Ok(invoice);
+                var savedInvoice = await _service.SaveInvoice(invoice);
+                return Ok(savedInvoice);
             }
             catch
             {

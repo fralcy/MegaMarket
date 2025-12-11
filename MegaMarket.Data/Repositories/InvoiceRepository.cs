@@ -15,6 +15,6 @@ namespace MegaMarket.Data.Repositories
         {
             _invoiceDAO = invoiceDAO;
         }
-        public Task SaveInvoice(Invoice i) => _invoiceDAO.SaveInvoice(i);
+        public Task<Invoice> SaveInvoice(Invoice i) => _invoiceDAO.SaveInvoice(i);
     }
 }

@@ -15,12 +15,13 @@ namespace MegaMarket.Data.DataAccess
         {
             _context = context;
         }
-        public async Task SaveInvoice(Invoice i)
+        public async Task<Invoice> SaveInvoice(Invoice i)
         {
             try
             {
                 _context.Invoices.Add(i);
                 await _context.SaveChangesAsync();
+                return i;
             }
             catch (Exception ex)
             {

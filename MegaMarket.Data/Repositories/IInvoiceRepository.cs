@@ -9,6 +9,6 @@ namespace MegaMarket.Data.Repositories
 {
     public interface IInvoiceRepository
     {
-        Task SaveInvoice(Invoice i);
+        Task<Invoice> SaveInvoice(Invoice i);
     }
 }
