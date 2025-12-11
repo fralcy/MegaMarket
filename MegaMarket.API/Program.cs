@@ -3,22 +3,26 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MegaMarket.Data.Data;
+using MegaMarket.Data.DataAccess;
+using MegaMarket.Data.Repositories;
 using MegaMarket.API.Services;
 using MegaMarket.API.GraphQL;
 using MegaMarket.API.GraphQL.Types;
 using MegaMarket.API.Services.Interfaces;
 using MegaMarket.API.Services.Implementations;
 using MegaMarket.API.Data;
-using MegaMarket.Data.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+builder.Services.AddScoped<InvoiceDAO>();
 
 // Register DbContext
-builder.Services.AddDbContext<MegaMarketDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContextFactory<MegaMarketDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+    x => x.MigrationsAssembly("MegaMarket.Data")));
 
 // Product & Import Services
 builder.Services.AddScoped<IProductService, ProductService>();

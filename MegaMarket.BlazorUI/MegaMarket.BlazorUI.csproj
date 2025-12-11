@@ -12,4 +12,10 @@
   <ItemGroup>
     <Folder Include="Models\" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MegaMarket.API\MegaMarket.API.csproj" />
+    <ProjectReference Include="..\MegaMarket.Data\MegaMarket.Data.csproj" />
+  </ItemGroup>
+
 </Project>
