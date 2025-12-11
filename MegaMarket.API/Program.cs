@@ -131,3 +131,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Make the implicit Program class public for integration tests
+public partial class Program { }
