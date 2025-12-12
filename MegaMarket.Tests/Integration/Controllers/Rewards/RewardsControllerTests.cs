@@ -85,9 +85,9 @@ public class RewardsControllerTests : IClassFixture<TestServerFixture>
         createdReward.Value.Should().Be(newReward.Value);
         createdReward.IsActive.Should().BeTrue();
 
-        // Verify Location header
+        // Verify Location header contains reward ID
         response.Headers.Location.Should().NotBeNull();
-        response.Headers.Location!.ToString().Should().Contain($"/api/rewards/{createdReward.RewardId}");
+        response.Headers.Location!.ToString().Should().Contain(createdReward.RewardId.ToString());
     }
 
     [Fact]

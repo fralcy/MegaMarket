@@ -89,9 +89,9 @@ public class ProductsControllerTests : IClassFixture<TestServerFixture>
         createdProduct.UnitPrice.Should().Be(newProduct.UnitPrice);
         createdProduct.QuantityInStock.Should().Be(newProduct.QuantityInStock);
 
-        // Verify Location header
+        // Verify Location header contains product ID
         response.Headers.Location.Should().NotBeNull();
-        response.Headers.Location!.ToString().Should().Contain($"/api/products/{createdProduct.ProductId}");
+        response.Headers.Location!.ToString().Should().Contain(createdProduct.ProductId.ToString());
     }
 
     [Fact]

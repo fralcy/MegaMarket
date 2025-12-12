@@ -6,6 +6,8 @@ namespace MegaMarket.Tests.Fixtures;
 
 public class TestServerFixture : WebApplicationFactory<Program>
 {
+    private readonly string _dbName = $"TestDb_{Guid.NewGuid()}";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureTestServices(services =>
@@ -26,15 +28,15 @@ public class TestServerFixture : WebApplicationFactory<Program>
                 services.Remove(factoryDescriptor);
             }
 
-            // Add in-memory database
+            // Add in-memory database - SAME NAME for both!
             services.AddDbContext<MegaMarketDbContext>(options =>
             {
-                options.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}");
+                options.UseInMemoryDatabase(_dbName);
             });
 
             services.AddDbContextFactory<MegaMarketDbContext>(options =>
             {
-                options.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}");
+                options.UseInMemoryDatabase(_dbName);
             });
 
             // Build the service provider and seed test data
