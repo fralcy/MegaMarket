@@ -1,12 +1,13 @@
 @page "/login"
+@layout AuthLayout
 @using MegaMarket.BlazorUI.Services.GraphQL
 @inject GraphQLClient GraphQLClient
 @inject AuthService AuthService
 @inject NavigationManager NavigationManager
 
-<div class="container">
-    <div class="row">
-        <div class="col-md-6 offset-md-3">
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
             <div class="card border-0 shadow-sm login-card">
                 <div class="card-body p-4">
                     <div class="text-center mb-4">
@@ -54,7 +55,7 @@
 
                     <div class="mt-4 text-center">
                         <small class="text-muted">
-                            Test credentials: admin/admin123 or employee/emp123
+                            Test credentials: admin/Password123! or john.manager/Password123!
                         </small>
                     </div>
                 </div>
@@ -75,10 +76,15 @@
             isLoading = true;
             errorMessage = null;
 
-            // GraphQL Login Mutation
+            // GraphQL Login Mutation - using inline input
+            var username = loginModel.Username.Replace("\"", "\\\"");
+            var password = loginModel.Password.Replace("\"", "\\\"");
             var mutation = @"
-                mutation Login($input: LoginInputDto!) {
-                    login(input: $input) {
+                mutation {
+                    login(input: {
+                        username: """ + username + @""",
+                        password: """ + password + @"""
+                    }) {
                         token
                         userId
                         username
@@ -89,16 +95,7 @@
                 }
             ";
 
-            var variables = new
-            {
-                input = new
-                {
-                    username = loginModel.Username,
-                    password = loginModel.Password
-                }
-            };
-
-            var response = await GraphQLClient.MutateAsync<LoginResponse>(mutation, variables);
+            var response = await GraphQLClient.MutateAsync<LoginResponse>(mutation, null);
 
             if (response.Data?.Login != null)
             {
@@ -127,9 +124,12 @@
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Login error: {ex.GetType().Name} - {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+
             errorMessage = ex.Message.Contains("GraphQL errors")
                 ? "Invalid username or password"
-                : "An error occurred during login. Please try again.";
+                : $"Login error: {ex.Message}";
         }
         finally
         {

@@ -25,8 +25,8 @@ public static class DbSeeder
 
         var users = new[]
         {
-            new User { FullName = "Admin User", Username = "admin", Password = "Password123!", Role = "Admin" },
-            new User { FullName = "John Manager", Username = "john.manager", Password = "Password123!", Role = "Manager" }
+            new User { FullName = "Admin User", Username = "admin", Password = BCrypt.Net.BCrypt.HashPassword("Password123!"), Role = "Admin" },
+            new User { FullName = "John Manager", Username = "john.manager", Password = BCrypt.Net.BCrypt.HashPassword("Password123!"), Role = "Manager" }
         };
 
         dbContext.Users.AddRange(users);

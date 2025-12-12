@@ -32,6 +32,17 @@ builder.Services.AddScoped<LocalStorageService>();
 // Add Auth services
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = "Cookies";
+}).AddCookie("Cookies", options =>
+{
+    options.LoginPath = "/login";
+    options.AccessDeniedPath = "/access-denied";
+    // Don't redirect or challenge - let Blazor components handle authorization
+    options.Events.OnRedirectToLogin = context => Task.CompletedTask;
+    options.Events.OnRedirectToAccessDenied = context => Task.CompletedTask;
+});
 builder.Services.AddAuthorizationCore();
 
 // Configure HttpClient for GraphQL

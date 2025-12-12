@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using MegaMarket.BlazorUI.Services.Auth;
 
 namespace MegaMarket.BlazorUI.Services.GraphQL;
@@ -70,26 +71,40 @@ public class GraphQLClient
 
 public class GraphQLRequest
 {
+    [JsonPropertyName("query")]
     public string Query { get; set; } = string.Empty;
+
+    [JsonPropertyName("variables")]
     public object? Variables { get; set; }
 }
 
 public class GraphQLResponse<T>
 {
+    [JsonPropertyName("data")]
     public T? Data { get; set; }
+
+    [JsonPropertyName("errors")]
     public GraphQLError[]? Errors { get; set; }
 }
 
 public class GraphQLError
 {
+    [JsonPropertyName("message")]
     public string Message { get; set; } = string.Empty;
+
+    [JsonPropertyName("locations")]
     public GraphQLLocation[]? Locations { get; set; }
+
+    [JsonPropertyName("path")]
     public string[]? Path { get; set; }
 }
 
 public class GraphQLLocation
 {
+    [JsonPropertyName("line")]
     public int Line { get; set; }
+
+    [JsonPropertyName("column")]
     public int Column { get; set; }
 }
 

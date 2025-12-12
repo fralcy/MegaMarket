@@ -89,6 +89,13 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+// Register DbContext for dependency injection (in addition to factory)
+builder.Services.AddScoped<MegaMarketDbContext>(provider =>
+{
+    var factory = provider.GetRequiredService<IDbContextFactory<MegaMarketDbContext>>();
+    return factory.CreateDbContext();
+});
+
 // Configure GraphQL
 builder.Services
     .AddGraphQLServer()
@@ -97,6 +104,7 @@ builder.Services
     .AddType<UserType>()
     .AddType<ShiftTypeType>()
     .AddType<AttendanceType>()
+    .AddAuthorization()
     .AddProjections()
     .AddFiltering()
     .AddSorting();
@@ -123,6 +131,22 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapGraphQL("/graphql");
+
+// TEMPORARY: Endpoint to hash existing passwords
+app.MapPost("/api/admin/hash-passwords", async (MegaMarketDbContext dbContext) =>
+{
+    var users = await dbContext.Users.ToListAsync();
+    foreach (var user in users)
+    {
+        // Only hash if password is plain text (not already hashed)
+        if (!user.Password.StartsWith("$2"))
+        {
+            user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
+        }
+    }
+    await dbContext.SaveChangesAsync();
+    return Results.Ok(new { message = "Passwords hashed successfully", count = users.Count });
+});
 
 // Seed database only in non-testing environments
 if (!app.Environment.IsEnvironment("Testing"))
