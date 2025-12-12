@@ -73,7 +73,7 @@
                                                      Name="Revenue"
                                                      SeriesType="SeriesType.Area"
                                                      XValue="@(e => e.Date)"
-                                                     YAggregate="@(e => e.Sum(f => (double)f.Revenue))"
+                                                     YAggregate="@(e => (decimal?)e.Sum(f => f.Revenue))"
                                                      OrderBy="e => e.X" />
                                 </ApexChart>
                             }
@@ -98,7 +98,7 @@
                                                      Name="Revenue"
                                                      SeriesType="SeriesType.Pie"
                                                      XValue="@(e => e.PaymentMethod)"
-                                                     YAggregate="@(e => e.Sum(f => (double)f.Revenue))" />
+                                                     YAggregate="@(e => (decimal?)e.Sum(f => f.Revenue))" />
                                 </ApexChart>
                             }
                             else
@@ -487,7 +487,7 @@
             Zoom = new Zoom { Enabled = false }
         },
         Stroke = new Stroke { Curve = Curve.Smooth, Width = 2 },
-        Datalavels = new DataLabels { Enabled = false },
+        DataLabels = new DataLabels { Enabled = false },
         Colors = new List<string> { "#28a745" },
         Fill = new Fill
         {
@@ -523,7 +523,7 @@
                 Distributed = true
             }
         },
-        Datalavels = new DataLabels { Enabled = false },
+        DataLabels = new DataLabels { Enabled = false },
         Legend = new Legend { Show = false },
         Colors = new List<string> { "#007bff", "#6610f2", "#6f42c1", "#e83e8c", "#dc3545", "#fd7e14", "#ffc107", "#28a745" }
     };
