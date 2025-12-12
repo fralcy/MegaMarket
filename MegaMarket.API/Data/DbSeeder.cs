@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MegaMarket.Data.Data;
 using MegaMarket.Data.Models;
 
@@ -14,6 +14,7 @@ public static class DbSeeder
         await SeedSuppliersAsync(dbContext);
         await SeedProductsAsync(dbContext);
         await SeedImportsAsync(dbContext);
+        await SeedPromotionsAsync(dbContext);
     }
 
     private static async Task SeedUsersAsync(MegaMarketDbContext dbContext)
@@ -192,6 +193,74 @@ public static class DbSeeder
         };
 
         dbContext.Imports.AddRange(imports);
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task SeedPromotionsAsync(MegaMarketDbContext dbContext)
+    {
+        if (await dbContext.Promotions.AnyAsync())
+        {
+            return;
+        }
+
+        var now = DateTime.Now;
+
+        var promotions = new[]
+        {
+            new Promotion
+            {
+                Name = "Giảm giá Mùa hè 2024",
+                Description = "Giảm 10% tổng hóa đơn cho tất cả các sản phẩm.",
+                DiscountType = "percent",
+                DiscountValue = 10.00m,
+                StartDate = now.AddDays(-30),
+                EndDate = now.AddDays(30),
+                Type = "invoice", // Áp dụng cho toàn bộ hóa đơn
+                // Invoices, InvoiceDetails, PromotionProducts sẽ là danh sách rỗng (hoặc cần được mock riêng)
+            },
+            new Promotion
+            {
+                Name = "Ưu đãi Khai trương",
+                Description = "Giảm cố định 50,000 VND cho hóa đơn trên 500,000 VND.",
+                DiscountType = "fixed",
+                DiscountValue = 50000.00m,
+                StartDate = now.AddDays(-10),
+                EndDate = now.AddDays(10),
+                Type = "invoice",
+            },
+            new Promotion
+            {
+                Name = "Giảm 20% cho Áo sơ mi",
+                Description = "Giảm 20% khi mua bất kỳ sản phẩm thuộc nhóm 'Áo sơ mi'.",
+                DiscountType = "percent",
+                DiscountValue = 20.00m,
+                StartDate = now.AddDays(-5),
+                EndDate = now.AddDays(25),
+                Type = "product", // Áp dụng cho từng sản phẩm cụ thể
+            },
+            new Promotion
+            {
+                Name = "Mua 2 Tặng 1 (Promotion)",
+                Description = "Chương trình khuyến mãi đặc biệt Mua 2 Tặng 1.",
+                DiscountType = "fixed", // Mặc dù là fixed nhưng có thể hiểu là quy tắc phức tạp
+                DiscountValue = 0.00m, // Giá trị có thể là 0 nếu quy tắc phức tạp hơn
+                StartDate = now.AddDays(1), // Khuyến mãi sắp tới
+                EndDate = now.AddDays(60),
+                Type = "promotion", // Một loại khuyến mãi phức tạp hơn
+            },
+            new Promotion
+            {
+                Name = "Ưu đãi dành riêng cho VIP",
+                Description = "Giảm 5% cho tất cả các đơn hàng của khách hàng VIP.",
+                DiscountType = "percent",
+                DiscountValue = 5.00m,
+                StartDate = now.AddDays(-180),
+                EndDate = now.AddDays(-1), // Khuyến mãi đã kết thúc
+                Type = "invoice"
+            }
+        };
+
+        dbContext.Promotions.AddRange(promotions);
         await dbContext.SaveChangesAsync();
     }
 }

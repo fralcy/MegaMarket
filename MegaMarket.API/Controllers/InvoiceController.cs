@@ -16,9 +16,21 @@ namespace MegaMarket.API.Controllers
             _service = service;
         }
 
+        [HttpGet]
+        public async Task<ActionResult> GetAllInvoices()
+        {
+            try
+            {
+                var listInvoices = await _service.GetAllInvoices();
+                return Ok(listInvoices);
+            } catch
+            {
+                return BadRequest(ModelState);
+            }
+        }
         // POST: InvoiceController/Create
         [HttpPost]
-        public async Task<ActionResult> SaveInvoice([FromBody]InvoiceRequestDto invoice)
+        public async Task<ActionResult> SaveInvoice([FromBody]InvoiceDto invoice)
         {
             try
             {

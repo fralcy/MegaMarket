@@ -1,7 +1,7 @@
 ﻿using MegaMarket.API.DTOs.Invoice;
 using MegaMarket.API.Services.Interfaces;
 using MegaMarket.Data.Models;
-using MegaMarket.Data.Repositories;
+using MegaMarket.Data.Repositories.Interfaces;
 
 namespace MegaMarket.API.Services.Implementations
 {
@@ -13,19 +13,61 @@ namespace MegaMarket.API.Services.Implementations
             _repository = repository;
         }
 
-        public async Task<Invoice> SaveInvoice(InvoiceRequestDto invoiceRequestDto)
+        public async Task<List<Invoice>> GetAllInvoices()
         {
+            var listInvoices = await _repository.GetAllInvoices();
+            return listInvoices;
+        }
+        public async Task<InvoiceDto> SaveInvoice(InvoiceDto invoiceDto)
+        {
+            var invoiceDetails = new List<InvoiceDetail>();
+            foreach (var detailDto in invoiceDto.InvoiceDetails)
+            {
+                var detail = new InvoiceDetail
+                {
+                    ProductId = detailDto.ProductId,
+                    Quantity = detailDto.Quantity,
+                    UnitPrice = detailDto.UnitPrice,
+                    DiscountPerUnit = detailDto.DiscountPerUnit,
+                    PromotionId = detailDto.PromotionId
+                };
+                invoiceDetails.Add(detail);
+            }
+
             var invoice = new Invoice
             {
-                TotalBeforeDiscount = invoiceRequestDto.TotalBeforeDiscount,
-                TotalAmount = invoiceRequestDto.TotalAmount,
-                ReceivedAmount = invoiceRequestDto.ReceivedAmount,
-                ChangeAmount = invoiceRequestDto.ChangeAmount,
-                PromotionId = invoiceRequestDto.PromotionId,
+                UserId = 1,
+                TotalBeforeDiscount = invoiceDto.TotalBeforeDiscount,
+                TotalAmount = invoiceDto.TotalAmount,
+                ReceivedAmount = invoiceDto.ReceivedAmount,
+                ChangeAmount = invoiceDto.ChangeAmount,
+                PromotionId = invoiceDto.PromotionId,
             };
-            var savedInvoice = await _repository.SaveInvoice(invoice);
+            
+            foreach (var detail in invoiceDetails)
+            {
+                invoice.InvoiceDetails.Add(detail);
+            }
 
-            return savedInvoice;
+            var savedInvoice = await _repository.SaveInvoice(invoice);
+            var result = new InvoiceDto
+            {
+                TotalBeforeDiscount = savedInvoice.TotalBeforeDiscount,
+                TotalAmount = savedInvoice.TotalAmount,
+                ReceivedAmount = savedInvoice.ReceivedAmount,
+                ChangeAmount = savedInvoice.ChangeAmount,
+                PromotionId = savedInvoice.PromotionId,
+                InvoiceDetails = invoiceDetails.Select(d => new InvoiceDetailDto
+                {
+                    ProductId = d.ProductId,
+                    Quantity = d.Quantity,
+                    UnitPrice = d.UnitPrice,
+                    DiscountPerUnit = d.DiscountPerUnit,
+                    PromotionId = d.PromotionId
+                }).ToList()
+            };
+
+            return result;
         }
     }
 }

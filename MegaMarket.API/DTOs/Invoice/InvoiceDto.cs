@@ -2,7 +2,7 @@
 
 namespace MegaMarket.API.DTOs.Invoice
 {
-    public class InvoiceRequestDto
+    public class InvoiceDto
     {
         public decimal TotalBeforeDiscount { get; set; }
         public decimal TotalAmount { get; set; }

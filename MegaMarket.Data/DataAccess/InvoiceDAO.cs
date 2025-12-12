@@ -1,5 +1,6 @@
 ﻿using MegaMarket.Data.Data;
 using MegaMarket.Data.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,19 @@ namespace MegaMarket.Data.DataAccess
         public InvoiceDAO(MegaMarketDbContext context)
         {
             _context = context;
+        }
+        public async Task<List<Invoice>> GetAllInvoices()
+        {
+            var listInvoices = new List<Invoice>();
+            try
+            {
+                listInvoices = await _context.Invoices.ToListAsync();
+                return listInvoices;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error retrieving invoices: " + ex.Message);
+            }
         }
         public async Task<Invoice> SaveInvoice(Invoice i)
         {
