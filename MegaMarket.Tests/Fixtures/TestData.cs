@@ -13,6 +13,8 @@ public static class TestData
         SeedProducts(context);
         SeedSuppliers(context);
         SeedUsers(context);
+        SeedShiftTypes(context);
+        SeedAttendances(context);
 
         context.SaveChanges();
     }
@@ -202,6 +204,81 @@ public static class TestData
         };
 
         context.Users.AddRange(users);
+    }
+
+    private static void SeedShiftTypes(MegaMarketDbContext context)
+    {
+        var shiftTypes = new[]
+        {
+            new ShiftType
+            {
+                ShiftTypeId = 1,
+                Name = "Morning Shift",
+                StartTime = new TimeSpan(6, 0, 0),   // 6:00 AM
+                EndTime = new TimeSpan(14, 0, 0),     // 2:00 PM
+                WagePerHour = 40000
+            },
+            new ShiftType
+            {
+                ShiftTypeId = 2,
+                Name = "Afternoon Shift",
+                StartTime = new TimeSpan(14, 0, 0),   // 2:00 PM
+                EndTime = new TimeSpan(22, 0, 0),     // 10:00 PM
+                WagePerHour = 45000
+            },
+            new ShiftType
+            {
+                ShiftTypeId = 3,
+                Name = "Night Shift",
+                StartTime = new TimeSpan(22, 0, 0),   // 10:00 PM
+                EndTime = new TimeSpan(6, 0, 0),      // 6:00 AM
+                WagePerHour = 50000
+            }
+        };
+
+        context.ShiftTypes.AddRange(shiftTypes);
+    }
+
+    private static void SeedAttendances(MegaMarketDbContext context)
+    {
+        var attendances = new[]
+        {
+            new MegaMarket.Data.Models.Attendance
+            {
+                AttendanceId = 1,
+                UserId = 1,
+                ShiftTypeId = 1,
+                Date = DateTime.Today,
+                CheckIn = DateTime.Today.AddHours(6).AddMinutes(5),
+                CheckOut = DateTime.Today.AddHours(14).AddMinutes(10),
+                IsLate = true,
+                Note = "Test attendance for admin user"
+            },
+            new MegaMarket.Data.Models.Attendance
+            {
+                AttendanceId = 2,
+                UserId = 2,
+                ShiftTypeId = 2,
+                Date = DateTime.Today,
+                CheckIn = DateTime.Today.AddHours(14),
+                CheckOut = DateTime.Today.AddHours(22),
+                IsLate = false,
+                Note = "Test attendance for manager user"
+            },
+            new MegaMarket.Data.Models.Attendance
+            {
+                AttendanceId = 3,
+                UserId = 1,
+                ShiftTypeId = 1,
+                Date = DateTime.Today.AddDays(-1),
+                CheckIn = DateTime.Today.AddDays(-1).AddHours(6),
+                CheckOut = DateTime.Today.AddDays(-1).AddHours(14),
+                IsLate = false,
+                Note = "Yesterday's attendance"
+            }
+        };
+
+        context.Attendances.AddRange(attendances);
     }
 
     // Factory methods for creating test entities

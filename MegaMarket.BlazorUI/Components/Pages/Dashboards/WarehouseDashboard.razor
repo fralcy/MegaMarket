@@ -1,0 +1,134 @@
+@page "/warehouse/dashboard"
+@attribute [Authorize(Roles = "Warehouse")]
+@inject Services.Dashboard.DashboardApiClient DashboardApiClient
+@using MegaMarket.BlazorUI.Models.Dashboard
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-gradient mb-1">📦 Warehouse Dashboard</h2>
+            <p class="text-muted mb-0">Inventory and stock management</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(globalErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <strong>Error:</strong> @globalErrorMessage
+            <button type="button" class="btn-close" @onclick="@(() => globalErrorMessage = null)"></button>
+        </div>
+    }
+
+    <!-- INVENTORY STATUS -->
+    <div class="mb-5">
+        <h4 class="mb-3"><span class="bi bi-boxes me-2"></span>Inventory Status</h4>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">Total Products</h6>
+                        <h3 class="text-primary">@(inventoryData?.TotalProducts.ToString("N0") ?? "---")</h3>
+                        <small class="text-muted">In inventory</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">Low Stock Items</h6>
+                        <h3 class="text-danger">@(inventoryData?.LowStockCount.ToString("N0") ?? "---")</h3>
+                        <small class="text-muted">⚠️ Urgent!</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">Total Value</h6>
+                        <h3 class="text-success">@(inventoryData?.TotalStockValue?.ToString("C") ?? "---")</h3>
+                        <small class="text-muted">All inventory</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOW STOCK ALERT -->
+    @if (inventoryData?.LowStockCount > 0)
+    {
+        <div class="mb-5">
+            <div class="alert alert-warning border-0">
+                <h5 class="alert-heading"><span class="bi bi-exclamation-triangle me-2"></span>Low Stock Alert</h5>
+                <p>You have <strong>@inventoryData.LowStockCount</strong> items below minimum stock level. Please initiate reorder process.</p>
+            </div>
+        </div>
+    }
+
+    <!-- QUICK ACTIONS -->
+    <div class="mb-5">
+        <h4 class="mb-3"><span class="bi bi-lightning-fill me-2"></span>Quick Actions</h4>
+        <div class="row">
+            <div class="col-md-4">
+                <a href="/products" class="btn btn-info btn-lg w-100">
+                    <span class="bi bi-bag-fill"></span><br/>View Products
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/imports" class="btn btn-success btn-lg w-100">
+                    <span class="bi bi-truck"></span><br/>New Import
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/attendance/check-in-out" class="btn btn-primary btn-lg w-100">
+                    <span class="bi bi-calendar-check"></span><br/>Check In/Out
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- PERSONAL INFO -->
+    <div class="mb-5">
+        <h4 class="mb-3"><span class="bi bi-person-circle me-2"></span>My Information</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">Name</h6>
+                        <p class="mb-0">Mike Warehouse</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">Role</h6>
+                        <p class="mb-0">Warehouse Manager</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string globalErrorMessage = "";
+    private InventoryDashboardDto? inventoryData;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInventoryData();
+    }
+
+    private async Task LoadInventoryData()
+    {
+        try
+        {
+            globalErrorMessage = "";
+            inventoryData = await DashboardApiClient.GetInventoryDashboardAsync();
+        }
+        catch (Exception ex)
+        {
+            globalErrorMessage = $"Failed to load inventory data: {ex.Message}";
+        }
+    }
+}

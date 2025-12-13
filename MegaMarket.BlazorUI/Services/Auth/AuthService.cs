@@ -31,7 +31,7 @@ public class AuthService
             await _localStorage.SetItemAsync("expiresAt", expiresAt.ToString("O"));
 
             // Notify authentication state changed
-            ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(token);
+            await ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthenticationAsync(token);
 
             return true;
         }
@@ -97,5 +97,10 @@ public class AuthService
 
         var identity = new ClaimsIdentity(claims, "jwt");
         return new ClaimsPrincipal(identity);
+    }
+
+    public async Task<string?> GetUserRoleAsync()
+    {
+        return await _localStorage.GetItemAsync("role");
     }
 }

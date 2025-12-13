@@ -1,6 +1,8 @@
 @page "/attendance/history"
-@attribute [Authorize]
-@inject Services.GraphQL.GraphQLClient GraphQLClient
+@attribute [Authorize(Roles = "Admin,Manager")]
+@using MegaMarket.Data.Models
+@inject Services.Attendance.AttendanceApiClient AttendanceApiClient
+@inject Services.ShiftTypes.ShiftTypesApiClient ShiftTypesApiClient
 @inject AuthenticationStateProvider AuthStateProvider
 
 <div class="container-fluid mt-4">
@@ -8,7 +10,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="text-gradient mb-1">Attendance History</h2>
-            <p class="text-muted">View and track attendance records</p>
+            <p class="text-muted">View and track all attendance records</p>
         </div>
     </div>
 
@@ -87,9 +89,9 @@
 </div>
 
 @code {
-    private List<AttendanceDto>? allAttendances;
-    private List<AttendanceDto>? filteredAttendances;
-    private List<ShiftTypeDto>? shiftTypes;
+    private List<MegaMarket.Data.Models.Attendance>? allAttendances;
+    private List<MegaMarket.Data.Models.Attendance>? filteredAttendances;
+    private List<ShiftType>? shiftTypes;
     private bool isLoading = true;
     private string? errorMessage;
 
@@ -111,111 +113,19 @@
             isLoading = true;
             errorMessage = null;
 
-            // Get current user info
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-            var userIdClaim = user.FindFirst("userId")?.Value;
-            var roleClaim = user.FindFirst("role")?.Value;
+            // Admin và Manager có quyền xem toàn bộ
+            allAttendances = await AttendanceApiClient.GetAttendancesAsync();
 
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            if (allAttendances == null)
             {
-                errorMessage = "Unable to identify current user. Please log in again.";
-                return;
-            }
-
-            // Load attendance records based on role
-            string attendanceQuery;
-            if (roleClaim == "Admin")
-            {
-                // Admin can see all attendance records
-                attendanceQuery = @"
-                    query GetAllAttendances {
-                        attendances {
-                            attendanceId
-                            userId
-                            shiftTypeId
-                            date
-                            checkIn
-                            checkOut
-                            isLate
-                            user {
-                                userId
-                                fullName
-                                username
-                            }
-                            shiftType {
-                                shiftTypeId
-                                name
-                                startTime
-                                endTime
-                                wagePerHour
-                            }
-                        }
-                    }
-                ";
-
-                var response = await GraphQLClient.QueryAsync<GetAllAttendancesResponse>(attendanceQuery);
-                if (response.Errors != null && response.Errors.Any())
-                {
-                    errorMessage = string.Join(", ", response.Errors.Select(e => e.Message));
-                }
-                else
-                {
-                    allAttendances = response.Data?.Attendances ?? new List<AttendanceDto>();
-                }
-            }
-            else
-            {
-                // Employee can only see their own records
-                attendanceQuery = $@"
-                    query GetAttendancesByUser {{
-                        attendancesByUser(userId: {userId}) {{
-                            attendanceId
-                            userId
-                            shiftTypeId
-                            date
-                            checkIn
-                            checkOut
-                            isLate
-                            shiftType {{
-                                shiftTypeId
-                                name
-                                startTime
-                                endTime
-                                wagePerHour
-                            }}
-                        }}
-                    }}
-                ";
-
-                var response = await GraphQLClient.QueryAsync<GetAttendancesByUserResponse>(attendanceQuery);
-                if (response.Errors != null && response.Errors.Any())
-                {
-                    errorMessage = string.Join(", ", response.Errors.Select(e => e.Message));
-                }
-                else
-                {
-                    allAttendances = response.Data?.AttendancesByUser ?? new List<AttendanceDto>();
-                }
+                allAttendances = new List<MegaMarket.Data.Models.Attendance>();
             }
 
             // Load shift types for filter
-            var shiftTypesQuery = @"
-                query GetShiftTypes {
-                    shiftTypes {
-                        shiftTypeId
-                        name
-                        startTime
-                        endTime
-                        wagePerHour
-                    }
-                }
-            ";
-
-            var shiftTypesResponse = await GraphQLClient.QueryAsync<GetShiftTypesResponse>(shiftTypesQuery);
-            if (shiftTypesResponse.Errors == null || !shiftTypesResponse.Errors.Any())
+            shiftTypes = await ShiftTypesApiClient.GetShiftTypesAsync();
+            if (shiftTypes == null)
             {
-                shiftTypes = shiftTypesResponse.Data?.ShiftTypes ?? new List<ShiftTypeDto>();
+                shiftTypes = new List<ShiftType>();
             }
 
             // Initialize filters with default date range (last 30 days)
@@ -238,7 +148,7 @@
     {
         if (allAttendances == null)
         {
-            filteredAttendances = new List<AttendanceDto>();
+            filteredAttendances = new List<MegaMarket.Data.Models.Attendance>();
             return;
         }
 
@@ -285,51 +195,5 @@
         filterShiftTypeId = 0;
         filterStatus = "All";
         ApplyFilters();
-    }
-
-    // DTOs
-    public class AttendanceDto
-    {
-        public int AttendanceId { get; set; }
-        public int UserId { get; set; }
-        public int ShiftTypeId { get; set; }
-        public DateTime Date { get; set; }
-        public DateTime CheckIn { get; set; }
-        public DateTime? CheckOut { get; set; }
-        public bool IsLate { get; set; }
-        public UserDto? User { get; set; }
-        public ShiftTypeDto? ShiftType { get; set; }
-    }
-
-    public class UserDto
-    {
-        public int UserId { get; set; }
-        public string FullName { get; set; } = string.Empty;
-        public string Username { get; set; } = string.Empty;
-    }
-
-    public class ShiftTypeDto
-    {
-        public int ShiftTypeId { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public TimeSpan StartTime { get; set; }
-        public TimeSpan EndTime { get; set; }
-        public decimal WagePerHour { get; set; }
-    }
-
-    // GraphQL Response Types
-    private class GetAllAttendancesResponse
-    {
-        public List<AttendanceDto>? Attendances { get; set; }
-    }
-
-    private class GetAttendancesByUserResponse
-    {
-        public List<AttendanceDto>? AttendancesByUser { get; set; }
-    }
-
-    private class GetShiftTypesResponse
-    {
-        public List<ShiftTypeDto>? ShiftTypes { get; set; }
     }
 }

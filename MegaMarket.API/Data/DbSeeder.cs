@@ -11,6 +11,8 @@ public static class DbSeeder
         await dbContext.Database.MigrateAsync();
 
         await SeedUsersAsync(dbContext);
+        await SeedShiftTypesAsync(dbContext);
+        await SeedAttendancesAsync(dbContext);
         await SeedSuppliersAsync(dbContext);
         await SeedProductsAsync(dbContext);
         await SeedImportsAsync(dbContext);
@@ -23,13 +25,177 @@ public static class DbSeeder
             return;
         }
 
+        // Fixed BCrypt hash for "Password123!" - matches SQL setup script
+        // This ensures consistent data between DbSeeder and SQL file
+        const string passwordHash = "$2a$12$qzthoeTIHeEaAlx9pehvt.IsYk85GGf6LukiB9jKoEZFW5jRQAi5C";
+
         var users = new[]
         {
-            new User { FullName = "Admin User", Username = "admin", Password = "Password123!", Role = "Admin" },
-            new User { FullName = "John Manager", Username = "john.manager", Password = "Password123!", Role = "Manager" }
+            // Quản trị hệ thống (System Admin)
+            new User { FullName = "Admin User", Username = "admin", Password = passwordHash, Role = "Admin", Email = "admin@megamarket.com", Phone = "0901234567" },
+
+            // Quản lý cửa hàng (Manager)
+            new User { FullName = "John Manager", Username = "john.manager", Password = passwordHash, Role = "Manager", Email = "john@megamarket.com", Phone = "0907654321" },
+
+            // Thu ngân/POS (Cashier)
+            new User { FullName = "Sarah Cashier", Username = "sarah.cashier", Password = passwordHash, Role = "Cashier", Email = "sarah@megamarket.com", Phone = "0912345678" },
+
+            // Nhân viên kho (Warehouse)
+            new User { FullName = "Mike Warehouse", Username = "mike.warehouse", Password = passwordHash, Role = "Warehouse", Email = "mike@megamarket.com", Phone = "0923456789" }
         };
 
         dbContext.Users.AddRange(users);
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task SeedShiftTypesAsync(MegaMarketDbContext dbContext)
+    {
+        if (await dbContext.ShiftTypes.AnyAsync())
+        {
+            return;
+        }
+
+        var shiftTypes = new[]
+        {
+            new ShiftType
+            {
+                Name = "Morning Shift",
+                StartTime = new TimeSpan(6, 0, 0),   // 6:00 AM
+                EndTime = new TimeSpan(14, 0, 0),    // 2:00 PM
+                WagePerHour = 40000
+            },
+            new ShiftType
+            {
+                Name = "Afternoon Shift",
+                StartTime = new TimeSpan(14, 0, 0),  // 2:00 PM
+                EndTime = new TimeSpan(22, 0, 0),    // 10:00 PM
+                WagePerHour = 45000
+            },
+            new ShiftType
+            {
+                Name = "Night Shift",
+                StartTime = new TimeSpan(22, 0, 0),  // 10:00 PM
+                EndTime = new TimeSpan(6, 0, 0),     // 6:00 AM
+                WagePerHour = 55000
+            },
+            new ShiftType
+            {
+                Name = "Full Day",
+                StartTime = new TimeSpan(8, 0, 0),   // 8:00 AM
+                EndTime = new TimeSpan(17, 0, 0),    // 5:00 PM
+                WagePerHour = 42000
+            }
+        };
+
+        dbContext.ShiftTypes.AddRange(shiftTypes);
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task SeedAttendancesAsync(MegaMarketDbContext dbContext)
+    {
+        if (await dbContext.Attendances.AnyAsync())
+        {
+            return;
+        }
+
+        var users = await dbContext.Users.ToListAsync();
+        var shiftTypes = await dbContext.ShiftTypes.ToListAsync();
+
+        if (!users.Any() || !shiftTypes.Any())
+        {
+            return;
+        }
+
+        var admin = users.FirstOrDefault(u => u.Role == "Admin");
+        var manager = users.FirstOrDefault(u => u.Role == "Manager");
+        var cashier = users.FirstOrDefault(u => u.Role == "Cashier");
+        var warehouse = users.FirstOrDefault(u => u.Role == "Warehouse");
+
+        var morningShift = shiftTypes.FirstOrDefault(s => s.Name == "Morning Shift");
+        var afternoonShift = shiftTypes.FirstOrDefault(s => s.Name == "Afternoon Shift");
+        var fullDayShift = shiftTypes.FirstOrDefault(s => s.Name == "Full Day");
+
+        if (admin == null || morningShift == null || afternoonShift == null || fullDayShift == null)
+        {
+            return;
+        }
+
+        var attendances = new List<Attendance>();
+
+        // Admin - Last 7 days
+        for (int i = 7; i >= 1; i--)
+        {
+            var date = DateTime.Today.AddDays(-i);
+            attendances.Add(new Attendance
+            {
+                UserId = admin.UserId,
+                ShiftTypeId = fullDayShift.ShiftTypeId,
+                Date = date,
+                CheckIn = date.AddHours(8).AddMinutes(i % 2 == 0 ? 0 : 5),
+                CheckOut = date.AddHours(17).AddMinutes(i % 2 == 0 ? 0 : 10),
+                IsLate = i % 2 != 0,
+                Note = i % 2 == 0 ? "On time" : "Late check-in"
+            });
+        }
+
+        // Manager - Last 5 days
+        if (manager != null)
+        {
+            for (int i = 5; i >= 1; i--)
+            {
+                var date = DateTime.Today.AddDays(-i);
+                attendances.Add(new Attendance
+                {
+                    UserId = manager.UserId,
+                    ShiftTypeId = morningShift.ShiftTypeId,
+                    Date = date,
+                    CheckIn = date.AddHours(6),
+                    CheckOut = date.AddHours(14),
+                    IsLate = false,
+                    Note = "Regular shift"
+                });
+            }
+        }
+
+        // Cashier - Last 3 days
+        if (cashier != null)
+        {
+            for (int i = 3; i >= 1; i--)
+            {
+                var date = DateTime.Today.AddDays(-i);
+                attendances.Add(new Attendance
+                {
+                    UserId = cashier.UserId,
+                    ShiftTypeId = afternoonShift.ShiftTypeId,
+                    Date = date,
+                    CheckIn = date.AddHours(14).AddMinutes(i % 2 == 0 ? 0 : 5),
+                    CheckOut = date.AddHours(22),
+                    IsLate = i % 2 != 0,
+                    Note = i % 2 == 0 ? "On time" : "Traffic delay"
+                });
+            }
+        }
+
+        // Warehouse - Last 4 days
+        if (warehouse != null)
+        {
+            for (int i = 4; i >= 1; i--)
+            {
+                var date = DateTime.Today.AddDays(-i);
+                attendances.Add(new Attendance
+                {
+                    UserId = warehouse.UserId,
+                    ShiftTypeId = fullDayShift.ShiftTypeId,
+                    Date = date,
+                    CheckIn = date.AddHours(8),
+                    CheckOut = date.AddHours(17),
+                    IsLate = false,
+                    Note = "Inventory check"
+                });
+            }
+        }
+
+        dbContext.Attendances.AddRange(attendances);
         await dbContext.SaveChangesAsync();
     }
 

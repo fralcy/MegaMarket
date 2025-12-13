@@ -1,4 +1,5 @@
 @* Attendance Statistics Component *@
+@using MegaMarket.Data.Models
 
 <div class="row mb-4">
     <div class="col-md-3">
@@ -33,7 +34,7 @@
 
 @code {
     [Parameter]
-    public List<AttendanceHistory.AttendanceDto>? Attendances { get; set; }
+    public List<MegaMarket.Data.Models.Attendance>? Attendances { get; set; }
 
     private int totalRecords => Attendances?.Count ?? 0;
     private int onTimeCount => Attendances?.Count(a => !a.IsLate && a.CheckOut != null) ?? 0;
@@ -49,7 +50,7 @@
 
             var hours = Attendances
                 .Where(a => a.CheckOut != null)
-                .Sum(a => (a.CheckOut!.Value - a.CheckIn).TotalHours);
+                .Sum(a => (a.CheckOut!.Value - a.CheckIn!.Value).TotalHours);
 
             return (decimal)hours;
         }

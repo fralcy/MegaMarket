@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell:*)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" status)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" log --oneline -10)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" diff --name-only)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" status -s)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" log --all --oneline)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" branch -a)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" log dev --oneline)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" show dev:MegaMarket.Tests/)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" show master:MegaMarket.Tests/)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" show HEAD~0:MegaMarket.Tests/)",
+      "Bash(git add:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(git reset:*)",
+      "Bash(dotnet ef migrations:*)",
+      "Bash(dotnet ef database update:*)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" diff --stat)",
+      "Bash(git -C \"d:\\se310\\MegaMarket\" add MegaMarket.API/Data/DbSeeder.cs MegaMarket.API/MegaMarket.API.csproj MegaMarket.API/Program.cs MegaMarket.BlazorUI/Components/Pages/Auth/Login.razor MegaMarket.BlazorUI/Components/Routes.razor MegaMarket.BlazorUI/Components/_Imports.razor MegaMarket.BlazorUI/Components/Layout/AuthLayout.razor MegaMarket.BlazorUI/Program.cs MegaMarket.BlazorUI/Services/Auth/LocalStorageService.cs MegaMarket.BlazorUI/Services/GraphQL/GraphQLClient.cs MegaMarket.BlazorUI/appsettings.json)"
+    ]
+  }
+}

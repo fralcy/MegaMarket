@@ -1,0 +1,169 @@
+@page "/manager/dashboard"
+@attribute [Authorize(Roles = "Manager")]
+@inject Services.Dashboard.DashboardApiClient DashboardApiClient
+@using MegaMarket.BlazorUI.Models.Dashboard
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-gradient mb-1">📊 Manager Dashboard</h2>
+            <p class="text-muted mb-0">Sales metrics and employee management</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(globalErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <strong>Error:</strong> @globalErrorMessage
+            <button type="button" class="btn-close" @onclick="@(() => globalErrorMessage = null)"></button>
+        </div>
+    }
+
+    <!-- SALES SECTION -->
+    <div class="mb-5">
+        <h4 class="mb-3"><span class="bi bi-graph-up me-2"></span>Sales Overview</h4>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">Total Revenue</h6>
+                        <h3 class="text-success">@(salesData?.TotalRevenue.ToString("C") ?? "---")</h3>
+                        <small class="text-muted">@GetDateRangeLabel()</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">Total Invoices</h6>
+                        <h3 class="text-primary">@(salesData?.TotalInvoices.ToString("N0") ?? "---")</h3>
+                        <small class="text-muted">Orders processed</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">Avg Transaction</h6>
+                        <h3 class="text-info">@(salesData != null && salesData.TotalInvoices > 0 ? (salesData.TotalRevenue / salesData.TotalInvoices).ToString("C") : "---")</h3>
+                        <small class="text-muted">Per invoice</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INVENTORY SECTION -->
+    <div class="mb-5">
+        <h4 class="mb-3"><span class="bi bi-boxes me-2"></span>Inventory Status</h4>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">Total Products</h6>
+                        <h3 class="text-warning">@(inventoryData?.TotalProducts.ToString("N0") ?? "---")</h3>
+                        <small class="text-muted">In system</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">Low Stock Items</h6>
+                        <h3 class="text-danger">@(inventoryData?.LowStockCount.ToString("N0") ?? "---")</h3>
+                        <small class="text-muted">Need reorder</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">Total Value</h6>
+                        <h3 class="text-success">@(inventoryData?.TotalStockValue?.ToString("C") ?? "---")</h3>
+                        <small class="text-muted">All inventory</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QUICK LINKS -->
+    <div class="mb-5">
+        <h4 class="mb-3"><span class="bi bi-lightning-fill me-2"></span>Quick Actions</h4>
+        <div class="row">
+            <div class="col-md-3">
+                <a href="/employees" class="btn btn-outline-primary btn-lg w-100">
+                    <span class="bi bi-people-fill"></span><br/>Manage Employees
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="/products" class="btn btn-outline-success btn-lg w-100">
+                    <span class="bi bi-bag-fill"></span><br/>Products
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="/rewards" class="btn btn-outline-warning btn-lg w-100">
+                    <span class="bi bi-gift-fill"></span><br/>Rewards
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="/customers" class="btn btn-outline-info btn-lg w-100">
+                    <span class="bi bi-people"></span><br/>Customers
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string globalErrorMessage = "";
+    private SalesDashboardDto? salesData;
+    private InventoryDashboardDto? inventoryData;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            globalErrorMessage = "";
+            await Task.WhenAll(
+                LoadSalesData(),
+                LoadInventoryData()
+            );
+        }
+        catch (Exception ex)
+        {
+            globalErrorMessage = ex.Message;
+        }
+    }
+
+    private async Task LoadSalesData()
+    {
+        try
+        {
+            salesData = await DashboardApiClient.GetSalesDashboardAsync(DateRangeEnum.ThisWeek);
+        }
+        catch (Exception ex)
+        {
+            globalErrorMessage = $"Failed to load sales data: {ex.Message}";
+        }
+    }
+
+    private async Task LoadInventoryData()
+    {
+        try
+        {
+            inventoryData = await DashboardApiClient.GetInventoryDashboardAsync();
+        }
+        catch (Exception ex)
+        {
+            globalErrorMessage = $"Failed to load inventory data: {ex.Message}";
+        }
+    }
+
+    private string GetDateRangeLabel() => "This Week";
+}
