@@ -20,6 +20,7 @@ public class SalesDashboardController : ControllerBase
 
     // GET: api/SalesDashboard?dateRange=TODAY
     [HttpGet]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> GetSalesDashboard([FromQuery] string dateRange = "TODAY")
     {
         try

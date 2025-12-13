@@ -1,5 +1,5 @@
-@page "/attendance/history"
-@attribute [Authorize(Roles = "Admin,Manager")]
+@page "/attendance/my-history"
+@attribute [Authorize(Roles = "Cashier,Warehouse")]
 @using MegaMarket.Data.Models
 @inject Services.Attendance.AttendanceApiClient AttendanceApiClient
 @inject Services.ShiftTypes.ShiftTypesApiClient ShiftTypesApiClient
@@ -9,8 +9,8 @@
     @* Header *@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="text-gradient mb-1">Attendance History</h2>
-            <p class="text-muted">View and track all attendance records</p>
+            <h2 class="text-gradient mb-1">My Attendance History</h2>
+            <p class="text-muted">View and track your own attendance records</p>
         </div>
     </div>
 
@@ -34,15 +34,15 @@
         <div class="card mb-4">
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label class="form-label">From Date</label>
                         <input type="date" class="form-control" @bind="filterFromDate" @bind:after="ApplyFilters" />
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label class="form-label">To Date</label>
                         <input type="date" class="form-control" @bind="filterToDate" @bind:after="ApplyFilters" />
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label class="form-label">Shift Type</label>
                         <select class="form-select" @bind="filterShiftTypeId" @bind:after="ApplyFilters">
                             <option value="0">All Shifts</option>
@@ -53,15 +53,6 @@
                                     <option value="@shift.ShiftTypeId">@shift.Name</option>
                                 }
                             }
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Status</label>
-                        <select class="form-select" @bind="filterStatus" @bind:after="ApplyFilters">
-                            <option value="All">All Status</option>
-                            <option value="OnTime">On Time</option>
-                            <option value="Late">Late</option>
-                            <option value="Incomplete">Incomplete</option>
                         </select>
                     </div>
                 </div>
@@ -99,7 +90,7 @@
     private DateTime? filterFromDate;
     private DateTime? filterToDate;
     private int filterShiftTypeId = 0;
-    private string filterStatus = "All";
+    private string filterStatus = "All"; 
 
     protected override async Task OnInitializedAsync()
     {
@@ -113,9 +104,20 @@
             isLoading = true;
             errorMessage = null;
 
-            // Admin và Manager có quyền xem toàn bộ
-            allAttendances = await AttendanceApiClient.GetAttendancesAsync();
+            // Get current user info
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdClaim = user.FindFirst("userId")?.Value;
+            
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                errorMessage = "Unable to identify current user. Please log in again.";
+                return;
+            }
 
+            // Tải dữ liệu cá nhân của người dùng hiện tại
+            allAttendances = await AttendanceApiClient.GetAttendancesByUserAsync(userId);
+            
             if (allAttendances == null)
             {
                 allAttendances = new List<MegaMarket.Data.Models.Attendance>();
@@ -171,7 +173,7 @@
             query = query.Where(a => a.ShiftTypeId == filterShiftTypeId);
         }
 
-        // Filter by status
+        // Filter by status (Logic này vẫn được giữ lại để tương thích)
         if (filterStatus == "OnTime")
         {
             query = query.Where(a => !a.IsLate && a.CheckOut != null);

@@ -47,11 +47,8 @@ public class UsersController : ControllerBase
     }
 
     // GET: api/Users
-    [Authorize]
-    [HttpGet]
     [Authorize(Roles = "Admin")]
     [HttpGet]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetUsers()
     {
         try
@@ -66,6 +63,7 @@ public class UsersController : ControllerBase
     }
 
     // GET: api/Users/5
+    [Authorize]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetUser(int id)
     {
@@ -96,6 +94,7 @@ public class UsersController : ControllerBase
     }
 
     // GET: api/Users/username/john
+    [Authorize]
     [HttpGet("username/{username}")]
     public async Task<IActionResult> GetUserByUsername(string username)
     {
@@ -133,6 +132,7 @@ public class UsersController : ControllerBase
     }
 
     // PUT: api/Users/5
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UserInputDto input)
     {

@@ -98,4 +98,9 @@ public class AuthService
         var identity = new ClaimsIdentity(claims, "jwt");
         return new ClaimsPrincipal(identity);
     }
+
+    public async Task<string?> GetUserRoleAsync()
+    {
+        return await _localStorage.GetItemAsync("role");
+    }
 }

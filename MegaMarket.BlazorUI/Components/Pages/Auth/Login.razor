@@ -11,7 +11,6 @@
                 <div class="card-body p-4">
                     <div class="text-center mb-4">
                         <h2 class="text-gradient">🏪 MegaMarket</h2>
-                        <p class="text-muted">Employee Management System</p>
                     </div>
 
                     @if (!string.IsNullOrEmpty(errorMessage))
@@ -54,7 +53,11 @@
 
                     <div class="mt-4 text-center">
                         <small class="text-muted">
-                            Test credentials: admin/Password123! or john.manager/Password123!
+                            <strong>Test Credentials:</strong><br/>
+                            Admin: admin / Password123!<br/>
+                            Manager: john.manager / Password123!<br/>
+                            Cashier: sarah.cashier / Password123!<br/>
+                            Warehouse: mike.warehouse / Password123!
                         </small>
                     </div>
                 </div>
@@ -100,14 +103,15 @@
                     );
 
                     // Redirect based on role
-                    if (loginResult.Role == "Admin")
+                    var redirectUrl = loginResult.Role switch
                     {
-                        NavigationManager.NavigateTo("/admin/dashboard");
-                    }
-                    else
-                    {
-                        NavigationManager.NavigateTo("/employee/dashboard");
-                    }
+                        "Admin" => "/admin/dashboard",
+                        "Manager" => "/manager/dashboard",
+                        "Cashier" => "/cashier/dashboard",
+                        "Warehouse" => "/warehouse/dashboard",
+                        _ => "/employee/dashboard"
+                    };
+                    NavigationManager.NavigateTo(redirectUrl);
                 }
                 else
                 {

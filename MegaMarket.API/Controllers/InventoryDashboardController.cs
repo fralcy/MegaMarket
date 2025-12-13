@@ -19,6 +19,7 @@ public class InventoryDashboardController : ControllerBase
 
     // GET: api/InventoryDashboard
     [HttpGet]
+    [Authorize(Roles = "Admin,Manager,Warehouse")]
     public async Task<IActionResult> GetInventoryDashboard()
     {
         try

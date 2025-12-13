@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using MegaMarket.API.DTOs.Imports;
 using MegaMarket.API.Services.Interfaces;
 using MegaMarket.Data.Models;
 
 namespace MegaMarket.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class ImportsController : ControllerBase
@@ -37,6 +39,7 @@ public class ImportsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,Manager,Warehouse")]
     public async Task<ActionResult<ImportDetailDto>> CreateImport([FromBody] ImportCreateDto dto)
     {
         if (!ModelState.IsValid)
