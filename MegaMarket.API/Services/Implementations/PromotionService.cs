@@ -12,12 +12,23 @@ namespace MegaMarket.API.Services.Implementations
         {
             _repository = repository;
         }
-        public async Task<List<Promotion>> GetAllPromotions()
+        public async Task<List<PromotionResponseDto>> GetAllPromotions()
         {
             var promotions = await _repository.GetAllPromotions();
-            return promotions;
+            var result = promotions.Select(p => new PromotionResponseDto
+            {
+                PromotionId = p.PromotionId,
+                Name = p.Name,
+                Description = p.Description,
+                DiscountType = p.DiscountType,
+                DiscountValue = p.DiscountValue,
+                StartDate = p.StartDate,
+                EndDate = p.EndDate,
+                Type = p.Type,
+            }).ToList();
+            return result;
         }
-        public async Task<Promotion> CreatePromotion(PromotionDto promotionDto)
+        public async Task<PromotionResponseDto> CreatePromotion(PromotionRequestDto promotionDto)
         {
             var promotion = new Promotion
             {
@@ -30,8 +41,19 @@ namespace MegaMarket.API.Services.Implementations
                 Type = promotionDto.Type,
             };
             var createdPromotion = await _repository.CreatePromotion(promotion);
+            var result = new PromotionResponseDto
+            {
+                PromotionId = createdPromotion.PromotionId,
+                Name = createdPromotion.Name,
+                Description = createdPromotion.Description,
+                DiscountType = createdPromotion.DiscountType,
+                DiscountValue = createdPromotion.DiscountValue,
+                StartDate = createdPromotion.StartDate,
+                EndDate = createdPromotion.EndDate,
+                Type = createdPromotion.Type,
+            };
 
-            return createdPromotion;
+            return result;
         }
         public async Task DeletePromotion(int promotionId)
         {

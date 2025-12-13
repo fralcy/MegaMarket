@@ -33,6 +33,15 @@ builder.Services.AddScoped<LocalStorageService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 builder.Services.AddAuthorizationCore();
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = "CustomAuthScheme";
+})
+.AddCookie("CustomAuthScheme", options =>
+{
+    options.Cookie.Name = "MegaMarketAuthCookie";
+    options.SlidingExpiration = true;
+});
 
 // Configure HttpClient for GraphQL
 builder.Services.AddHttpClient("GraphQL", client =>

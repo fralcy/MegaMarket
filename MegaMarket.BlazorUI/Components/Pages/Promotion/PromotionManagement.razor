@@ -1,14 +1,17 @@
 ﻿@page "/promotion"
+
+@inject IHttpClientFactory HttpClientFactory
 @using System.ComponentModel.DataAnnotations
 @using System.ComponentModel.DataAnnotations.Schema
 @using System.Globalization
+@using MegaMarket.API.DTOs.Promotion
 
 ## 🎁 Quản Lý Chương Trình Khuyến Mãi
 
 @if (IsEditing)
 {
     <div class="edit-form">
-        <h3>@(CurrentPromotion.PromotionId == 0 ? "Thêm Khuyến Mãi Mới" : $"Chỉnh Sửa: {CurrentPromotion.Name}")</h3>
+        <h3>@(CurrentPromotionId == 0 ? "Thêm Khuyến Mãi Mới" : $"Chỉnh Sửa: {CurrentPromotion.Name}")</h3>
 
         <EditForm Model="@CurrentPromotion" OnValidSubmit="SavePromotion">
             <DataAnnotationsValidator />
@@ -116,82 +119,38 @@
 
 @code {
     // -----------------------------------------------------------------------
-    // MODEL DỮ LIỆU
-    // -----------------------------------------------------------------------
-    public class Promotion
-    {
-        [Key]
-        [Column("promotion_id")]
-        public int PromotionId { get; set; }
-
-        [Required(ErrorMessage = "Tên khuyến mãi là bắt buộc.")]
-        [StringLength(200)]
-        [Column("name")]
-        public string Name { get; set; } = string.Empty;
-
-        [Column("description")]
-        public string? Description { get; set; }
-
-        [Required]
-        [StringLength(20)]
-        [Column("discount_type")]
-        public string DiscountType { get; set; } = "percent"; // percent / fixed
-
-        [Required]
-        [Range(0.01, 1000000000, ErrorMessage = "Giá trị giảm giá phải lớn hơn 0.")]
-        [Column("discount_value", TypeName = "decimal(10,2)")]
-        public decimal DiscountValue { get; set; }
-
-        [Required(ErrorMessage = "Ngày bắt đầu là bắt buộc.")]
-        [Column("start_date")]
-        public DateTime StartDate { get; set; } = DateTime.Today;
-
-        [Required(ErrorMessage = "Ngày kết thúc là bắt buộc.")]
-        [Column("end_date")]
-        public DateTime EndDate { get; set; } = DateTime.Today.AddDays(7);
-
-        [Required]
-        [StringLength(50)]
-        [Column("type")]
-        public string Type { get; set; } = "invoice"; // invoice / product / promotion
-
-        // Navigation properties (Không dùng trong CRUD UI này, chỉ giữ lại định nghĩa)
-        public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
-        public ICollection<InvoiceDetail> InvoiceDetails { get; set; } = new List<InvoiceDetail>();
-        public ICollection<PromotionProduct> PromotionProducts { get; set; } = new List<PromotionProduct>();
-    }
-
-    // Định nghĩa các lớp giả định cho Navigation properties
-    public class Invoice { }
-    public class InvoiceDetail { }
-    public class PromotionProduct { }
-
-
-    // -----------------------------------------------------------------------
     // STATE (Trạng thái)
     // -----------------------------------------------------------------------
 
-    private List<Promotion> Promotions { get; set; } = new List<Promotion>();
-    private Promotion CurrentPromotion { get; set; } = new Promotion();
+    private List<PromotionResponseDto> Promotions { get; set; } = new List<PromotionResponseDto>();
+    private PromotionRequestDto CurrentPromotion { get; set; } = new PromotionRequestDto();
+    private int CurrentPromotionId { get; set; } = 0;
     private bool IsEditing { get; set; } = false;
-    private int NextId = 1;
 
     // -----------------------------------------------------------------------
     // LIFECYCLE VÀ KHỞI TẠO DỮ LIỆU
     // -----------------------------------------------------------------------
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // Khởi tạo dữ liệu mẫu
-        Promotions.Add(new Promotion { PromotionId = NextId++, Name = "Giảm 10% Hóa đơn", DiscountType = "percent", DiscountValue = 10, StartDate = DateTime.Today, EndDate = DateTime.Today.AddDays(30), Type = "invoice", Description = "Giảm 10% cho toàn bộ hóa đơn." });
-        Promotions.Add(new Promotion { PromotionId = NextId++, Name = "Giảm giá Trứng Gà", DiscountType = "fixed", DiscountValue = 5000, StartDate = DateTime.Today.AddDays(-10), EndDate = DateTime.Today.AddDays(5), Type = "product", Description = "Giảm 5,000 VNĐ cho mỗi hộp Trứng Gà." });
+        try
+        {
+            var client = HttpClientFactory.CreateClient("MegaMarket.API");
+            Promotions = await client.GetFromJsonAsync<List<PromotionResponseDto>>("api/Promotion") ?? new List<PromotionResponseDto>();
+            Console.WriteLine($"Đã tải {Promotions.Count} khuyến mãi.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Lỗi khi tải danh sách khuyến mãi: {ex.Message}");
+            Promotions = new List<PromotionResponseDto>();
+        }
     }
 
     // -----------------------------------------------------------------------
     // HÀM HỖ TRỢ HIỂN THỊ
     // -----------------------------------------------------------------------
 
-    private string GetDiscountDisplay(Promotion promo)
+    private string GetDiscountDisplay(PromotionResponseDto promo)
     {
         if (promo.DiscountType == "percent")
         {
@@ -223,7 +182,7 @@
     // Bắt đầu chế độ Thêm mới
     private void StartNewPromotion()
     {
-        CurrentPromotion = new Promotion();
+        CurrentPromotion = new PromotionRequestDto();
         IsEditing = true;
     }
 
@@ -231,12 +190,12 @@
     private void StartEdit(int id)
     {
         var promoToEdit = Promotions.FirstOrDefault(p => p.PromotionId == id);
+        CurrentPromotionId = id;
         if (promoToEdit != null)
         {
             // Tạo bản sao để tránh thay đổi trực tiếp vào danh sách khi chưa lưu
-            CurrentPromotion = new Promotion
+            CurrentPromotion = new PromotionRequestDto
             {
-                PromotionId = promoToEdit.PromotionId,
                 Name = promoToEdit.Name,
                 Description = promoToEdit.Description,
                 DiscountType = promoToEdit.DiscountType,
@@ -250,36 +209,36 @@
     }
 
     // Lưu (Create hoặc Update)
-    private void SavePromotion()
+    private async Task SavePromotion()
     {
-        if (CurrentPromotion.PromotionId == 0)
+        if (CurrentPromotionId == 0)
         {
             // Thêm mới (Create)
-            CurrentPromotion.PromotionId = NextId++;
-            Promotions.Add(CurrentPromotion);
-            Console.WriteLine($"Đã thêm mới Khuyến Mãi: {CurrentPromotion.Name}");
+            var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
+            var response = httpClient.PostAsJsonAsync("api/Promotion", CurrentPromotion).Result;
+            if (response.IsSuccessStatusCode)
+            {
+                IsEditing = false;
+                CurrentPromotion = new PromotionRequestDto();
+                CurrentPromotionId = 0;
+				await OnInitializedAsync(); // Tải lại danh sách sau khi thêm mới
+            }
+            else
+            {
+                Console.WriteLine("Lỗi khi thêm mới khuyến mãi.");
+            }
         }
         else
         {
-            // Cập nhật (Update)
-            var index = Promotions.FindIndex(p => p.PromotionId == CurrentPromotion.PromotionId);
-            if (index != -1)
-            {
-                Promotions[index] = CurrentPromotion;
-                Console.WriteLine($"Đã cập nhật Khuyến Mãi ID: {CurrentPromotion.PromotionId}");
-            }
-        }
 
-        IsEditing = false;
-        // Reset CurrentPromotion sau khi lưu thành công (tùy chọn)
-        CurrentPromotion = new Promotion();
+        }
     }
 
     // Hủy bỏ chỉnh sửa/thêm mới
     private void CancelEdit()
     {
         IsEditing = false;
-        CurrentPromotion = new Promotion();
+        CurrentPromotion = new PromotionRequestDto();
     }
 
     // Xóa (Delete)
@@ -295,8 +254,16 @@
 
             if (confirmed)
             {
-                Promotions.Remove(promoToDelete);
-                Console.WriteLine($"Đã xóa Khuyến Mãi ID: {id}");
+                var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
+                var response = await httpClient.DeleteAsync($"api/Promotion/{id}");
+                if (response.IsSuccessStatusCode)
+                {
+					await OnInitializedAsync(); // Tải lại danh sách sau khi xóa
+                }
+                else
+                {
+                    Console.WriteLine("Lỗi khi xóa khuyến mãi.");
+				}
             }
         }
     }

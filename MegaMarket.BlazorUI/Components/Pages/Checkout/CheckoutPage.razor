@@ -2,6 +2,8 @@
 
 @inject IHttpClientFactory HttpClientFactory
 @using System.Globalization
+@using MegaMarket.API.DTOs.Invoice
+@using MegaMarket.API.DTOs.Products
 @using MegaMarket.Data.Models
 
 <div class="checkout-container">
@@ -243,11 +245,30 @@
 </div>
 
 @code {
+    private List<ProductDto> Products = new List<ProductDto>();
+    private Dictionary<string, ProductDto> ProductDB;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
+		    Products = await httpClient.GetFromJsonAsync<List<ProductDto>>("api/Products") ?? new List<ProductDto>();
+            ProductDB = Products.ToDictionary(p => p.Barcode, p => p);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Lỗi khi tải danh sách sản phẩm: {ex.Message}");
+			Products = new List<ProductDto>();
+            ProductDB = new Dictionary<string, ProductDto>();
+		}
+	}
+
+
     // -----------------------------------------------------------------------
-    // MOCK DATA VÀ MODEL
+    // ENUM VÀ STATE (Trạng thái)
     // -----------------------------------------------------------------------
 
-    // Model sản phẩm trong giỏ hàng
     public class CartItem
     {
         public string ProductId { get; set; } = string.Empty;
@@ -256,83 +277,6 @@
         public decimal UnitPrice { get; set; }
         public decimal Total => Quantity * UnitPrice;
     }
-
-    // Mock Database sản phẩm
-    public static class ProductMockData
-    {
-        public static List<Product> GetProducts()
-        {
-            return new List<Product>
-            {
-                new Product
-                {
-                    ProductId = 1001,
-                    Barcode = "893456700001",
-                    Name = "Nước Giải Khát Có Ga - Vị Cam",
-                    Category = "Đồ uống",
-                    UnitPrice = 12500.00M,
-                    QuantityInStock = 150,
-                    MinQuantity = 50,
-                    IsPerishable = false,
-                    ExpiryDate = DateTime.Now.AddYears(1) // Hạn sử dụng xa
-                },
-                new Product
-                {
-                    ProductId = 1002,
-                    Barcode = "893521190010",
-                    Name = "Sữa Tươi Tiệt Trùng Nguyên Kem",
-                    Category = "Sữa và chế phẩm",
-                    UnitPrice = 35000.50M,
-                    QuantityInStock = 75,
-                    MinQuantity = 30,
-                    IsPerishable = true, // Sản phẩm dễ hỏng
-                    ExpiryDate = DateTime.Now.AddMonths(1) // Hạn sử dụng gần hơn
-                },
-                new Product
-                {
-                    ProductId = 1003,
-                    Barcode = "489123456789",
-                    Name = "Bánh Quy Bơ Cao Cấp 500g",
-                    Category = "Thực phẩm khô",
-                    UnitPrice = 58000.00M,
-                    QuantityInStock = 200,
-                    MinQuantity = 100,
-                    IsPerishable = false,
-                    ExpiryDate = DateTime.Now.AddMonths(8)
-                },
-                new Product
-                {
-                    ProductId = 1004,
-                    Barcode = "978654321000",
-                    Name = "Bàn Chải Đánh Răng Lông Mềm",
-                    Category = "Chăm sóc cá nhân",
-                    UnitPrice = 18000.00M,
-                    QuantityInStock = 30, // Số lượng trong kho thấp
-                    MinQuantity = 50, // Cần đặt hàng thêm
-                    IsPerishable = false,
-                    ExpiryDate = null // Không có hạn sử dụng
-                },
-                new Product
-                {
-                    ProductId = 1005,
-                    Barcode = "880998877665",
-                    Name = "Thịt Bò Mỹ Đông Lạnh (1kg)",
-                    Category = "Thực phẩm tươi sống",
-                    UnitPrice = 245999.00M,
-                    QuantityInStock = 45,
-                    MinQuantity = 20,
-                    IsPerishable = true, // Sản phẩm dễ hỏng
-                    ExpiryDate = DateTime.Now.AddDays(90) // Hạn sử dụng trong 3 tháng
-                }
-            };
-        }
-    }
-
-    private Dictionary<string, Product> ProductDB = ProductMockData.GetProducts().ToDictionary(p => p.Barcode, p => p);
-
-    // -----------------------------------------------------------------------
-    // ENUM VÀ STATE (Trạng thái)
-    // -----------------------------------------------------------------------
 
     public enum PaymentMethod
     {
@@ -537,7 +481,7 @@
         Console.WriteLine("Hủy thanh toán, quay lại màn hình giỏ hàng.");
     }
 
-    private Invoice CreateCompletedInvoiceObject()
+    private InvoiceDto CreateCompletedInvoiceObject()
     {
         // Giả lập dữ liệu cần thiết cho Invoice
         int newId = new Random().Next(2000, 5000);
@@ -545,35 +489,22 @@
         var customer = new Customer { CustomerId = 1, FullName = "Khách hàng" }; // Giả lập khách hàng
 
         // Tạo chi tiết hóa đơn từ CartItems
-        var invoiceDetails = CartItems.Select(item => new InvoiceDetail
+        var invoiceDetails = CartItems.Select(item => new InvoiceDetailDto
         {
-            InvoiceId = newId,
             ProductId = int.TryParse(item.ProductId, out var pid) ? pid : 0,
             Quantity = item.Quantity,
             UnitPrice = item.UnitPrice,
             DiscountPerUnit = 0, // Mock: DiscountPerUnit = 0
-            // Product = ProductDB.ContainsKey(item.ProductId) ? ProductDB[item.ProductId] : new Product { Name = item.Name }Request,
-            Product = null!,
-            Invoice = null!,
-            Promotion = null
         }).ToList();
 
-        return new Invoice
+        return new InvoiceDto
         {
-            InvoiceId = newId,
-            UserId = user.UserId,
-            CustomerId = customer.CustomerId,
-            CreatedAt = DateTime.Now,
             TotalBeforeDiscount = OriginalPrice,
             TotalAmount = AmountToCollect, // Số tiền sau KM và làm tròn
             PaymentMethod = SelectedPaymentMethod.ToString(),
             ReceivedAmount = AmountPaidInput,
             ChangeAmount = ChangeAmount,
-            Status = "Paid",
-            PromotionId = DiscountAmountCalculated > 0 ? 99 : null, // Mock Promotion ID
-            User = null!,
-            Customer = null,
-            Promotion = DiscountAmountCalculated > 0 ? new Promotion { Name = "Khuyến mãi Chung" } : null,
+            PromotionId = 2,
             InvoiceDetails = invoiceDetails
         };
     }

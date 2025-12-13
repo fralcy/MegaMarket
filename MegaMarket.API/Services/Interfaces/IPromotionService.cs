@@ -5,8 +5,8 @@ namespace MegaMarket.API.Services.Interfaces
 {
     public interface IPromotionService
     {
-        Task<List<Promotion>> GetAllPromotions();
-        Task<Promotion> CreatePromotion(PromotionDto promotionDto);
+        Task<List<PromotionResponseDto>> GetAllPromotions();
+        Task<PromotionResponseDto> CreatePromotion(PromotionRequestDto promotionDto);
         Task DeletePromotion(int promotionId);
     }
 }

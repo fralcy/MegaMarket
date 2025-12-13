@@ -1,7 +1,8 @@
 ﻿namespace MegaMarket.API.DTOs.Promotion
 {
-    public class PromotionDto
+    public class PromotionResponseDto
     {
+        public int PromotionId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string DiscountType { get; set; } = "percent"; // percent / fixed
