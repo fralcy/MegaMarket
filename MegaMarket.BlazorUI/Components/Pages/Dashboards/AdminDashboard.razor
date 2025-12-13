@@ -1,6 +1,7 @@
 @page "/admin/dashboard"
 @attribute [Authorize(Roles = "Admin")]
 @inject Services.GraphQL.GraphQLClient GraphQLClient
+@inject Services.Dashboard.DashboardApiClient DashboardApiClient
 @using MegaMarket.BlazorUI.Models.Dashboard
 @using ApexCharts
 
@@ -512,44 +513,57 @@
             {
                 @* Employee Stats Row *@
                 <div class="row mb-4">
-                    <div class="col-md-4">
+                    @if (employeeData.TotalEmployees.HasValue)
+                    {
+                        <div class="col-md-3">
+                            <StatsCard
+                                Title="Total Employees"
+                                Value="@employeeData.TotalEmployees.Value.ToString("N0")"
+                                SubLabel="Active staff members"
+                                Color="primary" />
+                        </div>
+                    }
+                    <div class="col-md-3">
                         <StatsCard
-                            Title="Total Employees"
-                            Value="@employeeData.TotalEmployees.ToString("N0")"
-                            SubLabel="Active staff members"
-                            Color="primary" />
-                    </div>
-                    <div class="col-md-4">
-                        <StatsCard
-                            Title="Active Shifts"
-                            Value="@employeeData.ActiveShifts.ToString("N0")"
-                            SubLabel="Currently scheduled"
+                            Title="Total Attendances"
+                            Value="@employeeData.TotalAttendances.ToString("N0")"
+                            SubLabel="@GetDateRangeLabel()"
                             Color="info" />
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <StatsCard
-                            Title="Total Wages"
-                            Value="@($"${employeeData.TotalWages:N2}")"
-                            SubLabel="@GetDateRangeLabel()"
+                            Title="On-Time Rate"
+                            Value="@($"{employeeData.OnTimePercentage:F1}%")"
+                            SubLabel="Attendance punctuality"
                             Color="success" />
                     </div>
+                    @if (employeeData.TotalWages.HasValue)
+                    {
+                        <div class="col-md-3">
+                            <StatsCard
+                                Title="Total Wages"
+                                Value="@($"${employeeData.TotalWages.Value:N2}")"
+                                SubLabel="@GetDateRangeLabel()"
+                                Color="warning" />
+                        </div>
+                    }
                 </div>
 
                 @* Charts Row *@
                 <div class="row mb-4">
-                    @* Attendance by Shift *@
+                    @* Attendance by Shift - Count *@
                     <div class="col-lg-6 mb-3">
-                        <ChartCard Title="Attendance by Shift" Subtitle="Employee distribution" Height="350px">
+                        <ChartCard Title="Attendance by Shift" Subtitle="Attendance count distribution" Height="350px">
                             @if (employeeData.AttendanceByShift.Any())
                             {
                                 <ApexChart TItem="AttendanceByShiftDto"
                                            Options="@attendanceByShiftOptions">
                                     <ApexPointSeries TItem="AttendanceByShiftDto"
                                                      Items="@employeeData.AttendanceByShift"
-                                                     Name="Employees"
+                                                     Name="Attendances"
                                                      SeriesType="SeriesType.Donut"
                                                      XValue="@(e => e.ShiftName)"
-                                                     YAggregate="@(e => e.Sum(f => f.EmployeeCount))" />
+                                                     YAggregate="@(e => e.Sum(f => f.AttendanceCount))" />
                                 </ApexChart>
                             }
                             else
@@ -561,76 +575,77 @@
                         </ChartCard>
                     </div>
 
-                    @* Employee Work Summary Chart *@
+                    @* Total Hours by Shift *@
                     <div class="col-lg-6 mb-3">
-                        <ChartCard Title="Top Performers" Subtitle="By working days" Height="350px">
-                            @if (employeeData.EmployeeWorkSummary.Any())
+                        <ChartCard Title="Work Hours by Shift" Subtitle="Total hours worked" Height="350px">
+                            @if (employeeData.AttendanceByShift.Any())
                             {
-                                <ApexChart TItem="EmployeeWorkSummaryDto"
-                                           Options="@workSummaryOptions">
-                                    <ApexPointSeries TItem="EmployeeWorkSummaryDto"
-                                                     Items="@employeeData.EmployeeWorkSummary.Take(10).ToList()"
-                                                     Name="Working Days"
+                                <ApexChart TItem="AttendanceByShiftDto"
+                                           Options="@hoursBarOptions">
+                                    <ApexPointSeries TItem="AttendanceByShiftDto"
+                                                     Items="@employeeData.AttendanceByShift"
+                                                     Name="Hours"
                                                      SeriesType="SeriesType.Bar"
-                                                     XValue="@(e => e.EmployeeName)"
-                                                     YAggregate="@(e => e.Sum(f => f.WorkingDays))"
+                                                     XValue="@(e => e.ShiftName)"
+                                                     YAggregate="@(e => (decimal)e.Sum(f => f.TotalHoursWorked))"
                                                      OrderByDescending="e => e.Y" />
                                 </ApexChart>
                             }
                             else
                             {
                                 <div class="d-flex align-items-center justify-content-center h-100">
-                                    <p class="text-muted">No employee work data available</p>
+                                    <p class="text-muted">No hours data available</p>
                                 </div>
                             }
                         </ChartCard>
                     </div>
                 </div>
 
-                @* Employee Work Summary Table *@
+                @* Attendance Details Table *@
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-white">
                         <h5 class="mb-0">
-                            <span class="bi bi-clipboard-data me-2"></span>Employee Work Summary
+                            <span class="bi bi-clipboard-data me-2"></span>Attendance by Shift Details
                         </h5>
                     </div>
                     <div class="card-body">
-                        @if (employeeData.EmployeeWorkSummary.Any())
+                        @if (employeeData.AttendanceByShift.Any())
                         {
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle mb-0">
                                     <thead>
                                         <tr>
-                                            <th>Employee</th>
-                                            <th class="text-end">Working Days</th>
-                                            <th class="text-end">Absent Days</th>
+                                            <th>Shift</th>
+                                            <th class="text-end">Total Attendances</th>
+                                            <th class="text-end">On Time</th>
+                                            <th class="text-end">Late</th>
                                             <th class="text-end">Total Hours</th>
-                                            <th class="text-end">Attendance Rate</th>
+                                            <th class="text-end">Punctuality Rate</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var employee in employeeData.EmployeeWorkSummary.Take(10))
+                                        @foreach (var shift in employeeData.AttendanceByShift)
                                         {
-                                            var totalDays = employee.WorkingDays + employee.AbsentDays;
-                                            var attendanceRate = totalDays > 0 ? (double)employee.WorkingDays / totalDays * 100 : 0;
+                                            var punctualityRate = shift.AttendanceCount > 0 ? (double)shift.OnTimeCount / shift.AttendanceCount * 100 : 0;
                                             <tr>
                                                 <td>
-                                                    <strong>@employee.EmployeeName</strong>
-                                                    <br />
-                                                    <small class="text-muted">ID: @employee.EmployeeId</small>
+                                                    <strong>@shift.ShiftName</strong>
                                                 </td>
                                                 <td class="text-end">
-                                                    <span class="badge bg-success">@employee.WorkingDays</span>
+                                                    <span class="badge bg-primary">@shift.AttendanceCount</span>
                                                 </td>
                                                 <td class="text-end">
-                                                    <span class="badge bg-danger">@employee.AbsentDays</span>
+                                                    <span class="badge bg-success">@shift.OnTimeCount</span>
                                                 </td>
                                                 <td class="text-end">
-                                                    <strong>@employee.TotalHours.ToString("F1")h</strong>
+                                                    <span class="badge bg-warning">@shift.LateCount</span>
                                                 </td>
                                                 <td class="text-end">
-                                                    <span class="badge @(attendanceRate >= 90 ? "bg-success" : attendanceRate >= 75 ? "bg-warning" : "bg-danger")">
-                                                        @attendanceRate.ToString("F0")%
+                                                    <strong>@shift.TotalHoursWorked.ToString("F1")h</strong>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="badge @(punctualityRate >= 90 ? "bg-success" : punctualityRate >= 75 ? "bg-warning" : "bg-danger")">
+                                                        @punctualityRate.ToString("F0")%
                                                     </span>
                                                 </td>
                                             </tr>
@@ -641,7 +656,7 @@
                         }
                         else
                         {
-                            <p class="text-muted mb-0">No employee work data available</p>
+                            <p class="text-muted mb-0">No attendance data available</p>
                         }
                     </div>
                 </div>
@@ -654,6 +669,7 @@
     // State
     private DateRangeEnum selectedRange = DateRangeEnum.Today;
     private string? globalErrorMessage;
+    private bool _isLoading = false; // Prevent concurrent loads
 
     // Sales Data
     private bool isSalesLoading = true;
@@ -739,7 +755,7 @@
         Colors = new List<string> { "#007bff", "#28a745", "#ffc107", "#dc3545", "#6610f2" }
     };
 
-    private ApexChartOptions<EmployeeWorkSummaryDto> workSummaryOptions = new()
+    private ApexChartOptions<AttendanceByShiftDto> hoursBarOptions = new()
     {
         Chart = new Chart
         {
@@ -761,12 +777,22 @@
 
     private async Task LoadAllDashboards()
     {
-        await Task.WhenAll(
-            LoadSalesDashboard(),
-            LoadInventoryDashboard(),
-            LoadCustomerDashboard(),
-            LoadEmployeeDashboard()
-        );
+        if (_isLoading) return; // Prevent concurrent loads
+
+        _isLoading = true;
+        try
+        {
+            await Task.WhenAll(
+                LoadSalesDashboard(),
+                LoadInventoryDashboard(),
+                LoadCustomerDashboard(),
+                LoadEmployeeDashboard()
+            );
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     private async Task LoadSalesDashboard()
@@ -776,38 +802,11 @@
             isSalesLoading = true;
             salesErrorMessage = null;
 
-            var query = @"
-                query GetSalesDashboard($dateRange: DateRangeEnum!) {
-                    salesDashboard(dateRange: $dateRange) {
-                        totalRevenue
-                        totalInvoices
-                        averageOrderValue
-                        revenueByPaymentMethod {
-                            paymentMethod
-                            revenue
-                            invoiceCount
-                        }
-                        revenueTrend {
-                            date
-                            revenue
-                            invoiceCount
-                        }
-                        topSellingProducts {
-                            productId
-                            productName
-                            quantitySold
-                            revenue
-                        }
-                    }
-                }
-            ";
+            var result = await DashboardApiClient.GetSalesDashboardAsync(selectedRange);
 
-            var variables = new { dateRange = selectedRange.ToString().ToUpper() };
-            var response = await GraphQLClient.QueryAsync<SalesDashboardResponse>(query, variables);
-
-            if (response.Data?.SalesDashboard != null)
+            if (result != null)
             {
-                salesData = response.Data.SalesDashboard;
+                salesData = result;
             }
             else
             {
@@ -831,43 +830,11 @@
             isInventoryLoading = true;
             inventoryErrorMessage = null;
 
-            var query = @"
-                query GetInventoryDashboard($dateRange: DateRangeEnum!) {
-                    inventoryDashboard(dateRange: $dateRange) {
-                        totalProducts
-                        totalCategories
-                        totalStockValue
-                        lowStockCount
-                        outOfStockCount
-                        lowStockProducts {
-                            productId
-                            productName
-                            currentStock
-                            minimumStock
-                            categoryName
-                        }
-                        expiringProducts {
-                            productId
-                            productName
-                            quantity
-                            expiryDate
-                            daysUntilExpiry
-                        }
-                        stockByCategory {
-                            categoryName
-                            totalQuantity
-                            productCount
-                        }
-                    }
-                }
-            ";
+            var result = await DashboardApiClient.GetInventoryDashboardAsync();
 
-            var variables = new { dateRange = selectedRange.ToString().ToUpper() };
-            var response = await GraphQLClient.QueryAsync<InventoryDashboardResponse>(query, variables);
-
-            if (response.Data?.InventoryDashboard != null)
+            if (result != null)
             {
-                inventoryData = response.Data.InventoryDashboard;
+                inventoryData = result;
             }
             else
             {
@@ -891,38 +858,11 @@
             isCustomerLoading = true;
             customerErrorMessage = null;
 
-            var query = @"
-                query GetCustomerDashboard($dateRange: DateRangeEnum!) {
-                    customerDashboard(dateRange: $dateRange) {
-                        totalCustomers
-                        newCustomers
-                        averageSpending
-                        customerRankDistribution {
-                            rank
-                            count
-                        }
-                        loyaltyPointsSummary {
-                            totalPointsIssued
-                            totalPointsRedeemed
-                            activePoints
-                        }
-                        topCustomers {
-                            customerId
-                            customerName
-                            phone
-                            totalSpending
-                            invoiceCount
-                        }
-                    }
-                }
-            ";
+            var result = await DashboardApiClient.GetCustomerDashboardAsync(selectedRange);
 
-            var variables = new { dateRange = selectedRange.ToString().ToUpper() };
-            var response = await GraphQLClient.QueryAsync<CustomerDashboardResponse>(query, variables);
-
-            if (response.Data?.CustomerDashboard != null)
+            if (result != null)
             {
-                customerData = response.Data.CustomerDashboard;
+                customerData = result;
             }
             else
             {
@@ -946,29 +886,31 @@
             isEmployeeLoading = true;
             employeeErrorMessage = null;
 
+            // Convert enum to GraphQL format (e.g., "ThisWeek" -> "THIS_WEEK")
+            var dateRangeStr = ConvertToGraphQLEnum(selectedRange);
+
             var query = @"
-                query GetEmployeeDashboard($dateRange: DateRangeEnum!) {
-                    employeeDashboard(dateRange: $dateRange) {
+                query {
+                    employeeDashboard(dateRange: " + dateRangeStr + @") {
                         totalEmployees
-                        activeShifts
+                        totalAttendances
+                        onTimePercentage
+                        latePercentage
+                        totalHoursWorked
                         totalWages
                         attendanceByShift {
                             shiftName
-                            employeeCount
-                        }
-                        employeeWorkSummary {
-                            employeeId
-                            employeeName
-                            workingDays
-                            absentDays
-                            totalHours
+                            attendanceCount
+                            onTimeCount
+                            lateCount
+                            totalHoursWorked
+                            totalWages
                         }
                     }
                 }
             ";
 
-            var variables = new { dateRange = selectedRange.ToString().ToUpper() };
-            var response = await GraphQLClient.QueryAsync<EmployeeDashboardResponse>(query, variables);
+            var response = await GraphQLClient.QueryAsync<EmployeeDashboardResponse>(query, null);
 
             if (response.Data?.EmployeeDashboard != null)
             {
@@ -987,6 +929,18 @@
         {
             isEmployeeLoading = false;
         }
+    }
+
+    private string ConvertToGraphQLEnum(DateRangeEnum range)
+    {
+        return range switch
+        {
+            DateRangeEnum.Today => "TODAY",
+            DateRangeEnum.ThisWeek => "THIS_WEEK",
+            DateRangeEnum.ThisMonth => "THIS_MONTH",
+            DateRangeEnum.ThisYear => "THIS_YEAR",
+            _ => "TODAY"
+        };
     }
 
     private async Task HandleRangeChanged(DateRangeEnum newRange)
@@ -1012,22 +966,7 @@
         return total > 0 ? (double)value / total * 100 : 0;
     }
 
-    // GraphQL Response Types
-    private class SalesDashboardResponse
-    {
-        public SalesDashboardDto? SalesDashboard { get; set; }
-    }
-
-    private class InventoryDashboardResponse
-    {
-        public InventoryDashboardDto? InventoryDashboard { get; set; }
-    }
-
-    private class CustomerDashboardResponse
-    {
-        public CustomerDashboardDto? CustomerDashboard { get; set; }
-    }
-
+    // GraphQL Response Types (only for Employee Dashboard)
     private class EmployeeDashboardResponse
     {
         public EmployeeDashboardDto? EmployeeDashboard { get; set; }

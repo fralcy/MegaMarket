@@ -10,6 +10,7 @@ using MegaMarket.BlazorUI.Services;
 using MegaMarket.BlazorUI.Services.Products;
 using MegaMarket.BlazorUI.Services.Imports;
 using MegaMarket.BlazorUI.Services.CustomerLoyalty;
+using MegaMarket.BlazorUI.Services.Dashboard;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,6 +58,12 @@ builder.Services.AddScoped<GraphQLClient>();
 
 // Configure API Base URL
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7284/";
+
+// Add Dashboard API client service
+builder.Services.AddHttpClient<DashboardApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
 
 // Register Product & Import Services with HttpClient
 builder.Services.AddHttpClient<ProductApiClient>(client =>

@@ -114,11 +114,11 @@
                 // Redirect based on role
                 if (loginResult.Role == "Admin")
                 {
-                    NavigationManager.NavigateTo("/admin/dashboard", true);
+                    NavigationManager.NavigateTo("/admin/dashboard");
                 }
                 else
                 {
-                    NavigationManager.NavigateTo("/employee/dashboard", true);
+                    NavigationManager.NavigateTo("/employee/dashboard");
                 }
             }
         }
