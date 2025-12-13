@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.AspNetCore.Authentication;
+using MegaMarket.Tests.Helpers;
 
 namespace MegaMarket.Tests.Fixtures;
 
@@ -12,6 +14,11 @@ public class TestServerFixture : WebApplicationFactory<Program>
     {
         builder.ConfigureTestServices(services =>
         {
+            // Replace real authentication with test authentication
+            services.AddAuthentication(TestAuthHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
+                    TestAuthHandler.SchemeName, options => { });
+
             // Remove the actual DbContext registration
             var descriptor = services.SingleOrDefault(
                 d => d.ServiceType == typeof(DbContextOptions<MegaMarketDbContext>));
