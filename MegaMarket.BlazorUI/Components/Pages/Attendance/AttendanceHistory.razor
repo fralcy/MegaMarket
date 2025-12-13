@@ -1,6 +1,8 @@
 @page "/attendance/history"
 @attribute [Authorize]
-@inject Services.GraphQL.GraphQLClient GraphQLClient
+@using MegaMarket.Data.Models
+@inject Services.Attendance.AttendanceApiClient AttendanceApiClient
+@inject Services.ShiftTypes.ShiftTypesApiClient ShiftTypesApiClient
 @inject AuthenticationStateProvider AuthStateProvider
 
 <div class="container-fluid mt-4">
@@ -87,9 +89,9 @@
 </div>
 
 @code {
-    private List<AttendanceDto>? allAttendances;
-    private List<AttendanceDto>? filteredAttendances;
-    private List<ShiftTypeDto>? shiftTypes;
+    private List<MegaMarket.Data.Models.Attendance>? allAttendances;
+    private List<MegaMarket.Data.Models.Attendance>? filteredAttendances;
+    private List<ShiftType>? shiftTypes;
     private bool isLoading = true;
     private string? errorMessage;
 
@@ -124,98 +126,27 @@
             }
 
             // Load attendance records based on role
-            string attendanceQuery;
             if (roleClaim == "Admin")
             {
                 // Admin can see all attendance records
-                attendanceQuery = @"
-                    query GetAllAttendances {
-                        attendances {
-                            attendanceId
-                            userId
-                            shiftTypeId
-                            date
-                            checkIn
-                            checkOut
-                            isLate
-                            user {
-                                userId
-                                fullName
-                                username
-                            }
-                            shiftType {
-                                shiftTypeId
-                                name
-                                startTime
-                                endTime
-                                wagePerHour
-                            }
-                        }
-                    }
-                ";
-
-                var response = await GraphQLClient.QueryAsync<GetAllAttendancesResponse>(attendanceQuery);
-                if (response.Errors != null && response.Errors.Any())
-                {
-                    errorMessage = string.Join(", ", response.Errors.Select(e => e.Message));
-                }
-                else
-                {
-                    allAttendances = response.Data?.Attendances ?? new List<AttendanceDto>();
-                }
+                allAttendances = await AttendanceApiClient.GetAttendancesAsync();
             }
             else
             {
                 // Employee can only see their own records
-                attendanceQuery = $@"
-                    query GetAttendancesByUser {{
-                        attendancesByUser(userId: {userId}) {{
-                            attendanceId
-                            userId
-                            shiftTypeId
-                            date
-                            checkIn
-                            checkOut
-                            isLate
-                            shiftType {{
-                                shiftTypeId
-                                name
-                                startTime
-                                endTime
-                                wagePerHour
-                            }}
-                        }}
-                    }}
-                ";
+                allAttendances = await AttendanceApiClient.GetAttendancesByUserAsync(userId);
+            }
 
-                var response = await GraphQLClient.QueryAsync<GetAttendancesByUserResponse>(attendanceQuery);
-                if (response.Errors != null && response.Errors.Any())
-                {
-                    errorMessage = string.Join(", ", response.Errors.Select(e => e.Message));
-                }
-                else
-                {
-                    allAttendances = response.Data?.AttendancesByUser ?? new List<AttendanceDto>();
-                }
+            if (allAttendances == null)
+            {
+                allAttendances = new List<MegaMarket.Data.Models.Attendance>();
             }
 
             // Load shift types for filter
-            var shiftTypesQuery = @"
-                query GetShiftTypes {
-                    shiftTypes {
-                        shiftTypeId
-                        name
-                        startTime
-                        endTime
-                        wagePerHour
-                    }
-                }
-            ";
-
-            var shiftTypesResponse = await GraphQLClient.QueryAsync<GetShiftTypesResponse>(shiftTypesQuery);
-            if (shiftTypesResponse.Errors == null || !shiftTypesResponse.Errors.Any())
+            shiftTypes = await ShiftTypesApiClient.GetShiftTypesAsync();
+            if (shiftTypes == null)
             {
-                shiftTypes = shiftTypesResponse.Data?.ShiftTypes ?? new List<ShiftTypeDto>();
+                shiftTypes = new List<ShiftType>();
             }
 
             // Initialize filters with default date range (last 30 days)
@@ -238,7 +169,7 @@
     {
         if (allAttendances == null)
         {
-            filteredAttendances = new List<AttendanceDto>();
+            filteredAttendances = new List<MegaMarket.Data.Models.Attendance>();
             return;
         }
 
@@ -285,51 +216,5 @@
         filterShiftTypeId = 0;
         filterStatus = "All";
         ApplyFilters();
-    }
-
-    // DTOs
-    public class AttendanceDto
-    {
-        public int AttendanceId { get; set; }
-        public int UserId { get; set; }
-        public int ShiftTypeId { get; set; }
-        public DateTime Date { get; set; }
-        public DateTime CheckIn { get; set; }
-        public DateTime? CheckOut { get; set; }
-        public bool IsLate { get; set; }
-        public UserDto? User { get; set; }
-        public ShiftTypeDto? ShiftType { get; set; }
-    }
-
-    public class UserDto
-    {
-        public int UserId { get; set; }
-        public string FullName { get; set; } = string.Empty;
-        public string Username { get; set; } = string.Empty;
-    }
-
-    public class ShiftTypeDto
-    {
-        public int ShiftTypeId { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public TimeSpan StartTime { get; set; }
-        public TimeSpan EndTime { get; set; }
-        public decimal WagePerHour { get; set; }
-    }
-
-    // GraphQL Response Types
-    private class GetAllAttendancesResponse
-    {
-        public List<AttendanceDto>? Attendances { get; set; }
-    }
-
-    private class GetAttendancesByUserResponse
-    {
-        public List<AttendanceDto>? AttendancesByUser { get; set; }
-    }
-
-    private class GetShiftTypesResponse
-    {
-        public List<ShiftTypeDto>? ShiftTypes { get; set; }
     }
 }

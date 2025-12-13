@@ -11,6 +11,9 @@ using MegaMarket.BlazorUI.Services.Products;
 using MegaMarket.BlazorUI.Services.Imports;
 using MegaMarket.BlazorUI.Services.CustomerLoyalty;
 using MegaMarket.BlazorUI.Services.Dashboard;
+using MegaMarket.BlazorUI.Services.Users;
+using MegaMarket.BlazorUI.Services.ShiftTypes;
+using MegaMarket.BlazorUI.Services.Attendance;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,6 +64,24 @@ var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7284/
 
 // Add Dashboard API client service
 builder.Services.AddHttpClient<DashboardApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+// Add Users API client service
+builder.Services.AddHttpClient<UsersApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+// Add ShiftTypes API client service
+builder.Services.AddHttpClient<ShiftTypesApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+// Add Attendance API client service
+builder.Services.AddHttpClient<AttendanceApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
 });

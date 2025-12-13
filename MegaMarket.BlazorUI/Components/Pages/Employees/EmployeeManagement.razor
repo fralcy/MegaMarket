@@ -1,7 +1,8 @@
 @page "/admin/employees"
 @attribute [Authorize(Roles = "Admin")]
-@using MegaMarket.BlazorUI.Services.GraphQL
-@inject GraphQLClient GraphQLClient
+@using MegaMarket.Data.Models
+@using MegaMarket.API.DTOs
+@inject Services.Users.UsersApiClient UsersApiClient
 @inject NavigationManager NavigationManager
 
 <div class="container-fluid">
@@ -120,10 +121,10 @@
 }
 
 @code {
-    private List<EmployeeDto>? employees;
-    private EmployeeDto? selectedEmployee;
-    private EmployeeDto? employeeToEdit;
-    private EmployeeDto? employeeToDelete;
+    private List<User>? employees;
+    private User? selectedEmployee;
+    private User? employeeToEdit;
+    private User? employeeToDelete;
 
     private bool isLoading = false;
     private string? errorMessage;
@@ -146,29 +147,18 @@
             isLoading = true;
             errorMessage = null;
 
-            var query = @"
-                query {
-                    users {
-                        userId
-                        fullName
-                        username
-                        role
-                        phone
-                        email
-                    }
-                }
-            ";
+            employees = await UsersApiClient.GetUsersAsync();
 
-            var response = await GraphQLClient.QueryAsync<UsersResponse>(query);
-
-            if (response.Data?.Users != null)
+            if (employees == null)
             {
-                employees = response.Data.Users;
+                errorMessage = "Failed to load employees.";
+                employees = new List<User>();
             }
         }
         catch (Exception ex)
         {
             errorMessage = $"Failed to load employees: {ex.Message}";
+            employees = new List<User>();
         }
         finally
         {
@@ -176,7 +166,7 @@
         }
     }
 
-    private void HandleEmployeeSelected(EmployeeDto employee)
+    private void HandleEmployeeSelected(User employee)
     {
         selectedEmployee = employee;
     }
@@ -187,7 +177,7 @@
         showFormModal = true;
     }
 
-    private void HandleEditEmployee(EmployeeDto employee)
+    private void HandleEditEmployee(User employee)
     {
         employeeToEdit = employee;
         showFormModal = true;
@@ -203,43 +193,26 @@
     {
         try
         {
+            // Convert form data to DTO
+            var input = new UserInputDto
+            {
+                FullName = formData.FullName,
+                Username = formData.Username,
+                Password = formData.Password,
+                Role = formData.Role,
+                Phone = formData.Phone,
+                Email = formData.Email
+            };
+
             if (employeeToEdit == null)
             {
                 // Create new employee
-                var mutation = @"
-                    mutation CreateUser($input: UserInputDto!) {
-                        createUser(input: $input) {
-                            userId
-                            fullName
-                            username
-                            role
-                            phone
-                            email
-                        }
-                    }
-                ";
-
-                var variables = new { input = formData };
-                await GraphQLClient.MutateAsync<CreateUserResponse>(mutation, variables);
+                await UsersApiClient.CreateUserAsync(input);
             }
             else
             {
                 // Update existing employee
-                var mutation = @"
-                    mutation UpdateUser($userId: Int!, $input: UserInputDto!) {
-                        updateUser(userId: $userId, input: $input) {
-                            userId
-                            fullName
-                            username
-                            role
-                            phone
-                            email
-                        }
-                    }
-                ";
-
-                var variables = new { userId = employeeToEdit.UserId, input = formData };
-                await GraphQLClient.MutateAsync<UpdateUserResponse>(mutation, variables);
+                await UsersApiClient.UpdateUserAsync(employeeToEdit.UserId, input);
             }
 
             HideFormModal();
@@ -257,7 +230,7 @@
         }
     }
 
-    private void ShowDeleteConfirmation(EmployeeDto employee)
+    private void ShowDeleteConfirmation(User employee)
     {
         employeeToDelete = employee;
         showDeleteModal = true;
@@ -275,14 +248,12 @@
 
         try
         {
-            var mutation = @"
-                mutation DeleteUser($userId: Int!) {
-                    deleteUser(userId: $userId)
-                }
-            ";
+            var success = await UsersApiClient.DeleteUserAsync(employeeToDelete.UserId);
 
-            var variables = new { userId = employeeToDelete.UserId };
-            await GraphQLClient.MutateAsync<DeleteUserResponse>(mutation, variables);
+            if (!success)
+            {
+                errorMessage = "Failed to delete employee.";
+            }
 
             HideDeleteModal();
             await LoadEmployees();
@@ -305,37 +276,7 @@
         errorMessage = null;
     }
 
-    // DTOs
-    public class UsersResponse
-    {
-        public List<EmployeeDto> Users { get; set; } = new();
-    }
-
-    public class CreateUserResponse
-    {
-        public EmployeeDto CreateUser { get; set; } = new();
-    }
-
-    public class UpdateUserResponse
-    {
-        public EmployeeDto UpdateUser { get; set; } = new();
-    }
-
-    public class DeleteUserResponse
-    {
-        public bool DeleteUser { get; set; }
-    }
-
-    public class EmployeeDto
-    {
-        public int UserId { get; set; }
-        public string FullName { get; set; } = string.Empty;
-        public string Username { get; set; } = string.Empty;
-        public string Role { get; set; } = string.Empty;
-        public string? Phone { get; set; }
-        public string? Email { get; set; }
-    }
-
+    // Form Data (used by the form modal)
     public class EmployeeFormData
     {
         public string FullName { get; set; } = string.Empty;
