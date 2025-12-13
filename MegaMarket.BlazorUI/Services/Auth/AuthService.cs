@@ -31,7 +31,7 @@ public class AuthService
             await _localStorage.SetItemAsync("expiresAt", expiresAt.ToString("O"));
 
             // Notify authentication state changed
-            ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(token);
+            await ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthenticationAsync(token);
 
             return true;
         }

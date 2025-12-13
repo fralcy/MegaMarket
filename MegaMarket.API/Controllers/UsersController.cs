@@ -6,19 +6,50 @@ using System.Security.Claims;
 
 namespace MegaMarket.API.Controllers;
 
-[Authorize]
 [Route("api/[controller]")]
 [ApiController]
 public class UsersController : ControllerBase
 {
     private readonly UserService _userService;
+    private readonly AuthService _authService;
 
-    public UsersController(UserService userService)
+    public UsersController(UserService userService, AuthService authService)
     {
         _userService = userService;
+        _authService = authService;
+    }
+
+    // POST: api/Users/login
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Login([FromBody] LoginInputDto input)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(input.Username) || string.IsNullOrWhiteSpace(input.Password))
+            {
+                return BadRequest(new { message = "Username and password are required" });
+            }
+
+            var result = await _authService.LoginAsync(input);
+
+            if (result == null)
+            {
+                return Unauthorized(new { message = "Invalid username or password" });
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"Login failed: {ex.Message}" });
+        }
     }
 
     // GET: api/Users
+    [Authorize]
+    [HttpGet]
+    [Authorize(Roles = "Admin")]
     [HttpGet]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetUsers()

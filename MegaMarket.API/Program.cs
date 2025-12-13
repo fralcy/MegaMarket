@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -7,8 +8,6 @@ using MegaMarket.Data.Data;
 using MegaMarket.Data.DataAccess;
 using MegaMarket.Data.Repositories;
 using MegaMarket.API.Services;
-using MegaMarket.API.GraphQL;
-using MegaMarket.API.GraphQL.Types;
 using MegaMarket.API.Services.Interfaces;
 using MegaMarket.API.Services.Implementations;
 using MegaMarket.API.Data;
@@ -102,19 +101,6 @@ builder.Services.AddScoped<MegaMarketDbContext>(provider =>
     return factory.CreateDbContext();
 });
 
-// Configure GraphQL
-builder.Services
-    .AddGraphQLServer()
-    .AddQueryType<Query>()
-    .AddMutationType<Mutation>()
-    .AddType<UserType>()
-    .AddType<ShiftTypeType>()
-    .AddType<AttendanceType>()
-    .AddAuthorization()
-    .AddProjections()
-    .AddFiltering()
-    .AddSorting();
-
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -136,7 +122,22 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapGraphQL("/graphql");
+
+// DEBUG: Endpoint to check current user claims
+app.MapGet("/api/debug/claims", (HttpContext context) =>
+{
+    var user = context.User;
+    var claims = user.Claims.Select(c => new { c.Type, c.Value }).ToList();
+    return Results.Ok(new
+    {
+        IsAuthenticated = user.Identity?.IsAuthenticated ?? false,
+        Claims = claims,
+        UserId = user.FindFirst("userId")?.Value,
+        Role = user.FindFirst("role")?.Value,
+        NameIdentifier = user.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+        ClaimsRole = user.FindFirst(ClaimTypes.Role)?.Value
+    });
+}).RequireAuthorization();
 
 // TEMPORARY: Endpoint to hash existing passwords
 app.MapPost("/api/admin/hash-passwords", async (MegaMarketDbContext dbContext) =>

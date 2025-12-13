@@ -4,7 +4,6 @@ using MegaMarket.Data.DataAccess;
 using MegaMarket.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using MegaMarket.BlazorUI.Services.Auth;
-using MegaMarket.BlazorUI.Services.GraphQL;
 using Microsoft.AspNetCore.Components.Authorization;
 using MegaMarket.BlazorUI.Services;
 using MegaMarket.BlazorUI.Services.Products;
@@ -48,16 +47,6 @@ builder.Services.AddAuthentication(options =>
     options.Events.OnRedirectToAccessDenied = context => Task.CompletedTask;
 });
 builder.Services.AddAuthorizationCore();
-
-// Configure HttpClient for GraphQL
-builder.Services.AddHttpClient("GraphQL", client =>
-{
-    var graphqlEndpoint = builder.Configuration["GraphQL:Endpoint"] ?? "https://localhost:7284/graphql";
-    client.BaseAddress = new Uri(graphqlEndpoint);
-});
-
-// Add GraphQL client service
-builder.Services.AddScoped<GraphQLClient>();
 
 // Configure API Base URL
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7284/";
