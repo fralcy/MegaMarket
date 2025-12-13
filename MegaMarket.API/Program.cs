@@ -155,13 +155,24 @@ app.MapPost("/api/admin/hash-passwords", async (MegaMarketDbContext dbContext) =
     return Results.Ok(new { message = "Passwords hashed successfully", count = users.Count });
 });
 
-// Seed database only in non-testing environments
+// Seed database only if empty (non-testing environments)
 if (!app.Environment.IsEnvironment("Testing"))
 {
     using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<MegaMarketDbContext>();
-        await DbSeeder.SeedAsync(dbContext);
+
+        // Only seed if database is completely empty
+        if (!await dbContext.Users.AnyAsync())
+        {
+            Console.WriteLine("Database is empty. Seeding initial data...");
+            await DbSeeder.SeedAsync(dbContext);
+            Console.WriteLine("Database seeding completed successfully!");
+        }
+        else
+        {
+            Console.WriteLine("Database already contains data. Skipping seed.");
+        }
     }
 }
 

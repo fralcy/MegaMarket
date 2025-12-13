@@ -25,19 +25,23 @@ public static class DbSeeder
             return;
         }
 
+        // Fixed BCrypt hash for "Password123!" - matches SQL setup script
+        // This ensures consistent data between DbSeeder and SQL file
+        const string passwordHash = "$2a$12$qzthoeTIHeEaAlx9pehvt.IsYk85GGf6LukiB9jKoEZFW5jRQAi5C";
+
         var users = new[]
         {
             // Quản trị hệ thống (System Admin)
-            new User { FullName = "Admin User", Username = "admin", Password = BCrypt.Net.BCrypt.HashPassword("Password123!"), Role = "Admin", Email = "admin@megamarket.com", Phone = "0901234567" },
-            
+            new User { FullName = "Admin User", Username = "admin", Password = passwordHash, Role = "Admin", Email = "admin@megamarket.com", Phone = "0901234567" },
+
             // Quản lý cửa hàng (Manager)
-            new User { FullName = "John Manager", Username = "john.manager", Password = BCrypt.Net.BCrypt.HashPassword("Password123!"), Role = "Manager", Email = "john@megamarket.com", Phone = "0907654321" },
-            
+            new User { FullName = "John Manager", Username = "john.manager", Password = passwordHash, Role = "Manager", Email = "john@megamarket.com", Phone = "0907654321" },
+
             // Thu ngân/POS (Cashier)
-            new User { FullName = "Sarah Cashier", Username = "sarah.cashier", Password = BCrypt.Net.BCrypt.HashPassword("Password123!"), Role = "Cashier", Email = "sarah@megamarket.com", Phone = "0912345678" },
-            
+            new User { FullName = "Sarah Cashier", Username = "sarah.cashier", Password = passwordHash, Role = "Cashier", Email = "sarah@megamarket.com", Phone = "0912345678" },
+
             // Nhân viên kho (Warehouse)
-            new User { FullName = "Mike Warehouse", Username = "mike.warehouse", Password = BCrypt.Net.BCrypt.HashPassword("Password123!"), Role = "Warehouse", Email = "mike@megamarket.com", Phone = "0923456789" }
+            new User { FullName = "Mike Warehouse", Username = "mike.warehouse", Password = passwordHash, Role = "Warehouse", Email = "mike@megamarket.com", Phone = "0923456789" }
         };
 
         dbContext.Users.AddRange(users);
