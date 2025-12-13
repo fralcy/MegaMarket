@@ -1,6 +1,5 @@
 @page "/admin/dashboard"
 @attribute [Authorize(Roles = "Admin")]
-@inject Services.GraphQL.GraphQLClient GraphQLClient
 @inject Services.Dashboard.DashboardApiClient DashboardApiClient
 @using MegaMarket.BlazorUI.Models.Dashboard
 @using ApexCharts
@@ -886,35 +885,11 @@
             isEmployeeLoading = true;
             employeeErrorMessage = null;
 
-            // Convert enum to GraphQL format (e.g., "ThisWeek" -> "THIS_WEEK")
-            var dateRangeStr = ConvertToGraphQLEnum(selectedRange);
+            var result = await DashboardApiClient.GetEmployeeDashboardAsync(selectedRange);
 
-            var query = @"
-                query {
-                    employeeDashboard(dateRange: " + dateRangeStr + @") {
-                        totalEmployees
-                        totalAttendances
-                        onTimePercentage
-                        latePercentage
-                        totalHoursWorked
-                        totalWages
-                        attendanceByShift {
-                            shiftName
-                            attendanceCount
-                            onTimeCount
-                            lateCount
-                            totalHoursWorked
-                            totalWages
-                        }
-                    }
-                }
-            ";
-
-            var response = await GraphQLClient.QueryAsync<EmployeeDashboardResponse>(query, null);
-
-            if (response.Data?.EmployeeDashboard != null)
+            if (result != null)
             {
-                employeeData = response.Data.EmployeeDashboard;
+                employeeData = result;
             }
             else
             {
@@ -929,18 +904,6 @@
         {
             isEmployeeLoading = false;
         }
-    }
-
-    private string ConvertToGraphQLEnum(DateRangeEnum range)
-    {
-        return range switch
-        {
-            DateRangeEnum.Today => "TODAY",
-            DateRangeEnum.ThisWeek => "THIS_WEEK",
-            DateRangeEnum.ThisMonth => "THIS_MONTH",
-            DateRangeEnum.ThisYear => "THIS_YEAR",
-            _ => "TODAY"
-        };
     }
 
     private async Task HandleRangeChanged(DateRangeEnum newRange)
@@ -964,11 +927,5 @@
     private double GetPercentage(int value, int total)
     {
         return total > 0 ? (double)value / total * 100 : 0;
-    }
-
-    // GraphQL Response Types (only for Employee Dashboard)
-    private class EmployeeDashboardResponse
-    {
-        public EmployeeDashboardDto? EmployeeDashboard { get; set; }
     }
 }

@@ -74,4 +74,50 @@ public class DashboardApiClient
             return null;
         }
     }
+
+    // ==================== EMPLOYEE DASHBOARD ====================
+    public async Task<EmployeeDashboardDto?> GetEmployeeDashboardAsync(DateRangeEnum dateRange)
+    {
+        try
+        {
+            await AddAuthorizationHeader();
+            var response = await _httpClient.GetFromJsonAsync<EmployeeDashboardDto>(
+                $"api/EmployeeDashboard?dateRange={dateRange}", _serializerOptions);
+            return response;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<List<EmployeeWorkSummaryDto>?> GetEmployeeWorkSummaryAsync(DateRangeEnum dateRange)
+    {
+        try
+        {
+            await AddAuthorizationHeader();
+            var response = await _httpClient.GetFromJsonAsync<List<EmployeeWorkSummaryDto>>(
+                $"api/EmployeeDashboard/work-summary?dateRange={dateRange}", _serializerOptions);
+            return response;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<AttendanceRateDto?> GetAttendanceStatisticsAsync(int employeeId, DateRangeEnum dateRange)
+    {
+        try
+        {
+            await AddAuthorizationHeader();
+            var response = await _httpClient.GetFromJsonAsync<AttendanceRateDto>(
+                $"api/EmployeeDashboard/attendance-statistics/{employeeId}?dateRange={dateRange}", _serializerOptions);
+            return response;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }
