@@ -16,6 +16,11 @@ public static class DbSeeder
         await SeedSuppliersAsync(dbContext);
         await SeedProductsAsync(dbContext);
         await SeedImportsAsync(dbContext);
+        await SeedCustomersAsync(dbContext);
+        await SeedPromotionsAsync(dbContext);
+        await SeedRewardsAsync(dbContext);
+        await SeedInvoicesAsync(dbContext);
+        await SeedOrderRequestsAsync(dbContext);
     }
 
     private static async Task SeedUsersAsync(MegaMarketDbContext dbContext)
@@ -27,7 +32,7 @@ public static class DbSeeder
 
         // Fixed BCrypt hash for "Password123!" - matches SQL setup script
         // This ensures consistent data between DbSeeder and SQL file
-        const string passwordHash = "$2a$12$qzthoeTIHeEaAlx9pehvt.IsYk85GGf6LukiB9jKoEZFW5jRQAi5C";
+        const string passwordHash = "$2a$12$dXVEhDlHpyOvZ8hgHfwKJeX3tfKp1KUi.q1eIP43AmSmYhLpdj.w.";
 
         var users = new[]
         {
@@ -358,6 +363,292 @@ public static class DbSeeder
         };
 
         dbContext.Imports.AddRange(imports);
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task SeedCustomersAsync(MegaMarketDbContext dbContext)
+    {
+        if (await dbContext.Customers.AnyAsync())
+        {
+            return;
+        }
+
+        var customers = new[]
+        {
+            new Customer { FullName = "Nguyen Van A", Phone = "0909123456", Email = "nguyenvana@email.com", Points = 1250, Rank = "Gold" },
+            new Customer { FullName = "Tran Thi B", Phone = "0918765432", Email = "tranthib@email.com", Points = 850, Rank = "Silver" },
+            new Customer { FullName = "Le Van C", Phone = "0987654321", Email = "levanc@email.com", Points = 2500, Rank = "Platinum" },
+            new Customer { FullName = "Pham Thi D", Phone = "0976543210", Email = "phamthid@email.com", Points = 450, Rank = "Silver" },
+            new Customer { FullName = "Hoang Van E", Phone = "0965432109", Email = "hoangvane@email.com", Points = 150, Rank = "Silver" }
+        };
+
+        dbContext.Customers.AddRange(customers);
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task SeedPromotionsAsync(MegaMarketDbContext dbContext)
+    {
+        if (await dbContext.Promotions.AnyAsync())
+        {
+            return;
+        }
+
+        var products = await dbContext.Products.ToListAsync();
+        if (!products.Any())
+        {
+            return;
+        }
+
+        var apples = products.FirstOrDefault(p => p.Barcode == "1110001110001");
+        var milk = products.FirstOrDefault(p => p.Barcode == "2220002220002");
+        var eggs = products.FirstOrDefault(p => p.Barcode == "3330003330003");
+        var coffee = products.FirstOrDefault(p => p.Barcode == "4440004440004");
+
+        var promotions = new[]
+        {
+            new Promotion
+            {
+                Name = "Summer Sale 2024",
+                Description = "Discount for all products in summer",
+                DiscountType = "percent",
+                DiscountValue = 15,
+                StartDate = DateTime.Today.AddDays(-10),
+                EndDate = DateTime.Today.AddDays(20),
+                Type = "product",
+                PromotionProducts = new List<PromotionProduct>
+                {
+                    new PromotionProduct { ProductId = apples!.ProductId },
+                    new PromotionProduct { ProductId = coffee!.ProductId }
+                }
+            },
+            new Promotion
+            {
+                Name = "New Year Special",
+                Description = "Special discount for new year shopping",
+                DiscountType = "percent",
+                DiscountValue = 20,
+                StartDate = DateTime.Today.AddDays(-30),
+                EndDate = DateTime.Today.AddDays(-5),
+                Type = "invoice"
+            },
+            new Promotion
+            {
+                Name = "Weekend Deal",
+                Description = "Fixed discount on weekends",
+                DiscountType = "fixed",
+                DiscountValue = 50000,
+                StartDate = DateTime.Today.AddDays(-2),
+                EndDate = DateTime.Today.AddDays(5),
+                Type = "invoice"
+            },
+            new Promotion
+            {
+                Name = "Dairy Products Promo",
+                Description = "Special for dairy category",
+                DiscountType = "percent",
+                DiscountValue = 10,
+                StartDate = DateTime.Today.AddDays(-5),
+                EndDate = DateTime.Today.AddDays(25),
+                Type = "product",
+                PromotionProducts = new List<PromotionProduct>
+                {
+                    new PromotionProduct { ProductId = milk!.ProductId },
+                    new PromotionProduct { ProductId = eggs!.ProductId }
+                }
+            }
+        };
+
+        dbContext.Promotions.AddRange(promotions);
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task SeedRewardsAsync(MegaMarketDbContext dbContext)
+    {
+        if (await dbContext.Rewards.AnyAsync())
+        {
+            return;
+        }
+
+        var rewards = new[]
+        {
+            new Reward { Name = "Free Coffee Voucher", Description = "Get a free coffee bag", PointCost = 500, RewardType = "Voucher", Value = 95000, QuantityAvailable = 50, IsActive = true },
+            new Reward { Name = "10% Discount Coupon", Description = "10% off on next purchase", PointCost = 300, RewardType = "Discount", Value = 0, QuantityAvailable = 100, IsActive = true },
+            new Reward { Name = "Shopping Bag", Description = "Reusable shopping bag", PointCost = 200, RewardType = "Gift", Value = 0, QuantityAvailable = 75, IsActive = true },
+            new Reward { Name = "50k Cash Voucher", Description = "50,000 VND discount voucher", PointCost = 800, RewardType = "Voucher", Value = 50000, QuantityAvailable = 30, IsActive = true },
+            new Reward { Name = "Premium Gift Set", Description = "Special gift set for loyal customers", PointCost = 2000, RewardType = "Gift", Value = 0, QuantityAvailable = 20, IsActive = true }
+        };
+
+        dbContext.Rewards.AddRange(rewards);
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task SeedInvoicesAsync(MegaMarketDbContext dbContext)
+    {
+        if (await dbContext.Invoices.AnyAsync())
+        {
+            return;
+        }
+
+        var users = await dbContext.Users.ToListAsync();
+        var customers = await dbContext.Customers.ToListAsync();
+        var products = await dbContext.Products.ToListAsync();
+        var promotions = await dbContext.Promotions.ToListAsync();
+        var rewards = await dbContext.Rewards.ToListAsync();
+
+        if (!users.Any() || !customers.Any() || !products.Any())
+        {
+            return;
+        }
+
+        var cashier = users.FirstOrDefault(u => u.Role == "Cashier");
+        var customer1 = customers.FirstOrDefault(c => c.FullName == "Nguyen Van A");
+        var customer2 = customers.FirstOrDefault(c => c.FullName == "Tran Thi B");
+        var customer3 = customers.FirstOrDefault(c => c.FullName == "Le Van C");
+
+        var apples = products.FirstOrDefault(p => p.Barcode == "1110001110001");
+        var milk = products.FirstOrDefault(p => p.Barcode == "2220002220002");
+        var eggs = products.FirstOrDefault(p => p.Barcode == "3330003330003");
+        var coffee = products.FirstOrDefault(p => p.Barcode == "4440004440004");
+        var water = products.FirstOrDefault(p => p.Barcode == "5550005550005");
+
+        var weekendDeal = promotions.FirstOrDefault(p => p.Name == "Weekend Deal");
+        var discountCoupon = rewards.FirstOrDefault(r => r.Name == "10% Discount Coupon");
+        var shoppingBag = rewards.FirstOrDefault(r => r.Name == "Shopping Bag");
+
+        if (cashier == null || customer1 == null || customer2 == null || customer3 == null)
+        {
+            return;
+        }
+
+        // Invoice 1: Customer purchase with promotion
+        var invoice1 = new Invoice
+        {
+            UserId = cashier.UserId,
+            CustomerId = customer1.CustomerId,
+            CreatedAt = DateTime.Now.AddDays(-2),
+            TotalBeforeDiscount = 300000,
+            TotalAmount = 250000,
+            PaymentMethod = "cash",
+            ReceivedAmount = 300000,
+            ChangeAmount = 50000,
+            Status = "Paid",
+            PromotionId = weekendDeal?.PromotionId,
+            InvoiceDetails = new List<InvoiceDetail>
+            {
+                new InvoiceDetail { ProductId = apples!.ProductId, Quantity = 3, UnitPrice = 45000, DiscountPerUnit = 0 },
+                new InvoiceDetail { ProductId = milk!.ProductId, Quantity = 5, UnitPrice = 18000, DiscountPerUnit = 0 },
+                new InvoiceDetail { ProductId = coffee!.ProductId, Quantity = 1, UnitPrice = 95000, DiscountPerUnit = 0 }
+            },
+            PointTransactions = new List<PointTransaction>
+            {
+                new PointTransaction { CustomerId = customer1.CustomerId, PointChange = 50, TransactionType = "Earn", CreatedAt = DateTime.Now.AddDays(-2), Description = "Points earned from purchase" }
+            }
+        };
+
+        // Invoice 2: Non-customer purchase
+        var invoice2 = new Invoice
+        {
+            UserId = cashier.UserId,
+            CustomerId = null,
+            CreatedAt = DateTime.Now.AddDays(-1),
+            TotalBeforeDiscount = 156000,
+            TotalAmount = 156000,
+            PaymentMethod = "card",
+            ReceivedAmount = 156000,
+            ChangeAmount = 0,
+            Status = "Paid",
+            InvoiceDetails = new List<InvoiceDetail>
+            {
+                new InvoiceDetail { ProductId = eggs!.ProductId, Quantity = 2, UnitPrice = 52000, DiscountPerUnit = 0 },
+                new InvoiceDetail { ProductId = milk.ProductId, Quantity = 2, UnitPrice = 18000, DiscountPerUnit = 0 },
+                new InvoiceDetail { ProductId = water!.ProductId, Quantity = 1, UnitPrice = 120000, DiscountPerUnit = 0 }
+            }
+        };
+
+        // Invoice 3: Customer purchase earning points
+        var invoice3 = new Invoice
+        {
+            UserId = cashier.UserId,
+            CustomerId = customer3.CustomerId,
+            CreatedAt = DateTime.Now.AddHours(-5),
+            TotalBeforeDiscount = 450000,
+            TotalAmount = 450000,
+            PaymentMethod = "bank_transfer",
+            ReceivedAmount = 450000,
+            ChangeAmount = 0,
+            Status = "Paid",
+            InvoiceDetails = new List<InvoiceDetail>
+            {
+                new InvoiceDetail { ProductId = coffee.ProductId, Quantity = 2, UnitPrice = 95000, DiscountPerUnit = 0 },
+                new InvoiceDetail { ProductId = water.ProductId, Quantity = 2, UnitPrice = 120000, DiscountPerUnit = 0 },
+                new InvoiceDetail { ProductId = apples.ProductId, Quantity = 1, UnitPrice = 45000, DiscountPerUnit = 0 }
+            },
+            PointTransactions = new List<PointTransaction>
+            {
+                new PointTransaction { CustomerId = customer3.CustomerId, PointChange = 90, TransactionType = "Earn", CreatedAt = DateTime.Now.AddHours(-5), Description = "Points earned from purchase" }
+            }
+        };
+
+        dbContext.Invoices.AddRange(new[] { invoice1, invoice2, invoice3 });
+        await dbContext.SaveChangesAsync();
+
+        // Point Transaction for redemption
+        var pointRedemption = new PointTransaction
+        {
+            CustomerId = customer2.CustomerId,
+            PointChange = -300,
+            TransactionType = "Redeem",
+            CreatedAt = DateTime.Now.AddDays(-3),
+            Description = "Redeemed for 10% Discount Coupon"
+        };
+
+        dbContext.PointTransactions.Add(pointRedemption);
+
+        // Customer Rewards
+        if (discountCoupon != null && shoppingBag != null)
+        {
+            var customerRewards = new[]
+            {
+                new CustomerReward { CustomerId = customer2.CustomerId, RewardId = discountCoupon.RewardId, RedeemedAt = DateTime.Now.AddDays(-3), Status = "Claimed" },
+                new CustomerReward { CustomerId = customer1.CustomerId, RewardId = shoppingBag.RewardId, InvoiceId = invoice1.InvoiceId, RedeemedAt = DateTime.Now.AddDays(-2), Status = "Used", UsedAt = DateTime.Now.AddDays(-2) }
+            };
+
+            dbContext.CustomerRewards.AddRange(customerRewards);
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task SeedOrderRequestsAsync(MegaMarketDbContext dbContext)
+    {
+        if (await dbContext.OrderRequests.AnyAsync())
+        {
+            return;
+        }
+
+        var products = await dbContext.Products.ToListAsync();
+        if (!products.Any())
+        {
+            return;
+        }
+
+        var eggs = products.FirstOrDefault(p => p.Barcode == "3330003330003");
+        var milk = products.FirstOrDefault(p => p.Barcode == "2220002220002");
+        var apples = products.FirstOrDefault(p => p.Barcode == "1110001110001");
+
+        if (eggs == null || milk == null || apples == null)
+        {
+            return;
+        }
+
+        var orderRequests = new[]
+        {
+            new OrderRequest { ProductId = eggs.ProductId, RequestedQuantity = 100, RequestDate = DateTime.Today.AddDays(-1), Status = "Pending" },
+            new OrderRequest { ProductId = milk.ProductId, RequestedQuantity = 200, RequestDate = DateTime.Today.AddDays(-2), Status = "Ordered" },
+            new OrderRequest { ProductId = apples.ProductId, RequestedQuantity = 150, RequestDate = DateTime.Today.AddDays(-5), Status = "Received" }
+        };
+
+        dbContext.OrderRequests.AddRange(orderRequests);
         await dbContext.SaveChangesAsync();
     }
 }

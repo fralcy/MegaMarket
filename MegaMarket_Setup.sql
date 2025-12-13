@@ -8,18 +8,18 @@ USE master;
 GO
 
 -- Drop database if exists
-IF EXISTS (SELECT name FROM sys.databases WHERE name = 'MegaMarketDb')
+IF EXISTS (SELECT name FROM sys.databases WHERE name = 'MegaMarket')
 BEGIN
-    ALTER DATABASE MegaMarketDb SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-    DROP DATABASE MegaMarketDb;
+    ALTER DATABASE MegaMarket SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE MegaMarket;
 END
 GO
 
 -- Create database
-CREATE DATABASE MegaMarketDb;
+CREATE DATABASE MegaMarket;
 GO
 
-USE MegaMarketDb;
+USE MegaMarket;
 GO
 
 -- =============================================
@@ -312,10 +312,10 @@ PRINT 'Seeding Users...';
 -- Insert Users (4 roles: Admin, Manager, Cashier, Warehouse)
 -- Note: Passwords are BCrypt hashed for "Password123!"
 INSERT INTO Users (full_name, username, password, role, email, phone) VALUES
-('Admin User', 'admin', '$2a$11$bMKJZPzQXqZqvvJ4LZxnWO8qK2zYJC9vLG6FxPQZWJYrYhXLZXNLW', 'Admin', 'admin@megamarket.com', '0901234567'),
-('John Manager', 'john.manager', '$2a$11$bMKJZPzQXqZqvvJ4LZxnWO8qK2zYJC9vLG6FxPQZWJYrYhXLZXNLW', 'Manager', 'john@megamarket.com', '0907654321'),
-('Sarah Cashier', 'sarah.cashier', '$2a$11$bMKJZPzQXqZqvvJ4LZxnWO8qK2zYJC9vLG6FxPQZWJYrYhXLZXNLW', 'Cashier', 'sarah@megamarket.com', '0912345678'),
-('Mike Warehouse', 'mike.warehouse', '$2a$11$bMKJZPzQXqZqvvJ4LZxnWO8qK2zYJC9vLG6FxPQZWJYrYhXLZXNLW', 'Warehouse', 'mike@megamarket.com', '0923456789');
+('Admin User', 'admin', '$2a$12$dXVEhDlHpyOvZ8hgHfwKJeX3tfKp1KUi.q1eIP43AmSmYhLpdj.w.', 'Admin', 'admin@megamarket.com', '0901234567'),
+('John Manager', 'john.manager', '$2a$12$dXVEhDlHpyOvZ8hgHfwKJeX3tfKp1KUi.q1eIP43AmSmYhLpdj.w.', 'Manager', 'john@megamarket.com', '0907654321'),
+('Sarah Cashier', 'sarah.cashier', '$2a$12$dXVEhDlHpyOvZ8hgHfwKJeX3tfKp1KUi.q1eIP43AmSmYhLpdj.w.', 'Cashier', 'sarah@megamarket.com', '0912345678'),
+('Mike Warehouse', 'mike.warehouse', '$2a$12$dXVEhDlHpyOvZ8hgHfwKJeX3tfKp1KUi.q1eIP43AmSmYhLpdj.w.', 'Warehouse', 'mike@megamarket.com', '0923456789');
 
 PRINT 'Seeding ShiftTypes...';
 
@@ -456,6 +456,113 @@ DECLARE @Import4Id INT = SCOPE_IDENTITY();
 
 INSERT INTO ImportDetails (import_id, product_id, quantity, unit_price, expiry_date) VALUES
 (@Import4Id, @ApplesId, 40, 43000, DATEADD(DAY, -1, CAST(GETDATE() AS DATE)));
+
+PRINT 'Seeding Customers...';
+
+-- Insert Customers
+INSERT INTO Customers (full_name, phone, email, points, rank) VALUES
+('Nguyen Van A', '0909123456', 'nguyenvana@email.com', 1250, 'Gold'),
+('Tran Thi B', '0918765432', 'tranthib@email.com', 850, 'Silver'),
+('Le Van C', '0987654321', 'levanc@email.com', 2500, 'Platinum'),
+('Pham Thi D', '0976543210', 'phamthid@email.com', 450, 'Silver'),
+('Hoang Van E', '0965432109', 'hoangvane@email.com', 150, 'Silver');
+
+PRINT 'Seeding Promotions...';
+
+-- Insert Promotions
+INSERT INTO Promotions (name, description, discount_type, discount_value, start_date, end_date, type) VALUES
+('Summer Sale 2024', 'Discount for all products in summer', 'percent', 15, DATEADD(DAY, -10, GETDATE()), DATEADD(DAY, 20, GETDATE()), 'product'),
+('New Year Special', 'Special discount for new year shopping', 'percent', 20, DATEADD(DAY, -30, GETDATE()), DATEADD(DAY, -5, GETDATE()), 'invoice'),
+('Weekend Deal', 'Fixed discount on weekends', 'fixed', 50000, DATEADD(DAY, -2, GETDATE()), DATEADD(DAY, 5, GETDATE()), 'invoice'),
+('Dairy Products Promo', 'Special for dairy category', 'percent', 10, DATEADD(DAY, -5, GETDATE()), DATEADD(DAY, 25, GETDATE()), 'product');
+
+DECLARE @SummerSaleId INT = (SELECT promotion_id FROM Promotions WHERE name = 'Summer Sale 2024');
+DECLARE @DairyPromoId INT = (SELECT promotion_id FROM Promotions WHERE name = 'Dairy Products Promo');
+
+-- Insert PromotionProducts
+INSERT INTO PromotionProducts (promotion_id, product_id) VALUES
+(@SummerSaleId, @ApplesId),
+(@SummerSaleId, @CoffeeId),
+(@DairyPromoId, @MilkId),
+(@DairyPromoId, @EggsId);
+
+PRINT 'Seeding Rewards...';
+
+-- Insert Rewards
+INSERT INTO Rewards (name, description, point_cost, reward_type, value, quantity_available, is_active) VALUES
+('Free Coffee Voucher', 'Get a free coffee bag', 500, 'Voucher', 95000, 50, 1),
+('10% Discount Coupon', '10% off on next purchase', 300, 'Discount', 0, 100, 1),
+('Shopping Bag', 'Reusable shopping bag', 200, 'Gift', 0, 75, 1),
+('50k Cash Voucher', '50,000 VND discount voucher', 800, 'Voucher', 50000, 30, 1),
+('Premium Gift Set', 'Special gift set for loyal customers', 2000, 'Gift', 0, 20, 1);
+
+PRINT 'Seeding Invoices and related data...';
+
+-- Get customer IDs
+DECLARE @Customer1Id INT = (SELECT TOP 1 customer_id FROM Customers WHERE full_name = 'Nguyen Van A');
+DECLARE @Customer2Id INT = (SELECT TOP 1 customer_id FROM Customers WHERE full_name = 'Tran Thi B');
+DECLARE @Customer3Id INT = (SELECT TOP 1 customer_id FROM Customers WHERE full_name = 'Le Van C');
+
+DECLARE @WeekendDealId INT = (SELECT promotion_id FROM Promotions WHERE name = 'Weekend Deal');
+
+-- Invoice 1: Customer purchase with promotion
+INSERT INTO Invoices (user_id, customer_id, created_at, total_before_discount, total_amount, payment_method, received_amount, change_amount, status, promotion_id)
+VALUES (@CashierUserId, @Customer1Id, DATEADD(DAY, -2, GETDATE()), 300000, 250000, 'cash', 300000, 50000, 'Paid', @WeekendDealId);
+
+DECLARE @Invoice1Id INT = SCOPE_IDENTITY();
+
+INSERT INTO InvoiceDetails (invoice_id, product_id, quantity, unit_price, discount_per_unit, promotion_id) VALUES
+(@Invoice1Id, @ApplesId, 3, 45000, 0, NULL),
+(@Invoice1Id, @MilkId, 5, 18000, 0, NULL),
+(@Invoice1Id, @CoffeeId, 1, 95000, 0, NULL);
+
+-- Invoice 2: Non-customer purchase
+INSERT INTO Invoices (user_id, customer_id, created_at, total_before_discount, total_amount, payment_method, received_amount, change_amount, status, promotion_id)
+VALUES (@CashierUserId, NULL, DATEADD(DAY, -1, GETDATE()), 156000, 156000, 'card', 156000, 0, 'Paid', NULL);
+
+DECLARE @Invoice2Id INT = SCOPE_IDENTITY();
+
+INSERT INTO InvoiceDetails (invoice_id, product_id, quantity, unit_price, discount_per_unit, promotion_id) VALUES
+(@Invoice2Id, @EggsId, 2, 52000, 0, NULL),
+(@Invoice2Id, @MilkId, 2, 18000, 0, NULL),
+(@Invoice2Id, @WaterId, 1, 120000, 0, NULL);
+
+-- Invoice 3: Customer purchase earning points
+INSERT INTO Invoices (user_id, customer_id, created_at, total_before_discount, total_amount, payment_method, received_amount, change_amount, status, promotion_id)
+VALUES (@CashierUserId, @Customer3Id, DATEADD(HOUR, -5, GETDATE()), 450000, 450000, 'bank_transfer', 450000, 0, 'Paid', NULL);
+
+DECLARE @Invoice3Id INT = SCOPE_IDENTITY();
+
+INSERT INTO InvoiceDetails (invoice_id, product_id, quantity, unit_price, discount_per_unit, promotion_id) VALUES
+(@Invoice3Id, @CoffeeId, 2, 95000, 0, NULL),
+(@Invoice3Id, @WaterId, 2, 120000, 0, NULL),
+(@Invoice3Id, @ApplesId, 1, 45000, 0, NULL);
+
+PRINT 'Seeding Point Transactions...';
+
+-- Point Transactions (earning points from invoices)
+INSERT INTO PointTransactions (invoice_id, customer_id, point_change, transaction_type, created_at, description) VALUES
+(@Invoice1Id, @Customer1Id, 50, 'Earn', DATEADD(DAY, -2, GETDATE()), 'Points earned from purchase'),
+(@Invoice3Id, @Customer3Id, 90, 'Earn', DATEADD(HOUR, -5, GETDATE()), 'Points earned from purchase'),
+(NULL, @Customer2Id, -300, 'Redeem', DATEADD(DAY, -3, GETDATE()), 'Redeemed for 10% Discount Coupon');
+
+PRINT 'Seeding Customer Rewards...';
+
+-- Customer Rewards (redemptions)
+DECLARE @Reward1Id INT = (SELECT reward_id FROM Rewards WHERE name = '10% Discount Coupon');
+DECLARE @Reward2Id INT = (SELECT reward_id FROM Rewards WHERE name = 'Shopping Bag');
+
+INSERT INTO CustomerRewards (customer_id, reward_id, invoice_id, redeemed_at, status, used_at) VALUES
+(@Customer2Id, @Reward1Id, NULL, DATEADD(DAY, -3, GETDATE()), 'Claimed', NULL),
+(@Customer1Id, @Reward2Id, @Invoice1Id, DATEADD(DAY, -2, GETDATE()), 'Used', DATEADD(DAY, -2, GETDATE()));
+
+PRINT 'Seeding Order Requests...';
+
+-- Order Requests (low stock items)
+INSERT INTO OrderRequests (product_id, requested_quantity, request_date, status) VALUES
+(@EggsId, 100, DATEADD(DAY, -1, GETDATE()), 'Pending'),
+(@MilkId, 200, DATEADD(DAY, -2, GETDATE()), 'Ordered'),
+(@ApplesId, 150, DATEADD(DAY, -5, GETDATE()), 'Received');
 
 PRINT 'Database setup and seeding completed successfully!';
 PRINT '';
