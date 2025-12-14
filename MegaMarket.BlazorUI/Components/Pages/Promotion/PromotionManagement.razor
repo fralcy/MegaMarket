@@ -118,21 +118,24 @@
 
             @if (CurrentPromotion.Type == "product")
             {
-            <div class="form-group">
-                <label for="product">Barcode: </label>
-                <input id="product"
-                        type="number"
-                        value="@Barcode"
-                        @oninput="HandleBarcode" />
-            </div>
-            <div class="form-group">
-                <label>Product name: </label>
-                <span>@ProductName</span>
-            </div>
+                <div class="form-group">
+                    <label for="product">Barcode: </label>
+                    <input id="product"
+                            type="number"
+                            value="@Barcode"
+                            @oninput="HandleBarcode" />
+                </div>
+
+                <div class="form-group">
+                    <label>Product name: </label>
+                    <span>@ProductName</span>
+                </div>
+
+                <button disabled="@(!IsBarcodeValid)" @onclick="AddBarcode">Add</button>
             }
 
             <div class="action-buttons">
-                <button type="submit" class="btn-primary btn-action">Save</button>
+                <button type="submit" class="btn-primary btn-action" @onclick="SavePromotion">Save</button>
                 <button type="button" class="btn-secondary btn-action" @onclick="CancelEdit">Cancel</button>
             </div>
         </div>
@@ -150,8 +153,10 @@
     private Dictionary<string, ProductDto> ProductDB;
     private int CurrentPromotionId { get; set; } = 0;
     private bool IsEditing { get; set; } = false;
-	private string Barcode { get; set; } = string.Empty;
-	private string ProductName { get; set; } = string.Empty;
+    private string Barcode { get; set; } = string.Empty;
+	private bool IsBarcodeValid { get; set; } = false;
+    private List<int> ProductList { get; set; } = new List<int>();
+    private string ProductName { get; set; } = string.Empty;
 
     // -----------------------------------------------------------------------
     // LIFECYCLE VÀ KHỞI TẠO DỮ LIỆU
@@ -210,13 +215,27 @@
         Barcode = e.Value?.ToString() ?? string.Empty;
         if (ProductDB.TryGetValue(Barcode, out var product))
         {
+			IsBarcodeValid = true;
             ProductName = product.Name;
         }
         else
         {
+			IsBarcodeValid = false;
             ProductName = string.Empty;
-		}
-	}
+        }
+    }
+
+    private void AddBarcode()
+    {
+        if (ProductDB.TryGetValue(Barcode, out var product))
+        {
+            ProductList.Add(product.ProductId);
+            Barcode = string.Empty;
+            ProductName = string.Empty;
+			IsBarcodeValid = false;
+			Console.WriteLine("Added barcode to promotion: " + string.Join(", ", ProductList));
+        }
+    }
 
     // -----------------------------------------------------------------------
     // HÀM CRUD LOGIC
@@ -254,11 +273,12 @@
     // Lưu (Create hoặc Update)
     private async Task SavePromotion()
     {
+		CurrentPromotion.PromotionProducts = ProductList;
         if (CurrentPromotionId == 0)
         {
             // Thêm mới (Create)
             var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
-            var response = httpClient.PostAsJsonAsync("api/Promotion", CurrentPromotion).Result;
+            var response = await httpClient.PostAsJsonAsync("api/Promotion", CurrentPromotion);
             if (response.IsSuccessStatusCode)
             {
                 IsEditing = false;
@@ -274,7 +294,7 @@
         else
         {
 			var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
-            var response = httpClient.PutAsJsonAsync($"api/Promotion/{CurrentPromotionId}", CurrentPromotion).Result;
+            var response = await httpClient.PutAsJsonAsync($"api/Promotion/{CurrentPromotionId}", CurrentPromotion);
             if (response.IsSuccessStatusCode)
             {
                 IsEditing = false;
@@ -294,6 +314,10 @@
     {
         IsEditing = false;
         CurrentPromotion = new PromotionReqDto();
+		Barcode = string.Empty;
+		ProductList.Clear();
+        ProductName = string.Empty;
+		CurrentPromotionId = 0;
     }
 
     // Xóa (Delete)

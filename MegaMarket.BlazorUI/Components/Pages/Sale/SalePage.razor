@@ -4,6 +4,7 @@
 @using System.Globalization
 @using MegaMarket.API.DTOs.Invoice
 @using MegaMarket.API.DTOs.Products
+@using MegaMarket.API.DTOs.Promotion
 @using MegaMarket.Data.Models
 
 <div class="checkout-container">
@@ -257,19 +258,22 @@
 @code {
     private List<ProductDto> Products = new List<ProductDto>();
     private Dictionary<string, ProductDto> ProductDB;
+    private List<PromotionResDto> Promotions { get; set; } = new List<PromotionResDto>();
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
-            Products = await httpClient.GetFromJsonAsync<List<ProductDto>>("api/Products") ?? new List<ProductDto>();
+            var client = HttpClientFactory.CreateClient("MegaMarket.API");
+            Products = await client.GetFromJsonAsync<List<ProductDto>>("api/Products") ?? new List<ProductDto>();
+            Promotions = await client.GetFromJsonAsync<List<PromotionResDto>>("api/Promotion") ?? new List<PromotionResDto>();
             ProductDB = Products.ToDictionary(p => p.Barcode, p => p);
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Lỗi khi tải danh sách sản phẩm: {ex.Message}");
             Products = new List<ProductDto>();
+            Promotions = new List<PromotionResDto>();
             ProductDB = new Dictionary<string, ProductDto>();
         }
     }
@@ -307,7 +311,8 @@
     private PaymentMethod SelectedPaymentMethod { get; set; } = PaymentMethod.Cash;
     private decimal AmountPaid { get; set; } = 0;
     private string AmountPaidInput { get; set; } = "";
-    private string DiscountDetails { get; set; } = "Không có khuyến mãi nào được áp dụng.";
+	private string DiscountDetails { get; set; } = "Không có khuyến mãi nào được áp dụng.";
+    private PromotionResDto? SelectedPromotion  => GetSelectedPromotion();
     private Invoice? LastCompletedInvoice { get; set; }
 
 
@@ -339,6 +344,13 @@
 
     [Inject]
     public IJSRuntime JSRuntime { get; set; } = default!;
+    // Lấy khuyến mãi được chọn (nếu có)
+    private PromotionResDto? GetSelectedPromotion()
+    {
+        DateTime today = DateTime.Now;
+        var result = Promotions.FirstOrDefault(p => p.StartDate <= today && p.EndDate >= today && p.Type.Equals("invoice", StringComparison.OrdinalIgnoreCase));
+		return result;
+    }
     // Định dạng tiền tệ
     private string FormatCurrency(decimal amount)
     {
@@ -353,15 +365,17 @@
         OriginalPrice = CartItems.Sum(item => item.Total);
 
         // MOCK Khuyến mãi (Ví dụ: Giảm 10% nếu tổng > 100k)
-        if (OriginalPrice > 100000)
+        if (SelectedPromotion != null && SelectedPromotion.DiscountType == "fixed")
         {
-            DiscountAmountCalculated = OriginalPrice * 0.10m;
-            DiscountDetails = "Giảm 10% tổng hóa đơn (Áp dụng cho hóa đơn > 100,000 VNĐ).";
+            DiscountAmountCalculated = SelectedPromotion.DiscountValue;
         }
+        else if (SelectedPromotion != null && SelectedPromotion.DiscountType == "percent")
+        {
+            DiscountAmountCalculated = OriginalPrice * (SelectedPromotion.DiscountValue / 100);
+		}
         else
         {
             DiscountAmountCalculated = 0;
-            DiscountDetails = "Không có khuyến mãi nào được áp dụng.";
         }
 
         decimal amountBeforeRounding = OriginalPrice - DiscountAmountCalculated;
@@ -464,6 +478,14 @@
     {
         if (CartItems.Any())
         {
+            if(SelectedPromotion != null)
+            {
+                DiscountDetails = $"Áp dụng khuyến mãi: {SelectedPromotion.Description}";
+            }
+            else
+            {
+                DiscountDetails = "Không có khuyến mãi nào được áp dụng.";
+			}
 			CurrentFocusedInput = "AmountPaid";
             CalculateFinancialSummary(); // Tính toán lại số tiền lần cuối
             IsPaymentScreenVisible = true;
@@ -528,7 +550,7 @@
             PaymentMethod = SelectedPaymentMethod.ToString(),
             ReceivedAmount = AmountPaid,
             ChangeAmount = ChangeAmount,
-            PromotionId = 3,
+            PromotionId = SelectedPromotion.PromotionId,
             InvoiceDetails = invoiceDetails
         };
     }
@@ -540,8 +562,8 @@
         {
             Console.WriteLine($"Giao dịch THÀNH CÔNG! Phương thức: {SelectedPaymentMethod}. Cần thu: {FormatCurrency(AmountToCollect)}. Khách trả: {FormatCurrency(AmountPaid)}. Tiền thừa: {FormatCurrency(ChangeAmount)}");
             var newInvoice = CreateCompletedInvoiceObject();
-            var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
-            var response = await httpClient.PostAsJsonAsync("api/Invoice", newInvoice);
+            var client = HttpClientFactory.CreateClient("MegaMarket.API");
+            var response = await client.PostAsJsonAsync("api/Invoice", newInvoice);
             if (response.IsSuccessStatusCode)
             {
                 LastCompletedInvoice = await response.Content.ReadFromJsonAsync<Invoice>();

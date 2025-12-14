@@ -422,16 +422,20 @@ hr {
 
 .form-group {
     margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
     .form-group label {
         display: block;
         font-weight: bold;
-        margin-bottom: 5px;
+        margin-bottom: 0;
+        min-width: 120px;
     }
 
     .form-group input, .form-group select, .form-group textarea {
-        width: 100%;
+        flex-grow: 1;
         padding: 8px;
         border: 1px solid #ced4da;
         border-radius: 4px;

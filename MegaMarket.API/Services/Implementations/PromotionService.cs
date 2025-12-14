@@ -41,6 +41,13 @@ namespace MegaMarket.API.Services.Implementations
                 EndDate = promotionDto.EndDate,
                 Type = promotionDto.Type,
             };
+            foreach (var productId in promotionDto.PromotionProducts)
+            {
+                promotion.PromotionProducts.Add(new PromotionProduct
+                {
+                    ProductId = productId
+                });
+            }
             var createdPromotion = await _repository.CreatePromotion(promotion);
             var result = new PromotionResDto
             {
