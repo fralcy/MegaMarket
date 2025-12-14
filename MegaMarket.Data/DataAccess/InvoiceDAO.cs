@@ -16,14 +16,15 @@ namespace MegaMarket.Data.DataAccess
         {
             _context = context;
         }
+        // Data Access Object methods for Invoice entity
         public async Task<List<Invoice>> GetAllInvoices()
         {
             var listInvoices = new List<Invoice>();
             try
             {
                 listInvoices = await _context.Invoices
-                    .Include(i => i.User)
-                    .Include(i => i.InvoiceDetails)
+                    .Include(inv => inv.User)
+                    .Include(inv => inv.InvoiceDetails)
                         .ThenInclude(id => id.Product)
                     .ToListAsync();
                 return listInvoices;

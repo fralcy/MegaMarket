@@ -12,6 +12,7 @@ namespace MegaMarket.API.Services.Implementations
         {
             _repository = repository;
         }
+        // Service methods for Promotion entity
         public async Task<List<PromotionResDto>> GetAllPromotions()
         {
             var promotions = await _repository.GetAllPromotions();
@@ -53,6 +54,33 @@ namespace MegaMarket.API.Services.Implementations
                 Type = createdPromotion.Type,
             };
 
+            return result;
+        }
+        public async Task<PromotionResDto> UpdatePromotion(int promotionId, PromotionReqDto promotionDto)
+        {
+            var promotion = new Promotion
+            {
+                PromotionId = promotionId,
+                Name = promotionDto.Name,
+                Description = promotionDto.Description,
+                DiscountType = promotionDto.DiscountType,
+                DiscountValue = promotionDto.DiscountValue,
+                StartDate = promotionDto.StartDate,
+                EndDate = promotionDto.EndDate,
+                Type = promotionDto.Type,
+            };
+            var updatedPromotion = await _repository.UpdatePromotion(promotion);
+            var result = new PromotionResDto
+            {
+                PromotionId = updatedPromotion.PromotionId,
+                Name = updatedPromotion.Name,
+                Description = updatedPromotion.Description,
+                DiscountType = updatedPromotion.DiscountType,
+                DiscountValue = updatedPromotion.DiscountValue,
+                StartDate = updatedPromotion.StartDate,
+                EndDate = updatedPromotion.EndDate,
+                Type = updatedPromotion.Type,
+            };
             return result;
         }
         public async Task DeletePromotion(int promotionId)

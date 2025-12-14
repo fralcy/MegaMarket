@@ -16,7 +16,7 @@ namespace MegaMarket.Data.DataAccess
         {
             _context = context;
         }
-
+        // Data Access Object methods for Promotion entity
         public async Task<List<Promotion>> GetAllPromotions()
         {
             var listPromotions = new List<Promotion>();
@@ -41,6 +41,19 @@ namespace MegaMarket.Data.DataAccess
             catch (Exception ex)
             {
                 throw new Exception("Error creating promotion: " + ex.Message);
+            }
+        }
+        public async Task<Promotion> UpdatePromotion(Promotion promotion)
+        {
+            try
+            {
+                _context.Promotions.Update(promotion);
+                await _context.SaveChangesAsync();
+                return promotion;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error updating promotion: " + ex.Message);
             }
         }
         public async Task DeletePromotion(int promotionId)

@@ -1,7 +1,10 @@
 ﻿@page "/invoice"
+
+@inject IHttpClientFactory HttpClientFactory
 @using System.Globalization
 @using System.ComponentModel.DataAnnotations
 @using System.ComponentModel.DataAnnotations.Schema
+@using MegaMarket.API.DTOs.Invoice
 
 <div class="invoice-container">
     <h2>Invoice Mangagement</h2>
@@ -57,8 +60,8 @@
 
                 <div class="detail-section">
                     <strong>Overview</strong>
-                    <div class="detail-row"><span>User:</span> <span>@SelectedInvoice.User.UserName</span></div>
-                    <div class="detail-row"><span>Customer:</span> <span>@(SelectedInvoice.Customer?.CustomerName ?? "Khách lẻ")</span></div>
+                    <div class="detail-row"><span>User:</span> <span>@SelectedInvoice.User.Username</span></div>
+                    <div class="detail-row"><span>Customer:</span> <span>@(SelectedInvoice.Customer?.FullName ?? "Khách lẻ")</span></div>
                     <div class="detail-row"><span>Created at:</span> <span>@SelectedInvoice.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</span></div>
                     <div class="detail-row"><span>Method:</span> <span>@SelectedInvoice.PaymentMethod</span></div>
                     <div class="detail-row"><span>Status:</span> <span>@SelectedInvoice.Status</span></div>
@@ -70,7 +73,7 @@
                         @foreach (var detail in SelectedInvoice.InvoiceDetails)
                         {
                             <tr>
-                                <td>@detail.Product.ProductName (@detail.Quantity)</td>
+                                <td>@detail.Product.Name (@detail.Quantity)</td>
                                 <td style="text-align: right;">@FormatCurrency(detail.Quantity * detail.UnitPrice)</td>
                             </tr>
                         }
@@ -108,15 +111,15 @@
 
             <div class="receipt-line"><span>Mã HĐ:</span> <span>#@InvoiceToPrint.InvoiceId</span></div>
             <div class="receipt-line"><span>Ngày:</span> <span>@InvoiceToPrint.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</span></div>
-            <div class="receipt-line"><span>NV:</span> <span>@InvoiceToPrint.User.UserName</span></div>
-            <div class="receipt-line"><span>KH:</span> <span>@(InvoiceToPrint.Customer?.CustomerName ?? "Khách lẻ")</span></div>
+            <div class="receipt-line"><span>NV:</span> <span>@InvoiceToPrint.User.FullName</span></div>
+            <div class="receipt-line"><span>KH:</span> <span>@(InvoiceToPrint.Customer?.FullName ?? "Khách lẻ")</span></div>
 
             <div class="receipt-divider"></div>
 
             @foreach (var detail in InvoiceToPrint.InvoiceDetails)
             {
                 <div class="receipt-line">
-                    <span>@detail.Product.ProductName</span>
+                    <span>@detail.Product.Name</span>
                     <span>@detail.Quantity x @FormatCurrency(detail.UnitPrice)</span>
                 </div>
                 <div class="receipt-line">
@@ -151,58 +154,13 @@
 
 @code {
     // -----------------------------------------------------------------------
-    // MOCK MODELS (GIẢ LẬP CÁC CLASS KHÔNG ĐƯỢC CUNG CẤP)
-    // -----------------------------------------------------------------------
-    public class User { public int UserId { get; set; } public string UserName { get; set; } = string.Empty; }
-    public class Customer { public int CustomerId { get; set; } public string CustomerName { get; set; } = string.Empty; }
-    public class Promotion { public int PromotionId { get; set; } public string Name { get; set; } = string.Empty; }
-    public class Product { public int ProductId { get; set; } public string ProductName { get; set; } = string.Empty; }
-    public class PointTransaction { }
-    // -----------------------------------------------------------------------
-    // CÁC CLASS CHÍNH (ĐƯỢC CUNG CẤP)
-    // -----------------------------------------------------------------------
-    public class Invoice
-    {
-        [Key][Column("invoice_id")] public int InvoiceId { get; set; }
-        [ForeignKey("User")][Column("user_id")] public int UserId { get; set; }
-        [ForeignKey("Customer")][Column("customer_id")] public int? CustomerId { get; set; }
-        [Column("created_at")] public DateTime CreatedAt { get; set; } = DateTime.Now;
-        [Column("total_before_discount", TypeName = "decimal(12,2)")] public decimal TotalBeforeDiscount { get; set; }
-        [Column("total_amount", TypeName = "decimal(12,2)")] public decimal TotalAmount { get; set; }
-        [StringLength(50)][Column("payment_method")] public string PaymentMethod { get; set; } = "cash";
-        [Column("received_amount", TypeName = "decimal(12,2)")] public decimal ReceivedAmount { get; set; }
-        [Column("change_amount", TypeName = "decimal(12,2)")] public decimal ChangeAmount { get; set; }
-        [StringLength(20)][Column("status")] public string Status { get; set; } = "Pending";
-        [ForeignKey("Promotion")][Column("promotion_id")] public int? PromotionId { get; set; }
-
-        public User User { get; set; } = null!;
-        public Customer? Customer { get; set; }
-        public Promotion? Promotion { get; set; }
-        public ICollection<InvoiceDetail> InvoiceDetails { get; set; } = new List<InvoiceDetail>();
-        public ICollection<PointTransaction> PointTransactions { get; set; } = new List<PointTransaction>();
-    }
-
-    public class InvoiceDetail
-    {
-        [Key, Column("invoice_id", Order = 0)][ForeignKey("Invoice")] public int InvoiceId { get; set; }
-        [Key, Column("product_id", Order = 1)][ForeignKey("Product")] public int ProductId { get; set; }
-        [Column("quantity")] public int Quantity { get; set; }
-        [Column("unit_price", TypeName = "decimal(10,2)")] public decimal UnitPrice { get; set; }
-        [Column("discount_per_unit", TypeName = "decimal(10,2)")] public decimal DiscountPerUnit { get; set; } = 0;
-        [ForeignKey("Promotion")][Column("promotion_id")] public int? PromotionId { get; set; }
-
-        public Invoice Invoice { get; set; } = null!;
-        public Product Product { get; set; } = null!;
-        public Promotion? Promotion { get; set; }
-    }
-    // -----------------------------------------------------------------------
     // STATE VÀ DỮ LIỆU
     // -----------------------------------------------------------------------
 
-    private List<Invoice> AllInvoices { get; set; } = new List<Invoice>();
-    private List<Invoice> FilteredInvoices { get; set; } = new List<Invoice>();
-    private Invoice? SelectedInvoice { get; set; }
-    private Invoice? InvoiceToPrint { get; set; }
+    private List<InvoiceResDto> AllInvoices { get; set; } = new List<InvoiceResDto>();
+    private List<InvoiceResDto> FilteredInvoices { get; set; } = new List<InvoiceResDto>();
+    private InvoiceResDto? SelectedInvoice { get; set; }
+    private InvoiceResDto? InvoiceToPrint { get; set; }
 
     private string SearchInvoiceId { get; set; } = "";
     private DateTime? SearchDate { get; set; }
@@ -217,53 +175,19 @@
     // LIFECYCLE VÀ KHỞI TẠO DỮ LIỆU MẪU
     // -----------------------------------------------------------------------
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // Khởi tạo dữ liệu mẫu (Mock Data)
-        var user1 = new User { UserId = 1, UserName = "Lê Văn Tèo" };
-        var cust1 = new Customer { CustomerId = 101, CustomerName = "Nguyễn Thị A" };
-        var promo1 = new Promotion { PromotionId = 1, Name = "Giảm 10%" };
-
-        var productA = new Product { ProductId = 1, ProductName = "Sữa Tươi 1L" };
-        var productB = new Product { ProductId = 2, ProductName = "Bánh Quy" };
-        var productC = new Product { ProductId = 3, ProductName = "Thịt Bò" };
-
-        AllInvoices = new List<Invoice>
+        try
         {
-            new Invoice
-            {
-                InvoiceId = 1001, UserId = 1, CustomerId = 101, CreatedAt = DateTime.Now.AddHours(-5),
-                TotalBeforeDiscount = 350000, TotalAmount = 315000, ReceivedAmount = 350000, ChangeAmount = 35000,
-                PaymentMethod = "cash", Status = "Paid", PromotionId = 1, User = user1, Customer = cust1, Promotion = promo1,
-                InvoiceDetails = new List<InvoiceDetail>
-                {
-                    new InvoiceDetail { ProductId = 1, Quantity = 5, UnitPrice = 50000, DiscountPerUnit = 0, Product = productA },
-                    new InvoiceDetail { ProductId = 2, Quantity = 2, UnitPrice = 50000, DiscountPerUnit = 5000, Product = productB, PromotionId = 1 }
-                }
-            },
-            new Invoice
-            {
-                InvoiceId = 1002, UserId = 1, CustomerId = null, CreatedAt = DateTime.Now.AddDays(-2).AddHours(10),
-                TotalBeforeDiscount = 120000, TotalAmount = 120000, ReceivedAmount = 120000, ChangeAmount = 0,
-                PaymentMethod = "bank_transfer", Status = "Paid", User = user1,
-                InvoiceDetails = new List<InvoiceDetail>
-                {
-                    new InvoiceDetail { ProductId = 3, Quantity = 1, UnitPrice = 120000, DiscountPerUnit = 0, Product = productC }
-                }
-            },
-            new Invoice
-            {
-                InvoiceId = 1003, UserId = 1, CustomerId = 101, CreatedAt = DateTime.Now.AddDays(-10).AddHours(15),
-                TotalBeforeDiscount = 55000, TotalAmount = 55000, ReceivedAmount = 0, ChangeAmount = 0,
-                PaymentMethod = "card", Status = "Pending", User = user1, Customer = cust1,
-                InvoiceDetails = new List<InvoiceDetail>
-                {
-                    new InvoiceDetail { ProductId = 1, Quantity = 1, UnitPrice = 50000, DiscountPerUnit = 0, Product = productA }
-                }
-            }
-        };
-
-        FilteredInvoices = AllInvoices;
+            var client = HttpClientFactory.CreateClient("MegaMarket.API");
+            AllInvoices = await client.GetFromJsonAsync<List<InvoiceResDto>>("api/Invoice") ?? new List<InvoiceResDto>();
+            FilteredInvoices = AllInvoices;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error fetching invoices: {ex.Message}");
+			AllInvoices = new List<InvoiceResDto>();
+		}
     }
 
     // -----------------------------------------------------------------------
@@ -285,7 +209,7 @@
 
     private void ApplyFilter()
     {
-        IEnumerable<Invoice> query = AllInvoices;
+        IEnumerable<InvoiceResDto> query = AllInvoices;
 
         // Lọc theo Mã hóa đơn
         if (!string.IsNullOrWhiteSpace(SearchInvoiceId) && int.TryParse(SearchInvoiceId, out var id))

@@ -13,7 +13,7 @@ namespace MegaMarket.API.Controllers
         {
             _service = service;
         }
-
+        // Controller methods for Promotion entity
         [HttpGet]
         public async Task<ActionResult> GetAllPromotions()
         {
@@ -41,6 +41,21 @@ namespace MegaMarket.API.Controllers
                 return BadRequest(ModelState);
             }
         }
+
+        [HttpPut("{promotionId}")]
+        public async Task<ActionResult> UpdatePromotion(int promotionId, [FromBody] PromotionReqDto promotionDto)
+        {
+            try
+            {
+                var updatedPromotion = await _service.UpdatePromotion(promotionId, promotionDto);
+                return Ok(updatedPromotion);
+            }
+            catch
+            {
+                return BadRequest(ModelState);
+            }
+        }
+
         [HttpDelete("{promotionId}")]
         public async Task<ActionResult> DeletePromotion(int promotionId)
         {

@@ -7,6 +7,7 @@ namespace MegaMarket.API.Services.Interfaces
     {
         Task<List<PromotionResDto>> GetAllPromotions();
         Task<PromotionResDto> CreatePromotion(PromotionReqDto promotionDto);
+        Task<PromotionResDto> UpdatePromotion(int promotionId, PromotionReqDto promotionDto);
         Task DeletePromotion(int promotionId);
     }
 }

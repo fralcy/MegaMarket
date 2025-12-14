@@ -15,7 +15,7 @@ namespace MegaMarket.API.Controllers
         {
             _service = service;
         }
-
+        // Controller methods for Invoice entity
         [HttpGet]
         public async Task<ActionResult> GetAllInvoices()
         {

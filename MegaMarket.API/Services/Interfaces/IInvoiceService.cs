@@ -5,7 +5,7 @@ namespace MegaMarket.API.Services.Interfaces
 {
     public interface IInvoiceService
     {
-        Task<List<Invoice>> GetAllInvoices();
+        Task<List<InvoiceResDto>> GetAllInvoices();
         Task<InvoiceResDto> SaveInvoice(InvoiceReqDto invoiceDto);
     }
 }

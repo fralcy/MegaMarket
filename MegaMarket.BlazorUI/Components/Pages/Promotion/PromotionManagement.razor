@@ -230,7 +230,19 @@
         }
         else
         {
-
+			var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
+            var response = httpClient.PutAsJsonAsync($"api/Promotion/{CurrentPromotionId}", CurrentPromotion).Result;
+            if (response.IsSuccessStatusCode)
+            {
+                IsEditing = false;
+                CurrentPromotion = new PromotionReqDto();
+				CurrentPromotionId = 0;
+                await OnInitializedAsync(); // Tải lại danh sách sau khi cập nhật
+            }
+            else
+            {
+				Console.WriteLine("Lỗi khi cập nhật khuyến mãi.");
+            }
         }
     }
 

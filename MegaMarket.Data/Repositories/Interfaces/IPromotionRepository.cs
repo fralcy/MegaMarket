@@ -11,6 +11,7 @@ namespace MegaMarket.Data.Repositories.Interfaces
     {
         Task<List<Promotion>> GetAllPromotions();
         Task<Promotion> CreatePromotion(Promotion promotion);
+        Task<Promotion> UpdatePromotion(Promotion promotion);
         Task DeletePromotion(int promotionId);
     }
 }

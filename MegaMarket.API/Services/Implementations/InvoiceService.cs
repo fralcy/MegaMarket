@@ -14,11 +14,44 @@ namespace MegaMarket.API.Services.Implementations
         {
             _repository = repository;
         }
-
-        public async Task<List<Invoice>> GetAllInvoices()
+        // Service methods for Invoice entity
+        public async Task<List<InvoiceResDto>> GetAllInvoices()
         {
             var listInvoices = await _repository.GetAllInvoices();
-            return listInvoices;
+            var result = listInvoices.Select(inv => new InvoiceResDto
+            {
+                InvoiceId = inv.InvoiceId,
+                UserId = inv.UserId,
+                TotalBeforeDiscount = inv.TotalBeforeDiscount,
+                TotalAmount = inv.TotalAmount,
+                ReceivedAmount = inv.ReceivedAmount,
+                ChangeAmount = inv.ChangeAmount,
+                PromotionId = inv.PromotionId,
+                User = new UserResDto
+                {
+                    UserId = inv.User.UserId,
+                    Username = inv.User.Username,
+                    FullName = inv.User.FullName,
+                    Email = inv.User.Email,
+                    Role = inv.User.Role
+                },
+                InvoiceDetails = inv.InvoiceDetails.Select(d => new InvoiceDetailResDto
+                {
+                    ProductId = d.ProductId,
+                    Quantity = d.Quantity,
+                    UnitPrice = d.UnitPrice,
+                    DiscountPerUnit = d.DiscountPerUnit,
+                    PromotionId = d.PromotionId,
+                    Product = new ProductDto
+                    {
+                        ProductId = d.Product.ProductId,
+                        Name = d.Product.Name,
+                        UnitPrice = d.Product.UnitPrice,
+                    }
+                }).ToList()
+            }).ToList();
+
+            return result;
         }
         public async Task<InvoiceResDto> SaveInvoice(InvoiceReqDto invoiceDto)
         {

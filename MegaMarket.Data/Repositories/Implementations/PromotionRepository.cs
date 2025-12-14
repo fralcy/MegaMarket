@@ -16,8 +16,10 @@ namespace MegaMarket.Data.Repositories.Implementations
         {
             _promotionDAO = promotionDAO;
         }
+        // Repository methods for Promotion entity
         public Task<List<Promotion>> GetAllPromotions() => _promotionDAO.GetAllPromotions();
         public Task<Promotion> CreatePromotion(Promotion promotion) => _promotionDAO.CreatePromotion(promotion);
+        public Task<Promotion> UpdatePromotion(Promotion promotion) => _promotionDAO.UpdatePromotion(promotion);
         public Task DeletePromotion(int promotionId) => _promotionDAO.DeletePromotion(promotionId);
     }
 }
