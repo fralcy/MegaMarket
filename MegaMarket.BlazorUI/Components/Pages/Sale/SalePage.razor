@@ -108,77 +108,88 @@
     }
     else if (LastCompletedInvoice == null)
     {
-        <div class="payment-screen-wrapper">
-            <div class="payment-screen single-column">
+        <h2>Checkout detail</h2>
 
-                <h3>Checkout detail</h3>
+        <div class="payment-screen">
+            <div class="payment-methods">
+                <button class="@(SelectedPaymentMethod == PaymentMethod.Cash ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Cash)">Cash</button>
+                <button class="@(SelectedPaymentMethod == PaymentMethod.BankTransfer ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.BankTransfer)">Bank transfer</button>
+                <button class="@(SelectedPaymentMethod == PaymentMethod.Card ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Card)">Card</button>
+            </div>
 
-                <div class="payment-methods">
-                    <button class="@(SelectedPaymentMethod == PaymentMethod.Cash ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Cash)">Cash</button>
-                    <button class="@(SelectedPaymentMethod == PaymentMethod.BankTransfer ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.BankTransfer)">Bank transfer</button>
-                    <button class="@(SelectedPaymentMethod == PaymentMethod.Card ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Card)">Card</button>
+            <div class="financial-summary">
+                <div class="summary-row">
+                    <span class="summary-label">Before discount:</span>
+                    <span class="summary-value">@FormatCurrency(OriginalPrice)</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Discount:</span>
+                    <span class="summary-value negative">@FormatCurrency(DiscountAmountCalculated)</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Round:</span>
+                    <span class="summary-value">@FormatCurrency(RoundingAmount)</span>
                 </div>
 
-                <div class="financial-summary">
-                    <div class="summary-row">
-                        <span class="summary-label">Before discount:</span>
-                        <span class="summary-value">@FormatCurrency(OriginalPrice)</span>
-                    </div>
-                    <div class="summary-row">
-                        <span class="summary-label">Discount:</span>
-                        <span class="summary-value negative">@FormatCurrency(DiscountAmountCalculated)</span>
-                    </div>
-                    <div class="summary-row">
-                        <span class="summary-label">Round:</span>
-                        <span class="summary-value">@FormatCurrency(RoundingAmount)</span>
-                    </div>
+                <hr style="grid-column: 1 / -1; margin: 5px 0;" />
 
-                    <hr style="grid-column: 1 / -1; margin: 5px 0;" />
-
-                    <div class="summary-row">
-                        <span class="summary-label"><strong>Amount to collect:</strong></span>
-                        <span class="summary-value total negative">@FormatCurrency(AmountToCollect)</span>
-                    </div>
-
-                    @if (SelectedPaymentMethod == PaymentMethod.Cash)
-                    {
-                        <div class="payment-input-group" style="grid-column: 1 / -1;">
-                            <label for="amountPaid">Collected:</label>
-                            <input id="amountPaid"
-                                   type="number"
-                                   value="@AmountPaidInput.ToString("N0", new CultureInfo("vi-VN"))"
-                                   @onchange="HandleAmountPaidInput"
-                                   />
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="summary-row">
-                            <span class="summary-label">Collected:</span>
-                            <span class="summary-value">@FormatCurrency(PaidAmountDisplay)</span>
-                        </div>
-                    }
-
-                    <div class="summary-row">
-                        <span class="summary-label">Amout missing:</span>
-                        <span class="summary-value negative">@FormatCurrency(AmountMissing)</span>
-                    </div>
-
-                    <div class="summary-row">
-                        <span class="summary-label">Change:</span>
-                        <span class="summary-value positive">@FormatCurrency(ChangeAmount)</span>
-                    </div>
+                <div class="summary-row">
+                    <span class="summary-label"><strong>Amount to collect:</strong></span>
+                    <span class="summary-value total negative">@FormatCurrency(AmountToCollect)</span>
                 </div>
 
-                <div class="promo-details">
-                    <strong>Promotion detail:</strong> @DiscountDetails
+                <div class="summary-row">
+                    <span class="summary-label">Collected:</span>
+                    <span class="summary-value">@FormatCurrency(PaidAmountDisplay)</span>
                 </div>
 
-                <div class="action-buttons">
-                    <button class="btn-primary" @onclick="FinalizePayment" disabled="@(AmountMissing > 0)">Done</button>
-                    <button class="btn-secondary" @onclick="CancelPaymentScreen">Cancel</button>
+                <div class="summary-row">
+                    <span class="summary-label">Amout missing:</span>
+                    <span class="summary-value negative">@FormatCurrency(AmountMissing)</span>
+                </div>
+
+                <div class="summary-row">
+                    <span class="summary-label">Change:</span>
+                    <span class="summary-value positive">@FormatCurrency(ChangeAmount)</span>
                 </div>
             </div>
+
+            <div class="promo-details">
+                <strong>Promotion detail:</strong> @DiscountDetails
+            </div>
+        </div>
+
+        @if (SelectedPaymentMethod == PaymentMethod.Cash)
+        {
+            <div class="input-keypad-area-center">
+                <input id="amountPaid"
+                       type="number"
+                       value="@AmountPaid.ToString("N0", new CultureInfo("vi-VN"))"
+                       @oninput="HandleAmountPaid" />
+
+                <div class="numeric-keypad">
+                    <button @onclick="() => CollectToInput('7'.ToString())">7</button>
+                    <button @onclick="() => CollectToInput('8'.ToString())">8</button>
+                    <button @onclick="() => CollectToInput('9'.ToString())">9</button>
+
+                    <button @onclick="() => CollectToInput('4'.ToString())">4</button>
+                    <button @onclick="() => CollectToInput('5'.ToString())">5</button>
+                    <button @onclick="() => CollectToInput('6'.ToString())">6</button>
+
+                    <button @onclick="() => CollectToInput('1'.ToString())">1</button>
+                    <button @onclick="() => CollectToInput('2'.ToString())">2</button>
+                    <button @onclick="() => CollectToInput('3'.ToString())">3</button>
+
+                    <button @onclick="ClearLastInput">CE</button>
+                    <button @onclick="() => CollectToInput('0'.ToString())">0</button>
+                    <button @onclick="ClearAllInput">C</button>
+                </div>
+            </div>
+        }
+
+        <div class="action-buttons">
+            <button class="btn-primary" @onclick="FinalizePayment" disabled="@(AmountMissing > 0)">Done</button>
+            <button class="btn-secondary" @onclick="CancelPaymentScreen">Cancel</button>
         </div>
     }
     else if (LastCompletedInvoice != null)
@@ -294,7 +305,8 @@
     // Trạng thái màn hình thanh toán
     private bool IsPaymentScreenVisible { get; set; } = false;
     private PaymentMethod SelectedPaymentMethod { get; set; } = PaymentMethod.Cash;
-    private decimal AmountPaidInput { get; set; } = 0;
+    private decimal AmountPaid { get; set; } = 0;
+    private string AmountPaidInput { get; set; } = "";
     private string DiscountDetails { get; set; } = "Không có khuyến mãi nào được áp dụng.";
     private Invoice? LastCompletedInvoice { get; set; }
 
@@ -311,9 +323,9 @@
     private decimal AmountToCollect { get; set; } = 0;
     private decimal RoundingAmount { get; set; } = 0;
 
-    private decimal AmountMissing => AmountToCollect - AmountPaidInput > 0 ? AmountToCollect - AmountPaidInput : 0;
-    private decimal ChangeAmount => AmountPaidInput - AmountToCollect > 0 ? AmountPaidInput - AmountToCollect : 0;
-    private decimal PaidAmountDisplay => AmountPaidInput;
+    private decimal AmountMissing => AmountToCollect - AmountPaid > 0 ? AmountToCollect - AmountPaid : 0;
+    private decimal ChangeAmount => AmountPaid - AmountToCollect > 0 ? AmountPaid - AmountToCollect : 0;
+    private decimal PaidAmountDisplay => AmountPaid;
 
     private int InputQuantity
     {
@@ -363,7 +375,7 @@
         // Nếu không phải tiền mặt, giả định đã thu bằng số cần thu
         if (IsPaymentScreenVisible && SelectedPaymentMethod != PaymentMethod.Cash)
         {
-            AmountPaidInput = AmountToCollect;
+            AmountPaid = AmountToCollect;
         }
     }
 
@@ -452,11 +464,13 @@
     {
         if (CartItems.Any())
         {
+			CurrentFocusedInput = "AmountPaid";
             CalculateFinancialSummary(); // Tính toán lại số tiền lần cuối
             IsPaymentScreenVisible = true;
-            AmountPaidInput = AmountToCollect; // Gán tiền đã thu ban đầu bằng tiền cần thu
+            AmountPaidInput = "";
+            AmountPaid = 0; // Gán tiền đã thu ban đầu bằng tiền cần thu
 
-            // Nếu không phải tiền mặt, tự động set phương thức để trigger AmountPaidInput
+            // Nếu không phải tiền mặt, tự động set phương thức để trigger AmountPaid
             if (SelectedPaymentMethod != PaymentMethod.Cash)
             {
                 SetPaymentMethod(SelectedPaymentMethod);
@@ -473,8 +487,9 @@
     // Hàm mới: Hủy thanh toán trên màn hình thanh toán
     private void CancelPaymentScreen()
     {
+		CurrentFocusedInput = "ProductCode";
         IsPaymentScreenVisible = false;
-        AmountPaidInput = 0;
+        AmountPaid = 0;
         SelectedPaymentMethod = PaymentMethod.Cash;
         DiscountDetails = "Không có khuyến mãi nào được áp dụng.";
         Console.WriteLine("Hủy thanh toán, quay lại màn hình giỏ hàng.");
@@ -502,7 +517,7 @@
                 UnitPrice = item.UnitPrice,
                 DiscountPerUnit = 0
             };
-		})
+        })
         .Where(detail => detail != null)
         .ToList();
 
@@ -511,7 +526,7 @@
             TotalBeforeDiscount = OriginalPrice,
             TotalAmount = AmountToCollect, // Số tiền sau KM và làm tròn
             PaymentMethod = SelectedPaymentMethod.ToString(),
-            ReceivedAmount = AmountPaidInput,
+            ReceivedAmount = AmountPaid,
             ChangeAmount = ChangeAmount,
             PromotionId = 3,
             InvoiceDetails = invoiceDetails
@@ -521,9 +536,9 @@
     // Hàm mới: Hoàn tất thanh toán
     private async Task FinalizePayment()
     {
-        if (AmountPaidInput >= AmountToCollect)
+        if (AmountPaid >= AmountToCollect)
         {
-            Console.WriteLine($"Giao dịch THÀNH CÔNG! Phương thức: {SelectedPaymentMethod}. Cần thu: {FormatCurrency(AmountToCollect)}. Khách trả: {FormatCurrency(AmountPaidInput)}. Tiền thừa: {FormatCurrency(ChangeAmount)}");
+            Console.WriteLine($"Giao dịch THÀNH CÔNG! Phương thức: {SelectedPaymentMethod}. Cần thu: {FormatCurrency(AmountToCollect)}. Khách trả: {FormatCurrency(AmountPaid)}. Tiền thừa: {FormatCurrency(ChangeAmount)}");
             var newInvoice = CreateCompletedInvoiceObject();
             var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
             var response = await httpClient.PostAsJsonAsync("api/Invoice", newInvoice);
@@ -550,10 +565,11 @@
     {
         // Dọn dẹp trạng thái
         CancelTransaction(); // Xóa giỏ hàng, reset input
-
+		CurrentFocusedInput = "ProductCode";
         LastCompletedInvoice = null; // Trở về màn hình giỏ hàng
         IsPaymentScreenVisible = false;
-        AmountPaidInput = 0;
+		AmountPaidInput = "";
+        AmountPaid = 0;
         SelectedPaymentMethod = PaymentMethod.Cash;
         DiscountDetails = "Không có khuyến mãi nào được áp dụng.";
 
@@ -565,16 +581,16 @@
         SelectedPaymentMethod = method;
         if (method != PaymentMethod.Cash)
         {
-            AmountPaidInput = AmountToCollect;
+            AmountPaid = AmountToCollect;
         }
         else
         {
             // Trở về mặc định số cần thu để dễ nhập liệu tiền thừa
-            AmountPaidInput = AmountToCollect;
+            AmountPaid = 0;
         }
     }
 
-    private void HandleAmountPaidInput(ChangeEventArgs e)
+    private void HandleAmountPaid(ChangeEventArgs e)
     {
         string value = e.Value?.ToString() ?? "0";
         // Loại bỏ ký tự phân cách hàng nghìn (dấu chấm)
@@ -582,12 +598,12 @@
 
         if (decimal.TryParse(value, out var amount))
         {
-            AmountPaidInput = amount;
+            AmountPaid = amount;
         }
         else
         {
             // Nếu nhập không hợp lệ, giữ nguyên giá trị cũ hoặc reset về 0
-            AmountPaidInput = 0;
+            AmountPaid = 0;
         }
     }
 
@@ -629,6 +645,12 @@
         }
     }
 
+    private void CollectToInput(string number)
+    {
+        AmountPaidInput += number;
+        AmountPaid = Convert.ToDecimal(AmountPaidInput);
+    }
+
     private void ClearLastInput()
     {
         if (CurrentFocusedInput == "ProductCode" && InputProductCode.Length > 0)
@@ -641,6 +663,11 @@
             InputQuantityText = InputQuantityText.Substring(0, InputQuantityText.Length - 1);
             if (string.IsNullOrWhiteSpace(InputQuantityText)) InputQuantityText = "1";
         }
+		else if (CurrentFocusedInput == "AmountPaid" && AmountPaidInput.Length > 0)
+        {
+            AmountPaidInput = AmountPaidInput.Substring(0, AmountPaidInput.Length - 1);
+            AmountPaid = string.IsNullOrWhiteSpace(AmountPaidInput) ? 0 : Convert.ToDecimal(AmountPaidInput);
+		}
     }
 
     private void ClearAllInput()
@@ -654,6 +681,11 @@
         else if (CurrentFocusedInput == "Quantity")
         {
             InputQuantityText = "1";
+        }
+		else if (CurrentFocusedInput == "AmountPaid")
+        {
+            AmountPaidInput = "";
+			AmountPaid = 0;
         }
     }
 
