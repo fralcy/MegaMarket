@@ -1,6 +1,6 @@
 ﻿namespace MegaMarket.API.DTOs.Promotion
 {
-    public class PromotionRequestDto
+    public class PromotionReqDto
     {
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }

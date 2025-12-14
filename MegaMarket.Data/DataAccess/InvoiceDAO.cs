@@ -21,7 +21,11 @@ namespace MegaMarket.Data.DataAccess
             var listInvoices = new List<Invoice>();
             try
             {
-                listInvoices = await _context.Invoices.ToListAsync();
+                listInvoices = await _context.Invoices
+                    .Include(i => i.User)
+                    .Include(i => i.InvoiceDetails)
+                        .ThenInclude(id => id.Product)
+                    .ToListAsync();
                 return listInvoices;
             }
             catch (Exception ex)
@@ -35,7 +39,13 @@ namespace MegaMarket.Data.DataAccess
             {
                 _context.Invoices.Add(i);
                 await _context.SaveChangesAsync();
-                return i;
+
+                var insertedInvoice = await _context.Invoices
+                    .Include(inv => inv.User)
+                    .Include(inv => inv.InvoiceDetails)
+                        .ThenInclude(id => id.Product)
+                    .FirstOrDefaultAsync(inv => inv.InvoiceId == i.InvoiceId);
+                return insertedInvoice;
             }
             catch (Exception ex)
             {

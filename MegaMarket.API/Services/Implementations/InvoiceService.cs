@@ -1,4 +1,6 @@
 ﻿using MegaMarket.API.DTOs.Invoice;
+using MegaMarket.API.DTOs.Products;
+using MegaMarket.API.DTOs.User;
 using MegaMarket.API.Services.Interfaces;
 using MegaMarket.Data.Models;
 using MegaMarket.Data.Repositories.Interfaces;
@@ -18,7 +20,7 @@ namespace MegaMarket.API.Services.Implementations
             var listInvoices = await _repository.GetAllInvoices();
             return listInvoices;
         }
-        public async Task<InvoiceDto> SaveInvoice(InvoiceDto invoiceDto)
+        public async Task<InvoiceResDto> SaveInvoice(InvoiceReqDto invoiceDto)
         {
             var invoiceDetails = new List<InvoiceDetail>();
             foreach (var detailDto in invoiceDto.InvoiceDetails)
@@ -36,7 +38,7 @@ namespace MegaMarket.API.Services.Implementations
 
             var invoice = new Invoice
             {
-                UserId = 1,
+                UserId = 2,
                 TotalBeforeDiscount = invoiceDto.TotalBeforeDiscount,
                 TotalAmount = invoiceDto.TotalAmount,
                 ReceivedAmount = invoiceDto.ReceivedAmount,
@@ -44,26 +46,42 @@ namespace MegaMarket.API.Services.Implementations
                 PromotionId = invoiceDto.PromotionId,
             };
             
+            
             foreach (var detail in invoiceDetails)
             {
                 invoice.InvoiceDetails.Add(detail);
             }
 
             var savedInvoice = await _repository.SaveInvoice(invoice);
-            var result = new InvoiceDto
+            var result = new InvoiceResDto
             {
+                UserId = savedInvoice.UserId,
                 TotalBeforeDiscount = savedInvoice.TotalBeforeDiscount,
                 TotalAmount = savedInvoice.TotalAmount,
                 ReceivedAmount = savedInvoice.ReceivedAmount,
                 ChangeAmount = savedInvoice.ChangeAmount,
                 PromotionId = savedInvoice.PromotionId,
-                InvoiceDetails = invoiceDetails.Select(d => new InvoiceDetailDto
+                User = new UserResDto
+                {
+                    UserId = savedInvoice.User.UserId,
+                    Username = savedInvoice.User.Username,
+                    FullName = savedInvoice.User.FullName,
+                    Email = savedInvoice.User.Email,
+                    Role = savedInvoice.User.Role
+                },
+                InvoiceDetails = savedInvoice.InvoiceDetails.Select(d => new InvoiceDetailResDto
                 {
                     ProductId = d.ProductId,
                     Quantity = d.Quantity,
                     UnitPrice = d.UnitPrice,
                     DiscountPerUnit = d.DiscountPerUnit,
-                    PromotionId = d.PromotionId
+                    PromotionId = d.PromotionId,
+                    Product = new ProductDto
+                    {
+                        ProductId = d.Product.ProductId,
+                        Name = d.Product.Name,
+                        UnitPrice = d.Product.UnitPrice,
+                    }
                 }).ToList()
             };
 

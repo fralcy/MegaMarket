@@ -12,10 +12,10 @@ namespace MegaMarket.API.Services.Implementations
         {
             _repository = repository;
         }
-        public async Task<List<PromotionResponseDto>> GetAllPromotions()
+        public async Task<List<PromotionResDto>> GetAllPromotions()
         {
             var promotions = await _repository.GetAllPromotions();
-            var result = promotions.Select(p => new PromotionResponseDto
+            var result = promotions.Select(p => new PromotionResDto
             {
                 PromotionId = p.PromotionId,
                 Name = p.Name,
@@ -28,7 +28,7 @@ namespace MegaMarket.API.Services.Implementations
             }).ToList();
             return result;
         }
-        public async Task<PromotionResponseDto> CreatePromotion(PromotionRequestDto promotionDto)
+        public async Task<PromotionResDto> CreatePromotion(PromotionReqDto promotionDto)
         {
             var promotion = new Promotion
             {
@@ -41,7 +41,7 @@ namespace MegaMarket.API.Services.Implementations
                 Type = promotionDto.Type,
             };
             var createdPromotion = await _repository.CreatePromotion(promotion);
-            var result = new PromotionResponseDto
+            var result = new PromotionResDto
             {
                 PromotionId = createdPromotion.PromotionId,
                 Name = createdPromotion.Name,

@@ -4,31 +4,31 @@
 @using System.ComponentModel.DataAnnotations.Schema
 
 <div class="invoice-container">
-    <h2>Quản Lý Hóa Đơn</h2>
+    <h2>Invoice Mangagement</h2>
 
     <div class="search-area">
-        <h4>Tìm Kiếm Hóa Đơn</h4>
+        <h4>Search</h4>
         <div class="search-input-group">
-            <label for="searchId">Mã HĐ:</label>
-            <input id="searchId" @bind="SearchInvoiceId" placeholder="Nhập mã hóa đơn" />
+            <label for="searchId">Invoice ID:</label>
+            <input id="searchId" @bind="SearchInvoiceId" placeholder="Input invoice ID" />
 
-            <label for="searchDate">Ngày Tạo:</label>
+            <label for="searchDate">Created at:</label>
             <input id="searchDate" @bind="SearchDate" type="date" />
 
-            <button class="btn-primary" @onclick="ApplyFilter">Tìm Kiếm</button>
-            <button class="btn-secondary" @onclick="ClearFilter">Xóa Filter</button>
+            <button class="btn-primary" @onclick="ApplyFilter">Search</button>
+            <button class="btn-secondary" @onclick="ClearFilter">Clear filter</button>
         </div>
     </div>
 
     <div class="invoice-grid">
         <div>
-            <h4>Danh Sách Hóa Đơn (@FilteredInvoices.Count)</h4>
+            <h4>Invoice list (@FilteredInvoices.Count)</h4>
             <table class="table" style="width: 100%; border-collapse: collapse;">
                 <thead>
                     <tr style="background-color: #f1f1f1;">
                         <th style="padding: 10px; border: 1px solid #ddd;">ID</th>
-                        <th style="padding: 10px; border: 1px solid #ddd;">Ngày Tạo</th>
-                        <th style="padding: 10px; border: 1px solid #ddd;">Tổng Tiền</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Created at</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Total</th>
                         <th style="padding: 10px; border: 1px solid #ddd;">TT</th>
                         <th style="padding: 10px; border: 1px solid #ddd;">Action</th>
                     </tr>
@@ -53,19 +53,19 @@
         <div class="detail-view">
             @if (SelectedInvoice != null)
             {
-                <h4>Chi Tiết Hóa Đơn #@SelectedInvoice.InvoiceId</h4>
+                <h4>Invoice Detail #@SelectedInvoice.InvoiceId</h4>
 
                 <div class="detail-section">
-                    <strong>Thông tin chung</strong>
-                    <div class="detail-row"><span>Người tạo:</span> <span>@SelectedInvoice.User.UserName</span></div>
-                    <div class="detail-row"><span>Khách hàng:</span> <span>@(SelectedInvoice.Customer?.CustomerName ?? "Khách lẻ")</span></div>
-                    <div class="detail-row"><span>Ngày tạo:</span> <span>@SelectedInvoice.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</span></div>
-                    <div class="detail-row"><span>Phương thức:</span> <span>@SelectedInvoice.PaymentMethod</span></div>
-                    <div class="detail-row"><span>Trạng thái:</span> <span>@SelectedInvoice.Status</span></div>
+                    <strong>Overview</strong>
+                    <div class="detail-row"><span>User:</span> <span>@SelectedInvoice.User.UserName</span></div>
+                    <div class="detail-row"><span>Customer:</span> <span>@(SelectedInvoice.Customer?.CustomerName ?? "Khách lẻ")</span></div>
+                    <div class="detail-row"><span>Created at:</span> <span>@SelectedInvoice.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</span></div>
+                    <div class="detail-row"><span>Method:</span> <span>@SelectedInvoice.PaymentMethod</span></div>
+                    <div class="detail-row"><span>Status:</span> <span>@SelectedInvoice.Status</span></div>
                 </div>
 
                 <div class="detail-section">
-                    <strong>Chi tiết Sản phẩm</strong>
+                    <strong>Product detail</strong>
                     <table style="width: 100%; font-size: 0.9em; margin-top: 5px;">
                         @foreach (var detail in SelectedInvoice.InvoiceDetails)
                         {
@@ -78,17 +78,17 @@
                 </div>
 
                 <div class="detail-section">
-                    <strong>Tổng kết</strong>
-                    <div class="detail-row"><span>Tổng trước KM:</span> <span>@FormatCurrency(SelectedInvoice.TotalBeforeDiscount)</span></div>
-                    <div class="detail-row"><span>Mã KM:</span> <span>@(SelectedInvoice.Promotion?.Name ?? "Không")</span></div>
-                    <div class="detail-row"><span>Tiền nhận:</span> <span>@FormatCurrency(SelectedInvoice.ReceivedAmount)</span></div>
-                    <div class="detail-row"><span>Tiền thừa:</span> <span>@FormatCurrency(SelectedInvoice.ChangeAmount)</span></div>
-                    <div class="detail-row" style="font-weight: bold;"><span>TỔNG CỘNG:</span> <span>@FormatCurrency(SelectedInvoice.TotalAmount)</span></div>
+                    <strong>Summary</strong>
+                    <div class="detail-row"><span>Total before discount:</span> <span>@FormatCurrency(SelectedInvoice.TotalBeforeDiscount)</span></div>
+                    <div class="detail-row"><span>Promotion ID:</span> <span>@(SelectedInvoice.Promotion?.Name ?? "Không")</span></div>
+                    <div class="detail-row"><span>Received amount:</span> <span>@FormatCurrency(SelectedInvoice.ReceivedAmount)</span></div>
+                    <div class="detail-row"><span>Change amount:</span> <span>@FormatCurrency(SelectedInvoice.ChangeAmount)</span></div>
+                    <div class="detail-row" style="font-weight: bold;"><span>Total amount:</span> <span>@FormatCurrency(SelectedInvoice.TotalAmount)</span></div>
                 </div>
             }
             else
             {
-                <p style="text-align: center; color: #6c757d;">Chọn một hóa đơn để xem chi tiết.</p>
+                <p style="text-align: center; color: #6c757d;">Please select a invoice.</p>
             }
         </div>
     </div>
@@ -142,8 +142,8 @@
                 <small>Hóa đơn không phải là biên lai chính thức</small>
             </div>
 
-            <button class="btn-primary" style="width: 100%; margin-top: 15px;" @onclick="PrintReceipt">In</button>
-            <button class="btn-secondary" style="width: 100%; margin-top: 5px;" @onclick="HidePrintPreview">Đóng</button>
+            <button class="btn-primary" style="width: 100%; margin-top: 15px;" @onclick="PrintReceipt">Print</button>
+            <button class="btn-secondary" style="width: 100%; margin-top: 5px;" @onclick="HidePrintPreview">Close</button>
         </div>
     </div>
 }

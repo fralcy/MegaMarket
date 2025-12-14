@@ -30,7 +30,7 @@ namespace MegaMarket.API.Controllers
         }
         // POST: InvoiceController/Create
         [HttpPost]
-        public async Task<ActionResult> SaveInvoice([FromBody]InvoiceDto invoice)
+        public async Task<ActionResult> SaveInvoice([FromBody]InvoiceReqDto invoice)
         {
             try
             {

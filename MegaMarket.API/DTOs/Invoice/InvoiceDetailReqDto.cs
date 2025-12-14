@@ -1,6 +1,6 @@
 ﻿namespace MegaMarket.API.DTOs.Invoice
 {
-    public class InvoiceDetailDto
+    public class InvoiceDetailReqDto
     {
         public int ProductId { get; set; }
         public int Quantity { get; set; }

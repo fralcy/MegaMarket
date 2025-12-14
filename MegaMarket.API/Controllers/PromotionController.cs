@@ -29,7 +29,7 @@ namespace MegaMarket.API.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> CreatePromotion([FromBody] PromotionRequestDto promotionDto)
+        public async Task<ActionResult> CreatePromotion([FromBody] PromotionReqDto promotionDto)
         {
             try
             {
