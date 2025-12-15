@@ -1,5 +1,6 @@
 ﻿using MegaMarket.Data.Data;
 using MegaMarket.Data.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,12 +16,37 @@ namespace MegaMarket.Data.DataAccess
         {
             _context = context;
         }
-        public async Task SaveInvoice(Invoice i)
+        // Data Access Object methods for Invoice entity
+        public async Task<List<Invoice>> GetAllInvoices()
+        {
+            var listInvoices = new List<Invoice>();
+            try
+            {
+                listInvoices = await _context.Invoices
+                    .Include(inv => inv.User)
+                    .Include(inv => inv.InvoiceDetails)
+                        .ThenInclude(id => id.Product)
+                    .ToListAsync();
+                return listInvoices;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error retrieving invoices: " + ex.Message);
+            }
+        }
+        public async Task<Invoice> SaveInvoice(Invoice i)
         {
             try
             {
                 _context.Invoices.Add(i);
                 await _context.SaveChangesAsync();
+
+                var insertedInvoice = await _context.Invoices
+                    .Include(inv => inv.User)
+                    .Include(inv => inv.InvoiceDetails)
+                        .ThenInclude(id => id.Product)
+                    .FirstOrDefaultAsync(inv => inv.InvoiceId == i.InvoiceId);
+                return insertedInvoice;
             }
             catch (Exception ex)
             {

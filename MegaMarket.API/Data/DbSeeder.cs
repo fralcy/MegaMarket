@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MegaMarket.Data.Data;
 using MegaMarket.Data.Models;
 
