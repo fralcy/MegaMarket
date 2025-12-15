@@ -1,5 +1,6 @@
+using MegaMarket.BlazorUI.Services.Auth;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
-
 namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 {
     public class CustomerRewardDto
@@ -49,16 +50,19 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _config;
         private string _apiBaseUrl;
+        private readonly AuthService _authService;
 
-        public LoyaltyService(HttpClient httpClient, IConfiguration config)
+        public LoyaltyService(HttpClient httpClient, IConfiguration config, AuthService authService)
         {
             _httpClient = httpClient;
             _config = config;
             _apiBaseUrl = config["ApiSettings:BaseUrl"] ?? "https://localhost:7224";
+            _authService = authService;
         }
 
         public async Task<List<CustomerRewardDto>> GetAllRewardsAsync(string? status = null, int? customerId = null)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var url = $"{_apiBaseUrl}/api/customerrewards";
@@ -87,6 +91,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<List<RewardDto>> GetAvailableRewardsAsync()
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/rewards");
@@ -104,6 +109,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<List<CustomerRewardDto>> GetCustomerRewardsAsync(int customerId)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/customerrewards/customer/{customerId}");
@@ -121,6 +127,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<CustomerRewardDto> RedeemRewardAsync(RedeemRewardDto request)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.PostAsJsonAsync($"{_apiBaseUrl}/api/customerrewards/redeem", request);
@@ -149,6 +156,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<CustomerRewardDto> UseRewardAsync(int rewardId)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.PutAsJsonAsync($"{_apiBaseUrl}/api/customerrewards/{rewardId}/use", new { });
@@ -166,6 +174,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<CustomerRewardDto> ApplyVoucherToInvoiceAsync(int redemptionId, int invoiceId)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var request = new { invoiceId };
@@ -194,6 +203,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<CustomerRewardDto> ClaimRewardAsync(int rewardId)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.PutAsJsonAsync($"{_apiBaseUrl}/api/customerrewards/{rewardId}/claim", new { });
@@ -211,6 +221,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task DeleteRewardAsync(int rewardId)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.DeleteAsync($"{_apiBaseUrl}/api/customerrewards/{rewardId}");
@@ -227,6 +238,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<List<PointHistoryDto>> GetPointHistoryAsync(int customerId)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/points?customerId={customerId}");
@@ -239,6 +251,15 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
             catch (Exception ex)
             {
                 throw new Exception($"Error fetching point history: {ex.Message}", ex);
+            }
+        }
+
+        private async Task AddAuthorizationHeaderAsync()
+        {
+            var token = await _authService.GetTokenAsync();
+            if (!string.IsNullOrEmpty(token))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
         }
     }

@@ -53,8 +53,10 @@
                             <div class="col-md-6 mb-3">
                                 <label for="role" class="form-label">Role <span class="text-danger">*</span></label>
                                 <InputSelect id="role" class="form-select" @bind-Value="formModel.Role">
-                                    <option value="Employee">Employee</option>
                                     <option value="Admin">Admin</option>
+                                    <option value="Manager">Manager</option>
+                                    <option value="Cashier">Cashier</option>
+                                    <option value="Warehouse">Warehouse</option>
                                 </InputSelect>
                                 <ValidationMessage For="@(() => formModel.Role)" />
                             </div>
@@ -97,7 +99,7 @@
     public bool IsVisible { get; set; }
 
     [Parameter]
-    public EmployeeManagement.EmployeeDto? Employee { get; set; }
+    public MegaMarket.Data.Models.User? Employee { get; set; }
 
     [Parameter]
     public EventCallback<EmployeeManagement.EmployeeFormData> OnSave { get; set; }
@@ -192,7 +194,7 @@
         public string? Password { get; set; }
 
         [Required(ErrorMessage = "Role is required")]
-        public string Role { get; set; } = "Employee";
+        public string Role { get; set; } = "Cashier";
 
         [Phone(ErrorMessage = "Invalid phone number format")]
         [StringLength(15)]

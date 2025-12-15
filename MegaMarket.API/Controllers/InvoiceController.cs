@@ -3,9 +3,11 @@ using MegaMarket.API.Services.Interfaces;
 using MegaMarket.Data.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MegaMarket.API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class InvoiceController : ControllerBase
@@ -30,6 +32,7 @@ namespace MegaMarket.API.Controllers
         }
         // POST: InvoiceController/Create
         [HttpPost]
+        [Authorize(Roles = "Admin,Manager,Cashier")]
         public async Task<ActionResult> SaveInvoice([FromBody]InvoiceReqDto invoice)
         {
             try

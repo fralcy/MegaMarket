@@ -1,5 +1,6 @@
+using MegaMarket.BlazorUI.Services.Auth;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
-
 namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 {
     public class RewardManagementDto
@@ -39,16 +40,19 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _config;
         private string _apiBaseUrl;
+        private readonly AuthService _authService;
 
-        public RewardManagementService(HttpClient httpClient, IConfiguration config)
+        public RewardManagementService(HttpClient httpClient, IConfiguration config, AuthService authService)
         {
             _httpClient = httpClient;
             _config = config;
             _apiBaseUrl = config["ApiSettings:BaseUrl"] ?? "https://localhost:7224";
+            _authService = authService;
         }
 
         public async Task<List<RewardManagementDto>> GetAllRewardsAsync()
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/rewards");
@@ -66,6 +70,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<RewardManagementDto?> GetRewardByIdAsync(int id)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/rewards/{id}");
@@ -83,6 +88,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<RewardManagementDto> CreateRewardAsync(CreateRewardDto request)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.PostAsJsonAsync($"{_apiBaseUrl}/api/rewards", request);
@@ -100,6 +106,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<RewardManagementDto> UpdateRewardAsync(int id, UpdateRewardDto request)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.PutAsJsonAsync($"{_apiBaseUrl}/api/rewards/{id}", request);
@@ -117,6 +124,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task DeleteRewardAsync(int id)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.DeleteAsync($"{_apiBaseUrl}/api/rewards/{id}");
@@ -128,6 +136,15 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
             catch (Exception ex)
             {
                 throw new Exception($"Error deleting reward: {ex.Message}", ex);
+            }
+        }
+
+        private async Task AddAuthorizationHeaderAsync()
+        {
+            var token = await _authService.GetTokenAsync();
+            if (!string.IsNullOrEmpty(token))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
         }
     }

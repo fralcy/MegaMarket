@@ -5,12 +5,14 @@
         <NavMenu />
     </div>
 
-    <main>
-        <div class="top-row px-4 d-flex justify-content-end">
-            <LoginDisplay />
+    <main class="main-content">
+        <div class="top-bar">
+            <div class="container-fluid px-4 d-flex justify-content-end align-items-center">
+                <LoginDisplay />
+            </div>
         </div>
 
-        <article class="content px-4">
+        <article class="content-scroll px-4">
             @Body
         </article>
     </main>
@@ -21,3 +23,44 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+<style>
+    .page {
+        position: relative;
+        display: flex;
+        flex-direction: row;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .sidebar {
+        width: 260px;
+        background-color: #f8f9fa;
+        border-right: 1px solid #dee2e6;
+        overflow-y: auto;
+        flex-shrink: 0;
+    }
+
+    .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .top-bar {
+        background-color: white;
+        border-bottom: 1px solid #dee2e6;
+        padding: 0.75rem 0;
+        flex-shrink: 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .content-scroll {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+    }
+</style>

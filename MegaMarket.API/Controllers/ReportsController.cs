@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Http;
 using MegaMarket.API.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MegaMarket.API.Controllers
 {
+    [Authorize(Roles = "Admin,Manager")]
     [Route("api/[controller]")]
     [ApiController]
     public class ReportsController : ControllerBase

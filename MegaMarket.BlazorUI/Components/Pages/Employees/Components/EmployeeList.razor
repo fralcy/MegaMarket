@@ -54,21 +54,21 @@
 
 @code {
     [Parameter]
-    public List<EmployeeManagement.EmployeeDto> Employees { get; set; } = new();
+    public List<MegaMarket.Data.Models.User> Employees { get; set; } = new();
 
     [Parameter]
-    public EventCallback<EmployeeManagement.EmployeeDto> OnEmployeeSelected { get; set; }
+    public EventCallback<MegaMarket.Data.Models.User> OnEmployeeSelected { get; set; }
 
     [Parameter]
-    public EventCallback<EmployeeManagement.EmployeeDto> OnEditEmployee { get; set; }
+    public EventCallback<MegaMarket.Data.Models.User> OnEditEmployee { get; set; }
 
     [Parameter]
-    public EventCallback<EmployeeManagement.EmployeeDto> OnDeleteEmployee { get; set; }
+    public EventCallback<MegaMarket.Data.Models.User> OnDeleteEmployee { get; set; }
 
     private string searchTerm = string.Empty;
-    private EmployeeManagement.EmployeeDto? selectedEmployee;
+    private MegaMarket.Data.Models.User? selectedEmployee;
 
-    private List<EmployeeManagement.EmployeeDto> FilteredEmployees
+    private List<MegaMarket.Data.Models.User> FilteredEmployees
     {
         get
         {
@@ -84,7 +84,7 @@
         }
     }
 
-    private async Task SelectEmployee(EmployeeManagement.EmployeeDto employee)
+    private async Task SelectEmployee(MegaMarket.Data.Models.User employee)
     {
         selectedEmployee = employee;
         if (OnEmployeeSelected.HasDelegate)
@@ -93,7 +93,7 @@
         }
     }
 
-    private async Task EditEmployee(EmployeeManagement.EmployeeDto employee)
+    private async Task EditEmployee(MegaMarket.Data.Models.User employee)
     {
         if (OnEditEmployee.HasDelegate)
         {
@@ -101,7 +101,7 @@
         }
     }
 
-    private async Task DeleteEmployee(EmployeeManagement.EmployeeDto employee)
+    private async Task DeleteEmployee(MegaMarket.Data.Models.User employee)
     {
         if (OnDeleteEmployee.HasDelegate)
         {
@@ -109,7 +109,7 @@
         }
     }
 
-    private bool IsSelected(EmployeeManagement.EmployeeDto employee)
+    private bool IsSelected(MegaMarket.Data.Models.User employee)
     {
         return selectedEmployee?.UserId == employee.UserId;
     }

@@ -1,0 +1,10 @@
+global using Xunit;
+global using FluentAssertions;
+global using System.Net;
+global using System.Net.Http.Json;
+global using Microsoft.AspNetCore.Mvc.Testing;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.DependencyInjection;
+global using MegaMarket.Data.Data;
+global using MegaMarket.Data.Models;
+global using MegaMarket.Tests.Fixtures;

@@ -50,15 +50,10 @@ h1:focus {
     border-color: #929292;
 }
 
-/* Áp dụng cho phần tử <main> */
+/* Main element - do not center content */
 main {
-    display: flex; /* Biến main thành flex container */
-    flex-direction: column; /* Sắp xếp nội dung theo chiều dọc */
-    justify-content: center; /* Căn giữa nội dung theo chiều dọc */
-    align-items: center; /* Căn giữa nội dung theo chiều ngang */
-    height: 100vh; /* Quan trọng: Thiết lập chiều cao để căn giữa theo chiều dọc hoạt động */
-    width: 100%; /* Đảm bảo chiếm toàn bộ chiều rộng có sẵn */
-    flex-grow: 1; /* Để main chiếm phần không gian còn lại trong .page */
+    flex-grow: 1;
+    width: 100%;
 }
 
 /* Checkout Styles */
