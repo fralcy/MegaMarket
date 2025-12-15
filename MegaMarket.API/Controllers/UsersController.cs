@@ -47,13 +47,21 @@ public class UsersController : ControllerBase
     }
 
     // GET: api/Users
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     [HttpGet]
     public async Task<IActionResult> GetUsers()
     {
         try
         {
+            var currentRole = User.FindFirst(ClaimTypes.Role)?.Value;
             var users = await _userService.GetAllUsersAsync();
+
+            // Manager cannot see Admin users
+            if (currentRole == "Manager")
+            {
+                users = users.Where(u => u.Role != "Admin").ToList();
+            }
+
             return Ok(users);
         }
         catch (Exception ex)
@@ -72,8 +80,8 @@ public class UsersController : ControllerBase
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var currentRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            // Access control: Admin can see all, Employee can only see themselves
-            if (currentRole != "Admin" && currentUserId != id)
+            // Access control: Admin and Manager can see all, Employee can only see themselves
+            if (currentRole != "Admin" && currentRole != "Manager" && currentUserId != id)
             {
                 return Forbid();
             }
@@ -83,6 +91,12 @@ public class UsersController : ControllerBase
             if (user == null)
             {
                 return NotFound(new { message = "User not found" });
+            }
+
+            // Manager cannot view Admin users
+            if (currentRole == "Manager" && user.Role == "Admin")
+            {
+                return Forbid();
             }
 
             return Ok(user);
@@ -141,20 +155,46 @@ public class UsersController : ControllerBase
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var currentRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            // Access control: Admin can update all, Employee can only update themselves
-            // Additionally, Employee cannot change their own role
-            if (currentRole != "Admin")
+            // Get the user being updated to check their role
+            var targetUser = await _userService.GetUserByIdAsync(id);
+            if (targetUser == null)
+            {
+                return NotFound(new { message = "User not found" });
+            }
+
+            // Access control: Admin and Manager can update all, Employee can only update themselves
+            // Additionally, non-Admin cannot change roles
+            if (currentRole != "Admin" && currentRole != "Manager")
             {
                 if (currentUserId != id)
                 {
                     return Forbid();
                 }
 
-                // Get current user to check if they're trying to change their role
-                var currentUser = await _userService.GetUserByIdAsync(id);
-                if (currentUser != null && currentUser.Role != input.Role)
+                // Employee cannot change their own role
+                if (targetUser.Role != input.Role)
                 {
                     return BadRequest(new { message = "You cannot change your own role" });
+                }
+            }
+            else if (currentRole == "Manager")
+            {
+                // Manager cannot update Admin users
+                if (targetUser.Role == "Admin")
+                {
+                    return Forbid();
+                }
+
+                // Manager cannot change roles
+                if (targetUser.Role != input.Role)
+                {
+                    return BadRequest(new { message = "Manager cannot change user roles" });
+                }
+
+                // Manager cannot create Admin users (by changing role to Admin)
+                if (input.Role == "Admin")
+                {
+                    return BadRequest(new { message = "Manager cannot set user role to Admin" });
                 }
             }
 

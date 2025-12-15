@@ -42,7 +42,7 @@ public class CustomerDashboardController : ControllerBase
 
     // GET: api/CustomerDashboard/top-customers?dateRange=TODAY&limit=10
     [HttpGet("top-customers")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> GetTopCustomers(
         [FromQuery] string dateRange = "TODAY",
         [FromQuery] int limit = 10)
