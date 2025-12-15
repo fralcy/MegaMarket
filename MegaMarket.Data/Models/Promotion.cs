@@ -25,10 +25,10 @@ public class Promotion
     public decimal DiscountValue { get; set; }
 
     [Column("start_date")]
-    public DateTime StartDate { get; set; } = DateTime.Today;
+    public DateTime StartDate { get; set; }
 
     [Column("end_date")]
-    public DateTime EndDate { get; set; } = DateTime.Today.AddDays(7);
+    public DateTime EndDate { get; set; }
 
     [StringLength(50)]
     [Column("type")]

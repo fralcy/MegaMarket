@@ -5,11 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MegaMarket.Data.Repositories.Interfaces
+namespace MegaMarket.Data.Repositories
 {
     public interface IInvoiceRepository
     {
-        Task<Invoice> SaveInvoice(Invoice i);
-        Task<List<Invoice>> GetAllInvoices();
+        Task SaveInvoice(Invoice i);
     }
 }

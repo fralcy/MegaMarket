@@ -1,191 +1,197 @@
 ﻿@page "/promotion"
-
-@inject IHttpClientFactory HttpClientFactory
 @using System.ComponentModel.DataAnnotations
 @using System.ComponentModel.DataAnnotations.Schema
 @using System.Globalization
-@using MegaMarket.API.DTOs.Products
-@using MegaMarket.API.DTOs.Promotion
 
-<div class="promotion-container">
-    <h2>Promotion Management</h2>
+## 🎁 Quản Lý Chương Trình Khuyến Mãi
 
-    @if (!IsEditing)
-    {
-        <div class="promotion-list">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h4>Danh Sách (@Promotions.Count)</h4>
-                <button class="btn-success btn-action" @onclick="StartNewPromotion">➕ Create</button>
+@if (IsEditing)
+{
+    <div class="edit-form">
+        <h3>@(CurrentPromotion.PromotionId == 0 ? "Thêm Khuyến Mãi Mới" : $"Chỉnh Sửa: {CurrentPromotion.Name}")</h3>
+
+        <EditForm Model="@CurrentPromotion" OnValidSubmit="SavePromotion">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label>Tên Khuyến Mãi:</label>
+                <InputText @bind-Value="CurrentPromotion.Name" class="form-control" />
+                <ValidationMessage For="@(() => CurrentPromotion.Name)" />
             </div>
 
-            @if (Promotions.Any())
-            {
-                <table class="table" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background-color: #f1f1f1;">
-                            <th style="padding: 10px; border: 1px solid #ddd;">ID</th>
-                            <th style="padding: 10px; border: 1px solid #ddd;">Name</th>
-                            <th style="padding: 10px; border: 1px solid #ddd;">Value</th>
-                            <th style="padding: 10px; border: 1px solid #ddd;">Time</th>
-                            <th style="padding: 10px; border: 1px solid #ddd;">Apply</th>
-                            <th style="padding: 10px; border: 1px solid #ddd;">Operation</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var promo in Promotions)
-                        {
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd;">@promo.PromotionId</td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">@promo.Name</td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">
-                                    @GetDiscountDisplay(promo)
-                                </td>
-                                <td style="padding: 10px; border: 1px solid #ddd; font-size: 0.9em;">
-                                    @promo.StartDate.ToShortDateString() - @promo.EndDate.ToShortDateString()
-                                </td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">
-                                    @GetTypeDisplay(promo.Type)
-                                </td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">
-                                    <button class="btn-primary btn-action" @onclick="() => StartEdit(promo.PromotionId)">Edit</button>
-                                    <button class="btn-danger btn-action" @onclick="() => DeletePromotion(promo.PromotionId)">Delete</button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
-            else
-            {
-                <p style="text-align: center; color: #6c757d;">No value</p>
-            }
-        </div>
-	}
+            <div class="form-group">
+                <label>Mô Tả:</label>
+                <InputTextArea @bind-Value="CurrentPromotion.Description" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label>Loại Giảm Giá:</label>
+                <InputSelect @bind-Value="CurrentPromotion.DiscountType" class="form-control">
+                    <option value="percent">Phần trăm (%)</option>
+                    <option value="fixed">Số tiền cố định (VNĐ)</option>
+                </InputSelect>
+            </div>
+
+            <div class="form-group">
+                <label>Giá Trị Giảm Giá:</label>
+                <InputNumber @bind-Value="CurrentPromotion.DiscountValue" class="form-control" />
+                <ValidationMessage For="@(() => CurrentPromotion.DiscountValue)" />
+            </div>
+
+            <div class="form-group">
+                <label>Ngày Bắt Đầu:</label>
+                <InputDate @bind-Value="CurrentPromotion.StartDate" class="form-control" />
+                <ValidationMessage For="@(() => CurrentPromotion.StartDate)" />
+            </div>
+
+            <div class="form-group">
+                <label>Ngày Kết Thúc:</label>
+                <InputDate @bind-Value="CurrentPromotion.EndDate" class="form-control" />
+                <ValidationMessage For="@(() => CurrentPromotion.EndDate)" />
+            </div>
+
+            <div class="form-group">
+                <label>Áp Dụng Cho:</label>
+                <InputSelect @bind-Value="CurrentPromotion.Type" class="form-control">
+                    <option value="invoice">Toàn bộ Hóa đơn</option>
+                    <option value="product">Sản phẩm cụ thể</option>
+                    <option value="promotion">Khác</option>
+                </InputSelect>
+            </div>
+
+            <button type="submit" class="btn-primary btn-action">Lưu</button>
+            <button type="button" class="btn-secondary btn-action" @onclick="CancelEdit">Hủy</button>
+        </EditForm>
+    </div>
+}
+
+<div class="promotion-list">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h4>Danh Sách (@Promotions.Count)</h4>
+        <button class="btn-success btn-action" @onclick="StartNewPromotion">➕ Thêm Mới</button>
+    </div>
+
+    @if (Promotions.Any())
+    {
+        <table class="table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f1f1f1;">
+                    <th style="padding: 10px; border: 1px solid #ddd;">ID</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Tên</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Giá trị</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Thời gian</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Áp dụng</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var promo in Promotions)
+                {
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">@promo.PromotionId</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">@promo.Name</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">
+                            @GetDiscountDisplay(promo)
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #ddd; font-size: 0.9em;">
+                            @promo.StartDate.ToShortDateString() - @promo.EndDate.ToShortDateString()
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">
+                            @GetTypeDisplay(promo.Type)
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">
+                            <button class="btn-primary btn-action" @onclick="() => StartEdit(promo.PromotionId)">Sửa</button>
+                            <button class="btn-danger btn-action" @onclick="() => DeletePromotion(promo.PromotionId)">Xóa</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
     else
     {
-        <div class="edit-form">
-            <h3>@(CurrentPromotionId == 0 ? "Add new promotion" : $"Edit: {CurrentPromotion.Name}")</h3>
-
-            <EditForm Model="@CurrentPromotion" OnValidSubmit="SavePromotion">
-                <DataAnnotationsValidator />
-
-                <div class="form-group">
-                    <label>Name:</label>
-                    <InputText @bind-Value="CurrentPromotion.Name" class="form-control" />
-                    <ValidationMessage For="@(() => CurrentPromotion.Name)" />
-                </div>
-
-                <div class="form-group">
-                    <label>Description:</label>
-                    <InputTextArea @bind-Value="CurrentPromotion.Description" class="form-control" />
-                </div>
-
-                <div class="form-group">
-                    <label>Discount type:</label>
-                    <InputSelect @bind-Value="CurrentPromotion.DiscountType" class="form-control">
-                        <option value="percent">Percent (%)</option>
-                        <option value="fixed">Fixed (VNĐ)</option>
-                    </InputSelect>
-                </div>
-
-                <div class="form-group">
-                    <label>Discount value:</label>
-                    <InputNumber @bind-Value="CurrentPromotion.DiscountValue" class="form-control" />
-                    <ValidationMessage For="@(() => CurrentPromotion.DiscountValue)" />
-                </div>
-
-                <div class="form-group">
-                    <label>Start date:</label>
-                    <InputDate @bind-Value="CurrentPromotion.StartDate" class="form-control" />
-                    <ValidationMessage For="@(() => CurrentPromotion.StartDate)" />
-                </div>
-
-                <div class="form-group">
-                    <label>End date:</label>
-                    <InputDate @bind-Value="CurrentPromotion.EndDate" class="form-control" />
-                    <ValidationMessage For="@(() => CurrentPromotion.EndDate)" />
-                </div>
-
-                <div class="form-group">
-                    <label>Apply:</label>
-                    <InputSelect @bind-Value="CurrentPromotion.Type" class="form-control">
-                        <option value="invoice">Invoice</option>
-                        <option value="product">Product</option>
-                        <option value="promotion">Promotion</option>
-                    </InputSelect>
-                </div>
-            </EditForm>
-
-            @if (CurrentPromotion.Type == "product")
-            {
-                <div class="form-group">
-                    <label for="product">Barcode: </label>
-                    <input id="product"
-                            type="number"
-                            value="@Barcode"
-                            @oninput="HandleBarcode" />
-                </div>
-
-                <div class="form-group">
-                    <label>Product name: </label>
-                    <span>@ProductName</span>
-                </div>
-
-                <button disabled="@(!IsBarcodeValid)" @onclick="AddBarcode">Add</button>
-            }
-
-            <div class="action-buttons">
-                <button type="submit" class="btn-primary btn-action" @onclick="SavePromotion">Save</button>
-                <button type="button" class="btn-secondary btn-action" @onclick="CancelEdit">Cancel</button>
-            </div>
-        </div>
-	}
+        <p style="text-align: center; color: #6c757d;">Chưa có chương trình khuyến mãi nào được tạo.</p>
+    }
 </div>
 
 @code {
     // -----------------------------------------------------------------------
+    // MODEL DỮ LIỆU
+    // -----------------------------------------------------------------------
+    public class Promotion
+    {
+        [Key]
+        [Column("promotion_id")]
+        public int PromotionId { get; set; }
+
+        [Required(ErrorMessage = "Tên khuyến mãi là bắt buộc.")]
+        [StringLength(200)]
+        [Column("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [Column("description")]
+        public string? Description { get; set; }
+
+        [Required]
+        [StringLength(20)]
+        [Column("discount_type")]
+        public string DiscountType { get; set; } = "percent"; // percent / fixed
+
+        [Required]
+        [Range(0.01, 1000000000, ErrorMessage = "Giá trị giảm giá phải lớn hơn 0.")]
+        [Column("discount_value", TypeName = "decimal(10,2)")]
+        public decimal DiscountValue { get; set; }
+
+        [Required(ErrorMessage = "Ngày bắt đầu là bắt buộc.")]
+        [Column("start_date")]
+        public DateTime StartDate { get; set; } = DateTime.Today;
+
+        [Required(ErrorMessage = "Ngày kết thúc là bắt buộc.")]
+        [Column("end_date")]
+        public DateTime EndDate { get; set; } = DateTime.Today.AddDays(7);
+
+        [Required]
+        [StringLength(50)]
+        [Column("type")]
+        public string Type { get; set; } = "invoice"; // invoice / product / promotion
+
+        // Navigation properties (Không dùng trong CRUD UI này, chỉ giữ lại định nghĩa)
+        public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
+        public ICollection<InvoiceDetail> InvoiceDetails { get; set; } = new List<InvoiceDetail>();
+        public ICollection<PromotionProduct> PromotionProducts { get; set; } = new List<PromotionProduct>();
+    }
+
+    // Định nghĩa các lớp giả định cho Navigation properties
+    public class Invoice { }
+    public class InvoiceDetail { }
+    public class PromotionProduct { }
+
+
+    // -----------------------------------------------------------------------
     // STATE (Trạng thái)
     // -----------------------------------------------------------------------
 
-    private List<PromotionResDto> Promotions { get; set; } = new List<PromotionResDto>();
-    private PromotionReqDto CurrentPromotion { get; set; } = new PromotionReqDto();
-    private List<ProductDto> Products = new List<ProductDto>();
-    private Dictionary<string, ProductDto> ProductDB;
-    private int CurrentPromotionId { get; set; } = 0;
+    private List<Promotion> Promotions { get; set; } = new List<Promotion>();
+    private Promotion CurrentPromotion { get; set; } = new Promotion();
     private bool IsEditing { get; set; } = false;
-    private string Barcode { get; set; } = string.Empty;
-	private bool IsBarcodeValid { get; set; } = false;
-    private List<int> ProductList { get; set; } = new List<int>();
-    private string ProductName { get; set; } = string.Empty;
+    private int NextId = 1;
 
     // -----------------------------------------------------------------------
     // LIFECYCLE VÀ KHỞI TẠO DỮ LIỆU
     // -----------------------------------------------------------------------
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        try
-        {
-            var client = HttpClientFactory.CreateClient("MegaMarket.API");
-            Promotions = await client.GetFromJsonAsync<List<PromotionResDto>>("api/Promotion") ?? new List<PromotionResDto>();
-            Products = await client.GetFromJsonAsync<List<ProductDto>>("api/Products") ?? new List<ProductDto>();
-            ProductDB = Products.ToDictionary(p => p.Barcode, p => p);
-            Console.WriteLine($"Đã tải {Promotions.Count} khuyến mãi.");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Lỗi khi tải danh sách khuyến mãi: {ex.Message}");
-            Promotions = new List<PromotionResDto>();
-            Products = new List<ProductDto>();
-            ProductDB = new Dictionary<string, ProductDto>();
-        }
+        // Khởi tạo dữ liệu mẫu
+        Promotions.Add(new Promotion { PromotionId = NextId++, Name = "Giảm 10% Hóa đơn", DiscountType = "percent", DiscountValue = 10, StartDate = DateTime.Today, EndDate = DateTime.Today.AddDays(30), Type = "invoice", Description = "Giảm 10% cho toàn bộ hóa đơn." });
+        Promotions.Add(new Promotion { PromotionId = NextId++, Name = "Giảm giá Trứng Gà", DiscountType = "fixed", DiscountValue = 5000, StartDate = DateTime.Today.AddDays(-10), EndDate = DateTime.Today.AddDays(5), Type = "product", Description = "Giảm 5,000 VNĐ cho mỗi hộp Trứng Gà." });
     }
 
     // -----------------------------------------------------------------------
     // HÀM HỖ TRỢ HIỂN THỊ
     // -----------------------------------------------------------------------
 
-    private string GetDiscountDisplay(PromotionResDto promo)
+    private string GetDiscountDisplay(Promotion promo)
     {
         if (promo.DiscountType == "percent")
         {
@@ -210,33 +216,6 @@
         };
     }
 
-    private void HandleBarcode(ChangeEventArgs e)
-    {
-        Barcode = e.Value?.ToString() ?? string.Empty;
-        if (ProductDB.TryGetValue(Barcode, out var product))
-        {
-			IsBarcodeValid = true;
-            ProductName = product.Name;
-        }
-        else
-        {
-			IsBarcodeValid = false;
-            ProductName = string.Empty;
-        }
-    }
-
-    private void AddBarcode()
-    {
-        if (ProductDB.TryGetValue(Barcode, out var product))
-        {
-            ProductList.Add(product.ProductId);
-            Barcode = string.Empty;
-            ProductName = string.Empty;
-			IsBarcodeValid = false;
-			Console.WriteLine("Added barcode to promotion: " + string.Join(", ", ProductList));
-        }
-    }
-
     // -----------------------------------------------------------------------
     // HÀM CRUD LOGIC
     // -----------------------------------------------------------------------
@@ -244,7 +223,7 @@
     // Bắt đầu chế độ Thêm mới
     private void StartNewPromotion()
     {
-        CurrentPromotion = new PromotionReqDto();
+        CurrentPromotion = new Promotion();
         IsEditing = true;
     }
 
@@ -252,12 +231,12 @@
     private void StartEdit(int id)
     {
         var promoToEdit = Promotions.FirstOrDefault(p => p.PromotionId == id);
-        CurrentPromotionId = id;
         if (promoToEdit != null)
         {
             // Tạo bản sao để tránh thay đổi trực tiếp vào danh sách khi chưa lưu
-            CurrentPromotion = new PromotionReqDto
+            CurrentPromotion = new Promotion
             {
+                PromotionId = promoToEdit.PromotionId,
                 Name = promoToEdit.Name,
                 Description = promoToEdit.Description,
                 DiscountType = promoToEdit.DiscountType,
@@ -271,53 +250,36 @@
     }
 
     // Lưu (Create hoặc Update)
-    private async Task SavePromotion()
+    private void SavePromotion()
     {
-		CurrentPromotion.PromotionProducts = ProductList;
-        if (CurrentPromotionId == 0)
+        if (CurrentPromotion.PromotionId == 0)
         {
             // Thêm mới (Create)
-            var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
-            var response = await httpClient.PostAsJsonAsync("api/Promotion", CurrentPromotion);
-            if (response.IsSuccessStatusCode)
-            {
-                IsEditing = false;
-                CurrentPromotion = new PromotionReqDto();
-                CurrentPromotionId = 0;
-				await OnInitializedAsync(); // Tải lại danh sách sau khi thêm mới
-            }
-            else
-            {
-                Console.WriteLine("Lỗi khi thêm mới khuyến mãi.");
-            }
+            CurrentPromotion.PromotionId = NextId++;
+            Promotions.Add(CurrentPromotion);
+            Console.WriteLine($"Đã thêm mới Khuyến Mãi: {CurrentPromotion.Name}");
         }
         else
         {
-			var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
-            var response = await httpClient.PutAsJsonAsync($"api/Promotion/{CurrentPromotionId}", CurrentPromotion);
-            if (response.IsSuccessStatusCode)
+            // Cập nhật (Update)
+            var index = Promotions.FindIndex(p => p.PromotionId == CurrentPromotion.PromotionId);
+            if (index != -1)
             {
-                IsEditing = false;
-                CurrentPromotion = new PromotionReqDto();
-				CurrentPromotionId = 0;
-                await OnInitializedAsync(); // Tải lại danh sách sau khi cập nhật
-            }
-            else
-            {
-				Console.WriteLine("Lỗi khi cập nhật khuyến mãi.");
+                Promotions[index] = CurrentPromotion;
+                Console.WriteLine($"Đã cập nhật Khuyến Mãi ID: {CurrentPromotion.PromotionId}");
             }
         }
+
+        IsEditing = false;
+        // Reset CurrentPromotion sau khi lưu thành công (tùy chọn)
+        CurrentPromotion = new Promotion();
     }
 
     // Hủy bỏ chỉnh sửa/thêm mới
     private void CancelEdit()
     {
         IsEditing = false;
-        CurrentPromotion = new PromotionReqDto();
-		Barcode = string.Empty;
-		ProductList.Clear();
-        ProductName = string.Empty;
-		CurrentPromotionId = 0;
+        CurrentPromotion = new Promotion();
     }
 
     // Xóa (Delete)
@@ -333,16 +295,8 @@
 
             if (confirmed)
             {
-                var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
-                var response = await httpClient.DeleteAsync($"api/Promotion/{id}");
-                if (response.IsSuccessStatusCode)
-                {
-					await OnInitializedAsync(); // Tải lại danh sách sau khi xóa
-                }
-                else
-                {
-                    Console.WriteLine("Lỗi khi xóa khuyến mãi.");
-				}
+                Promotions.Remove(promoToDelete);
+                Console.WriteLine($"Đã xóa Khuyến Mãi ID: {id}");
             }
         }
     }

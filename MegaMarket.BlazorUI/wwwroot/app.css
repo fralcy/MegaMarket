@@ -68,17 +68,11 @@ main {
     gap: 20px;
 }
 
-.promotion-container {
-    display: flex;
-    flex-direction: column;
-    grid-column: 1 / -1; /* Chiếm toàn bộ chiều rộng */
+h2 {
+    grid-column: 1 / -1; /* Tiêu đề chiếm toàn bộ chiều rộng */
+    text-align: center;
+    color: #007bff;
 }
-
-    h2 {
-        grid-column: 1 / -1; /* Tiêu đề chiếm toàn bộ chiều rộng */
-        text-align: center;
-        color: #007bff;
-    }
 
 hr {
     grid-column: 1 / -1;
@@ -150,12 +144,6 @@ hr {
 .input-keypad-area {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-}
-.input-keypad-area-center {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
     gap: 20px;
 }
 
@@ -276,7 +264,7 @@ hr {
 /* New CSS for Payment Screen */
 .payment-screen {
     padding: 20px;
-    /*grid-column: 1 / -1;*/ /* Chiếm toàn bộ chiều rộng */
+    grid-column: 1 / -1; /* Chiếm toàn bộ chiều rộng */
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -287,7 +275,6 @@ hr {
     justify-content: center;
     gap: 15px;
     padding-bottom: 20px;
-    grid-column: 1 / -1;
 }
 
     .payment-methods button {
@@ -417,20 +404,16 @@ hr {
 
 .form-group {
     margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
 }
 
     .form-group label {
         display: block;
         font-weight: bold;
-        margin-bottom: 0;
-        min-width: 120px;
+        margin-bottom: 5px;
     }
 
     .form-group input, .form-group select, .form-group textarea {
-        flex-grow: 1;
+        width: 100%;
         padding: 8px;
         border: 1px solid #ced4da;
         border-radius: 4px;

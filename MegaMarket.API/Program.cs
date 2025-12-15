@@ -11,8 +11,6 @@ using MegaMarket.API.Services;
 using MegaMarket.API.Services.Interfaces;
 using MegaMarket.API.Services.Implementations;
 using MegaMarket.API.Data;
-using MegaMarket.Data.Repositories.Interfaces;
-using MegaMarket.Data.Repositories.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,7 +21,6 @@ builder.Services.AddControllers()
         // Handle circular references in JSON serialization
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
-builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 builder.Services.AddScoped<InvoiceDAO>();
 
@@ -59,11 +56,6 @@ builder.Services.AddScoped<DashboardSalesService>();
 builder.Services.AddScoped<DashboardInventoryService>();
 builder.Services.AddScoped<DashboardCustomerService>();
 builder.Services.AddScoped<DashboardEmployeeService>();
-
-// Promotion Services
-builder.Services.AddScoped<IPromotionService, PromotionService>();
-builder.Services.AddScoped<IPromotionRepository, PromotionRepository>();
-builder.Services.AddScoped<PromotionDAO>();
 
 // CORS (chỉ giữ 1 config)
 var allowedOrigins = builder.Configuration.GetSection("AllowedCorsOrigins").Get<string[]>() ??

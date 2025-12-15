@@ -1,13 +1,12 @@
 ﻿using MegaMarket.Data.DataAccess;
 using MegaMarket.Data.Models;
-using MegaMarket.Data.Repositories.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MegaMarket.Data.Repositories.Implementations
+namespace MegaMarket.Data.Repositories
 {
     public class InvoiceRepository : IInvoiceRepository
     {
@@ -16,7 +15,6 @@ namespace MegaMarket.Data.Repositories.Implementations
         {
             _invoiceDAO = invoiceDAO;
         }
-        public Task<List<Invoice>> GetAllInvoices() => _invoiceDAO.GetAllInvoices();
-        public Task<Invoice> SaveInvoice(Invoice i) => _invoiceDAO.SaveInvoice(i);
+        public Task SaveInvoice(Invoice i) => _invoiceDAO.SaveInvoice(i);
     }
 }
