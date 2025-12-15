@@ -22,7 +22,10 @@ namespace MegaMarket.Data.DataAccess
             var listPromotions = new List<Promotion>();
             try
             {
-                listPromotions = await _context.Promotions.ToListAsync();
+                listPromotions = await _context.Promotions
+                    .Include(p => p.PromotionProducts)
+                        .ThenInclude(pp => pp.Product)
+                    .ToListAsync();
                 return listPromotions;
             }
             catch (Exception ex)
@@ -74,6 +77,22 @@ namespace MegaMarket.Data.DataAccess
             catch (Exception ex)
             {
                 throw new Exception("Error deleting promotion: " + ex.Message);
+            }
+        }
+        public async Task<List<PromotionProduct>> GetAllPromotionProducts()
+        {
+            var list = new List<PromotionProduct>();
+            try
+            {
+                list = await _context.PromotionProducts
+                    .Include(pp => pp.Promotion)
+                    .Include(pp => pp.Product)
+                    .ToListAsync();
+                return list;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error retrieving promotions: " + ex.Message);
             }
         }
     }

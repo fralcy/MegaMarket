@@ -1,4 +1,5 @@
-﻿using MegaMarket.API.DTOs.Promotion;
+﻿using MegaMarket.API.DTOs.Products;
+using MegaMarket.API.DTOs.Promotion;
 using MegaMarket.API.Services.Interfaces;
 using MegaMarket.Data.Models;
 using MegaMarket.Data.Repositories.Interfaces;
@@ -26,6 +27,28 @@ namespace MegaMarket.API.Services.Implementations
                 StartDate = p.StartDate,
                 EndDate = p.EndDate,
                 Type = p.Type,
+                PromotionProducts = p.PromotionProducts.Select(pp => new PromotionProductResDto
+                {
+                    PromotionId = pp.PromotionId,
+                    ProductId = pp.ProductId,
+                    Promotion = new PromotionResDto
+                    {
+                        PromotionId = pp.Promotion.PromotionId,
+                        Name = pp.Promotion.Name,
+                        Description = pp.Promotion.Description,
+                        DiscountType = pp.Promotion.DiscountType,
+                        DiscountValue = pp.Promotion.DiscountValue,
+                        StartDate = pp.Promotion.StartDate,
+                        EndDate = pp.Promotion.EndDate,
+                        Type = pp.Promotion.Type,
+                    },
+                    Product = new ProductDto
+                    {
+                        ProductId = pp.Product.ProductId,
+                        Name = pp.Product.Name,
+                        UnitPrice = pp.Product.UnitPrice,
+                    },
+                }).ToList()
             }).ToList();
             return result;
         }
@@ -93,6 +116,34 @@ namespace MegaMarket.API.Services.Implementations
         public async Task DeletePromotion(int promotionId)
         {
             await _repository.DeletePromotion(promotionId);
+        }
+        public async Task<List<PromotionProductResDto>> GetAllPromotionProducts()
+        {
+            var promotionProduct = await _repository.GetAllPromotionProducts();
+            var result = promotionProduct.Select(pp => new PromotionProductResDto
+            {
+                PromotionId = pp.PromotionId,
+                ProductId = pp.ProductId,
+                Promotion = new PromotionResDto
+                {
+                    PromotionId = pp.Promotion.PromotionId,
+                    Name = pp.Promotion.Name,
+                    Description = pp.Promotion.Description,
+                    DiscountType = pp.Promotion.DiscountType,
+                    DiscountValue = pp.Promotion.DiscountValue,
+                    StartDate = pp.Promotion.StartDate,
+                    EndDate = pp.Promotion.EndDate,
+                    Type = pp.Promotion.Type,
+                },
+                Product = new ProductDto
+                {
+                    ProductId = pp.Product.ProductId,
+                    Name = pp.Product.Name,
+                    UnitPrice = pp.Product.UnitPrice,
+                },
+            }).ToList();
+
+            return result;
         }
     }
 }

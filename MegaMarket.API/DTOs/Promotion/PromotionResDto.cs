@@ -10,5 +10,6 @@
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public string Type { get; set; } = "invoice"; // invoice / product / promotion
+        public ICollection<PromotionProductResDto> PromotionProducts { get; set; } = new List<PromotionProductResDto>();
     }
 }
