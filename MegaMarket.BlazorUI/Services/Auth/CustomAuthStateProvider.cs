@@ -42,9 +42,11 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, userId ?? ""),
+                new Claim("userId", userId ?? ""),
                 new Claim(ClaimTypes.Name, username ?? ""),
                 new Claim("FullName", fullName ?? ""),
-                new Claim(ClaimTypes.Role, role ?? "")
+                new Claim(ClaimTypes.Role, role ?? ""),
+                new Claim("role", role ?? "")
             };
 
             var identity = new ClaimsIdentity(claims, "jwt");
@@ -62,6 +64,12 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
     {
         var authState = GetAuthenticationStateAsync();
         NotifyAuthenticationStateChanged(authState);
+    }
+
+    public async Task NotifyUserAuthenticationAsync(string token)
+    {
+        var authState = await GetAuthenticationStateAsync();
+        NotifyAuthenticationStateChanged(Task.FromResult(authState));
     }
 
     public void NotifyUserLogout()

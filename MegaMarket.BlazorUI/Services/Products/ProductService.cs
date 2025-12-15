@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using MegaMarket.BlazorUI.Services.Auth;
 
 namespace MegaMarket.BlazorUI.Services.Products;
 
@@ -113,10 +115,12 @@ public class ProductService
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiBaseUrl;
+    private readonly AuthService _authService;
 
-    public ProductService(HttpClient httpClient, IConfiguration configuration)
+    public ProductService(HttpClient httpClient, IConfiguration configuration, AuthService authService)
     {
         _httpClient = httpClient;
+        _authService = authService;
         var baseUrl = configuration["ApiSettings:BaseUrl"] ??
                       configuration["ApiBaseUrl"] ??
                       "https://localhost:7284";
@@ -127,6 +131,7 @@ public class ProductService
     {
         try
         {
+            await AddAuthorizationHeaderAsync();
             var products = await _httpClient.GetFromJsonAsync<List<ProductDto>>($"{_apiBaseUrl}/api/products");
             return products ?? new List<ProductDto>();
         }
@@ -140,6 +145,7 @@ public class ProductService
     {
         try
         {
+            await AddAuthorizationHeaderAsync();
             return await _httpClient.GetFromJsonAsync<ProductDto>($"{_apiBaseUrl}/api/products/{id}");
         }
         catch (HttpRequestException ex)
@@ -150,6 +156,7 @@ public class ProductService
 
     public async Task<ProductDto> CreateProductAsync(ProductInputModel product)
     {
+        await AddAuthorizationHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync($"{_apiBaseUrl}/api/products", product.ToRequest());
 
         if (response.IsSuccessStatusCode)
@@ -163,6 +170,7 @@ public class ProductService
 
     public async Task<ProductDto> UpdateProductAsync(int id, ProductInputModel product)
     {
+        await AddAuthorizationHeaderAsync();
         var response = await _httpClient.PutAsJsonAsync($"{_apiBaseUrl}/api/products/{id}", product.ToRequest());
 
         if (response.IsSuccessStatusCode)
@@ -182,11 +190,21 @@ public class ProductService
 
     public async Task DeleteProductAsync(int id)
     {
+        await AddAuthorizationHeaderAsync();
         var response = await _httpClient.DeleteAsync($"{_apiBaseUrl}/api/products/{id}");
         if (!response.IsSuccessStatusCode)
         {
             var details = await response.Content.ReadAsStringAsync();
             throw new InvalidOperationException($"Delete failed: {details}");
+        }
+    }
+
+    private async Task AddAuthorizationHeaderAsync()
+    {
+        var token = await _authService.GetTokenAsync();
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
     }
 

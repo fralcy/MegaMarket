@@ -1,11 +1,13 @@
 ﻿using MegaMarket.API.DTOs.Customers;
 using MegaMarket.API.DTOs.Rewards;
 using MegaMarket.API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MegaMarket.API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class RewardsController : ControllerBase
@@ -40,6 +42,7 @@ namespace MegaMarket.API.Controllers
 
         //api/rewards : create a reward
         [HttpPost]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> CreateReward([FromBody] CreateRewardRequestDto requestDto)
         {
             if (!ModelState.IsValid)

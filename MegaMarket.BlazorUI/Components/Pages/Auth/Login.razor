@@ -1,17 +1,16 @@
 @page "/login"
-@using MegaMarket.BlazorUI.Services.GraphQL
-@inject GraphQLClient GraphQLClient
+@layout AuthLayout
+@inject IHttpClientFactory HttpClientFactory
 @inject AuthService AuthService
 @inject NavigationManager NavigationManager
 
-<div class="container">
-    <div class="row">
-        <div class="col-md-6 offset-md-3">
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
             <div class="card border-0 shadow-sm login-card">
                 <div class="card-body p-4">
                     <div class="text-center mb-4">
                         <h2 class="text-gradient">🏪 MegaMarket</h2>
-                        <p class="text-muted">Employee Management System</p>
                     </div>
 
                     @if (!string.IsNullOrEmpty(errorMessage))
@@ -54,7 +53,11 @@
 
                     <div class="mt-4 text-center">
                         <small class="text-muted">
-                            Test credentials: admin/admin123 or employee/emp123
+                            <strong>Test Credentials:</strong><br/>
+                            Admin: admin / Password123!<br/>
+                            Manager: john.manager / Password123!<br/>
+                            Cashier: sarah.cashier / Password123!<br/>
+                            Warehouse: mike.warehouse / Password123!
                         </small>
                     </div>
                 </div>
@@ -75,61 +78,61 @@
             isLoading = true;
             errorMessage = null;
 
-            // GraphQL Login Mutation
-            var mutation = @"
-                mutation Login($input: LoginInputDto!) {
-                    login(input: $input) {
-                        token
-                        userId
-                        username
-                        fullName
-                        role
-                        expiresAt
-                    }
-                }
-            ";
-
-            var variables = new
+            // REST API Login Request
+            var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
+            var response = await httpClient.PostAsJsonAsync("api/users/login", new
             {
-                input = new
-                {
-                    username = loginModel.Username,
-                    password = loginModel.Password
-                }
-            };
+                username = loginModel.Username,
+                password = loginModel.Password
+            });
 
-            var response = await GraphQLClient.MutateAsync<LoginResponse>(mutation, variables);
-
-            if (response.Data?.Login != null)
+            if (response.IsSuccessStatusCode)
             {
-                var loginResult = response.Data.Login;
+                var loginResult = await response.Content.ReadFromJsonAsync<LoginResult>();
 
-                // Store authentication info
-                await AuthService.LoginAsync(
-                    loginResult.Token,
-                    loginResult.UserId.ToString(),
-                    loginResult.Username,
-                    loginResult.FullName,
-                    loginResult.Role,
-                    loginResult.ExpiresAt
-                );
-
-                // Redirect based on role
-                if (loginResult.Role == "Admin")
+                if (loginResult != null)
                 {
-                    NavigationManager.NavigateTo("/admin/dashboard", true);
+                    // Store authentication info
+                    await AuthService.LoginAsync(
+                        loginResult.Token,
+                        loginResult.UserId.ToString(),
+                        loginResult.Username,
+                        loginResult.FullName,
+                        loginResult.Role,
+                        loginResult.ExpiresAt
+                    );
+
+                    // Redirect based on role
+                    var redirectUrl = loginResult.Role switch
+                    {
+                        "Admin" => "/admin/dashboard",
+                        "Manager" => "/manager/dashboard",
+                        "Cashier" => "/cashier/dashboard",
+                        "Warehouse" => "/warehouse/dashboard",
+                        _ => "/employee/dashboard"
+                    };
+                    NavigationManager.NavigateTo(redirectUrl);
                 }
                 else
                 {
-                    NavigationManager.NavigateTo("/employee/dashboard", true);
+                    errorMessage = "Login failed. Invalid response from server.";
                 }
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "Invalid username or password";
+            }
+            else
+            {
+                var content = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                errorMessage = content?.Message ?? "Login failed. Please try again.";
             }
         }
         catch (Exception ex)
         {
-            errorMessage = ex.Message.Contains("GraphQL errors")
-                ? "Invalid username or password"
-                : "An error occurred during login. Please try again.";
+            Console.WriteLine($"Login error: {ex.GetType().Name} - {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            errorMessage = $"Login error: {ex.Message}";
         }
         finally
         {
@@ -151,18 +154,30 @@
         public string Password { get; set; } = string.Empty;
     }
 
-    public class LoginResponse
-    {
-        public LoginResult? Login { get; set; }
-    }
-
     public class LoginResult
     {
+        [System.Text.Json.Serialization.JsonPropertyName("token")]
         public string Token { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("userId")]
         public int UserId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("username")]
         public string Username { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fullName")]
         public string FullName { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("role")]
         public string Role { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
         public DateTime ExpiresAt { get; set; }
+    }
+
+    public class ErrorResponse
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("message")]
+        public string? Message { get; set; }
     }
 }

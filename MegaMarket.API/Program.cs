@@ -1,4 +1,6 @@
 using System.Text;
+using System.Text.Json.Serialization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -6,8 +8,6 @@ using MegaMarket.Data.Data;
 using MegaMarket.Data.DataAccess;
 using MegaMarket.Data.Repositories;
 using MegaMarket.API.Services;
-using MegaMarket.API.GraphQL;
-using MegaMarket.API.GraphQL.Types;
 using MegaMarket.API.Services.Interfaces;
 using MegaMarket.API.Services.Implementations;
 using MegaMarket.API.Data;
@@ -17,7 +17,12 @@ using MegaMarket.Data.Repositories.Implementations;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Handle circular references in JSON serialization
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    });
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 builder.Services.AddScoped<InvoiceDAO>();
@@ -97,17 +102,12 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// Configure GraphQL
-builder.Services
-    .AddGraphQLServer()
-    .AddQueryType<Query>()
-    .AddMutationType<Mutation>()
-    .AddType<UserType>()
-    .AddType<ShiftTypeType>()
-    .AddType<AttendanceType>()
-    .AddProjections()
-    .AddFiltering()
-    .AddSorting();
+// Register DbContext for dependency injection (in addition to factory)
+builder.Services.AddScoped<MegaMarketDbContext>(provider =>
+{
+    var factory = provider.GetRequiredService<IDbContextFactory<MegaMarketDbContext>>();
+    return factory.CreateDbContext();
+});
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -130,12 +130,61 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapGraphQL("/graphql");
 
-using (var scope = app.Services.CreateScope())
+// DEBUG: Endpoint to check current user claims
+app.MapGet("/api/debug/claims", (HttpContext context) =>
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<MegaMarketDbContext>();
-    await DbSeeder.SeedAsync(dbContext);
+    var user = context.User;
+    var claims = user.Claims.Select(c => new { c.Type, c.Value }).ToList();
+    return Results.Ok(new
+    {
+        IsAuthenticated = user.Identity?.IsAuthenticated ?? false,
+        Claims = claims,
+        UserId = user.FindFirst("userId")?.Value,
+        Role = user.FindFirst("role")?.Value,
+        NameIdentifier = user.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+        ClaimsRole = user.FindFirst(ClaimTypes.Role)?.Value
+    });
+}).RequireAuthorization();
+
+// TEMPORARY: Endpoint to hash existing passwords
+app.MapPost("/api/admin/hash-passwords", async (MegaMarketDbContext dbContext) =>
+{
+    var users = await dbContext.Users.ToListAsync();
+    foreach (var user in users)
+    {
+        // Only hash if password is plain text (not already hashed)
+        if (!user.Password.StartsWith("$2"))
+        {
+            user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
+        }
+    }
+    await dbContext.SaveChangesAsync();
+    return Results.Ok(new { message = "Passwords hashed successfully", count = users.Count });
+});
+
+// Seed database only if empty (non-testing environments)
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<MegaMarketDbContext>();
+
+        // Only seed if database is completely empty
+        if (!await dbContext.Users.AnyAsync())
+        {
+            Console.WriteLine("Database is empty. Seeding initial data...");
+            await DbSeeder.SeedAsync(dbContext);
+            Console.WriteLine("Database seeding completed successfully!");
+        }
+        else
+        {
+            Console.WriteLine("Database already contains data. Skipping seed.");
+        }
+    }
 }
 
 app.Run();
+
+// Make the implicit Program class public for integration tests
+public partial class Program { }

@@ -1,5 +1,6 @@
 ﻿using MegaMarket.API.DTOs.Customers;
 using MegaMarket.API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics.Contracts;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace MegaMarket.API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class CustomersController : ControllerBase
@@ -42,6 +44,7 @@ namespace MegaMarket.API.Controllers
 
         //api/customers : create a customer
         [HttpPost]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> CreateCustomer([FromBody] CreateCustomerRequestDto requestDto)
         {
             if (!ModelState.IsValid)

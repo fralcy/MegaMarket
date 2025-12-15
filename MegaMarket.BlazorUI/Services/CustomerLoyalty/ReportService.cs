@@ -1,6 +1,7 @@
+using MegaMarket.BlazorUI.Services.Auth;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-
 namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 {
     public class TopCustomerDto
@@ -31,16 +32,18 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _config;
         private string _apiBaseUrl;
-
-        public ReportService(HttpClient httpClient, IConfiguration config)
+        private readonly AuthService _authService;
+        public ReportService(HttpClient httpClient, IConfiguration config, AuthService authService)
         {
             _httpClient = httpClient;
             _config = config;
             _apiBaseUrl = config["ApiSettings:BaseUrl"] ?? "https://localhost:7284";
+            _authService = authService;
         }
 
         public async Task<List<TopCustomerDto>> GetTopCustomersAsync(int limit = 5)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/reports/customers/top?limit={limit}");
@@ -81,6 +84,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<List<TopRewardDto>> GetTopRewardsAsync(int limit = 5)
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/reports/rewards/top?limit={limit}");
@@ -122,6 +126,7 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
 
         public async Task<List<PointsSummaryDto>> GetPointsSummaryAsync()
         {
+            await AddAuthorizationHeaderAsync();
             try
             {
                 var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/reports/points/summary");
@@ -157,6 +162,15 @@ namespace MegaMarket.BlazorUI.Services.CustomerLoyalty
             {
                 System.Diagnostics.Debug.WriteLine($"[ReportService] Exception: {ex.Message}");
                 throw new Exception($"Error fetching points summary: {ex.Message}", ex);
+            }
+        }
+
+        private async Task AddAuthorizationHeaderAsync()
+        {
+            var token = await _authService.GetTokenAsync();
+            if (!string.IsNullOrEmpty(token))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
         }
     }

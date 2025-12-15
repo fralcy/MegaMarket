@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using MegaMarket.API.DTOs.Products;
 using MegaMarket.API.Services.Interfaces;
@@ -6,6 +7,7 @@ using MegaMarket.Data.Models;
 
 namespace MegaMarket.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class ProductsController : ControllerBase
@@ -38,6 +40,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult<ProductDto>> CreateProduct([FromBody] ProductCreateUpdateDto dto)
     {
         try
@@ -53,6 +56,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult> UpdateProduct(int id, [FromBody] ProductCreateUpdateDto dto)
     {
         try
@@ -72,6 +76,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult> DeleteProduct(int id)
     {
         try

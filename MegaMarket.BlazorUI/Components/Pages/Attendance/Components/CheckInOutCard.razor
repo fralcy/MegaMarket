@@ -27,7 +27,7 @@
                             <span class="bi bi-check-circle-fill fs-3 me-3"></span>
                             <div>
                                 <h5 class="mb-0">Checked In</h5>
-                                <small>@TodayAttendance.CheckIn.ToString("h:mm tt")</small>
+                                <small>@TodayAttendance.CheckIn?.ToString("h:mm tt")</small>
                             </div>
                         </div>
 
@@ -146,13 +146,13 @@
 
 @code {
     [Parameter]
-    public CheckInOut.UserDto? CurrentUser { get; set; }
+    public MegaMarket.Data.Models.User? CurrentUser { get; set; }
 
     [Parameter]
-    public CheckInOut.AttendanceDto? TodayAttendance { get; set; }
+    public MegaMarket.Data.Models.Attendance? TodayAttendance { get; set; }
 
     [Parameter]
-    public List<CheckInOut.ShiftTypeDto>? AvailableShiftTypes { get; set; }
+    public List<MegaMarket.Data.Models.ShiftType>? AvailableShiftTypes { get; set; }
 
     [Parameter]
     public EventCallback<int> OnCheckIn { get; set; }
@@ -186,17 +186,17 @@
 
     private string GetWorkingDuration()
     {
-        if (TodayAttendance == null) return "0h 0m";
+        if (TodayAttendance?.CheckIn == null) return "0h 0m";
 
-        var duration = DateTime.Now - TodayAttendance.CheckIn;
+        var duration = DateTime.Now - TodayAttendance.CheckIn.Value;
         return $"{(int)duration.TotalHours}h {duration.Minutes}m";
     }
 
     private string GetTotalWorkTime()
     {
-        if (TodayAttendance?.CheckOut == null) return "0h 0m";
+        if (TodayAttendance?.CheckOut == null || TodayAttendance?.CheckIn == null) return "0h 0m";
 
-        var duration = TodayAttendance.CheckOut.Value - TodayAttendance.CheckIn;
+        var duration = TodayAttendance.CheckOut.Value - TodayAttendance.CheckIn.Value;
         return $"{(int)duration.TotalHours}h {duration.Minutes}m";
     }
 

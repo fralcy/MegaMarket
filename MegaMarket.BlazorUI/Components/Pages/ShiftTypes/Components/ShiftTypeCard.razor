@@ -26,7 +26,7 @@
                 <strong>Wage Rate</strong>
             </div>
             <div class="ps-4">
-                <h4 class="text-@GetShiftColor() mb-0">${ShiftType.WagePerHour:F2}<small class="text-muted fs-6">/hour</small></h4>
+                <h4 class="text-@GetShiftColor() mb-0">$@ShiftType.WagePerHour.ToString("F2")<small class="text-muted fs-6">/hour</small></h4>
             </div>
         </div>
 
@@ -54,7 +54,7 @@
 
 @code {
     [Parameter]
-    public ShiftTypeManagement.ShiftTypeDto ShiftType { get; set; } = null!;
+    public MegaMarket.Data.Models.ShiftType ShiftType { get; set; } = null!;
 
     [Parameter]
     public EventCallback OnEdit { get; set; }
