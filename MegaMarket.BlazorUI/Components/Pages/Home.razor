@@ -1,32 +1,32 @@
 ﻿@page "/"
-@attribute [Authorize]
-@inject NavigationManager NavigationManager
-@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider Auth
 
-<PageTitle>MegaMarket - Employee Management</PageTitle>
+<PageTitle>MegaMarket</PageTitle>
 
 @code {
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
+        var state = await Auth.GetAuthenticationStateAsync();
+        var user = state.User;
 
-        if (user.Identity?.IsAuthenticated == true)
+        if (user.Identity?.IsAuthenticated != true)
         {
-            var role = user.FindFirst("role")?.Value;
+            Nav.NavigateTo("/login", replace: true);
+            return;
+        }
 
-            if (role == "Admin")
-            {
-                NavigationManager.NavigateTo("/admin/dashboard", replace: true);
-            }
-            else if (role == "Employee")
-            {
-                NavigationManager.NavigateTo("/employee/dashboard", replace: true);
-            }
-        }
-        else
+        var role = user.FindFirst("role")?.Value?.ToLower();
+
+        var target = role switch
         {
-            NavigationManager.NavigateTo("/login", replace: true);
-        }
+            "admin"     => "/admin/dashboard",
+            "manager"   => "/manager/dashboard",
+            "cashier"   => "/cashier/dashboard",
+            "warehouse" => "/warehouse/dashboard",
+            _           => "/login"
+        };
+
+        Nav.NavigateTo(target, replace: true);
     }
 }

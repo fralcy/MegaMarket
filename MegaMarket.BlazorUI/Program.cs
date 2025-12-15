@@ -4,12 +4,15 @@ using MegaMarket.Data.DataAccess;
 using MegaMarket.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using MegaMarket.BlazorUI.Services.Auth;
-using MegaMarket.BlazorUI.Services.GraphQL;
 using Microsoft.AspNetCore.Components.Authorization;
 using MegaMarket.BlazorUI.Services;
 using MegaMarket.BlazorUI.Services.Products;
 using MegaMarket.BlazorUI.Services.Imports;
 using MegaMarket.BlazorUI.Services.CustomerLoyalty;
+using MegaMarket.BlazorUI.Services.Dashboard;
+using MegaMarket.BlazorUI.Services.Users;
+using MegaMarket.BlazorUI.Services.ShiftTypes;
+using MegaMarket.BlazorUI.Services.Attendance;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +35,17 @@ builder.Services.AddScoped<LocalStorageService>();
 // Add Auth services
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = "Cookies";
+}).AddCookie("Cookies", options =>
+{
+    options.LoginPath = "/login";
+    options.AccessDeniedPath = "/access-denied";
+    // Don't redirect or challenge - let Blazor components handle authorization
+    options.Events.OnRedirectToLogin = context => Task.CompletedTask;
+    options.Events.OnRedirectToAccessDenied = context => Task.CompletedTask;
+});
 builder.Services.AddAuthorizationCore();
 builder.Services.AddAuthentication(options =>
 {
@@ -43,18 +57,32 @@ builder.Services.AddAuthentication(options =>
     options.SlidingExpiration = true;
 });
 
-// Configure HttpClient for GraphQL
-builder.Services.AddHttpClient("GraphQL", client =>
-{
-    var graphqlEndpoint = builder.Configuration["GraphQL:Endpoint"] ?? "https://localhost:7284/graphql";
-    client.BaseAddress = new Uri(graphqlEndpoint);
-});
-
-// Add GraphQL client service
-builder.Services.AddScoped<GraphQLClient>();
-
 // Configure API Base URL
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7284/";
+
+// Add Dashboard API client service
+builder.Services.AddHttpClient<DashboardApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+// Add Users API client service
+builder.Services.AddHttpClient<UsersApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+// Add ShiftTypes API client service
+builder.Services.AddHttpClient<ShiftTypesApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+// Add Attendance API client service
+builder.Services.AddHttpClient<AttendanceApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
 
 // Register Product & Import Services with HttpClient
 builder.Services.AddHttpClient<ProductApiClient>(client =>

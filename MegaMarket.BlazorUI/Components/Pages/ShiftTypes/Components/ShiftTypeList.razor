@@ -14,11 +14,11 @@
 
 @code {
     [Parameter]
-    public List<ShiftTypeManagement.ShiftTypeDto> ShiftTypes { get; set; } = new();
+    public List<MegaMarket.Data.Models.ShiftType> ShiftTypes { get; set; } = new();
 
     [Parameter]
-    public EventCallback<ShiftTypeManagement.ShiftTypeDto> OnEdit { get; set; }
+    public EventCallback<MegaMarket.Data.Models.ShiftType> OnEdit { get; set; }
 
     [Parameter]
-    public EventCallback<ShiftTypeManagement.ShiftTypeDto> OnDelete { get; set; }
+    public EventCallback<MegaMarket.Data.Models.ShiftType> OnDelete { get; set; }
 }

@@ -1,6 +1,6 @@
 @page "/employee/dashboard"
 @attribute [Authorize(Roles = "Employee")]
-@inject Services.GraphQL.GraphQLClient GraphQLClient
+@inject Services.Dashboard.DashboardApiClient DashboardApiClient
 @inject AuthenticationStateProvider AuthStateProvider
 @using MegaMarket.BlazorUI.Models.Dashboard
 @using ApexCharts
@@ -561,38 +561,11 @@
             isSalesLoading = true;
             salesErrorMessage = null;
 
-            var query = @"
-                query GetSalesDashboard($dateRange: DateRangeEnum!) {
-                    salesDashboard(dateRange: $dateRange) {
-                        totalRevenue
-                        totalInvoices
-                        averageOrderValue
-                        revenueByPaymentMethod {
-                            paymentMethod
-                            revenue
-                            invoiceCount
-                        }
-                        revenueTrend {
-                            date
-                            revenue
-                            invoiceCount
-                        }
-                        topSellingProducts {
-                            productId
-                            productName
-                            quantitySold
-                            revenue
-                        }
-                    }
-                }
-            ";
+            var result = await DashboardApiClient.GetSalesDashboardAsync(selectedRange);
 
-            var variables = new { dateRange = selectedRange.ToString().ToUpper() };
-            var response = await GraphQLClient.QueryAsync<SalesDashboardResponse>(query, variables);
-
-            if (response.Data?.SalesDashboard != null)
+            if (result != null)
             {
-                salesData = response.Data.SalesDashboard;
+                salesData = result;
             }
             else
             {
@@ -616,43 +589,11 @@
             isInventoryLoading = true;
             inventoryErrorMessage = null;
 
-            var query = @"
-                query GetInventoryDashboard($dateRange: DateRangeEnum!) {
-                    inventoryDashboard(dateRange: $dateRange) {
-                        totalProducts
-                        totalCategories
-                        totalStockValue
-                        lowStockCount
-                        outOfStockCount
-                        lowStockProducts {
-                            productId
-                            productName
-                            currentStock
-                            minimumStock
-                            categoryName
-                        }
-                        expiringProducts {
-                            productId
-                            productName
-                            quantity
-                            expiryDate
-                            daysUntilExpiry
-                        }
-                        stockByCategory {
-                            categoryName
-                            totalQuantity
-                            productCount
-                        }
-                    }
-                }
-            ";
+            var result = await DashboardApiClient.GetInventoryDashboardAsync();
 
-            var variables = new { dateRange = selectedRange.ToString().ToUpper() };
-            var response = await GraphQLClient.QueryAsync<InventoryDashboardResponse>(query, variables);
-
-            if (response.Data?.InventoryDashboard != null)
+            if (result != null)
             {
-                inventoryData = response.Data.InventoryDashboard;
+                inventoryData = result;
             }
             else
             {
@@ -676,28 +617,11 @@
             isAttendanceLoading = true;
             attendanceErrorMessage = null;
 
-            var query = @"
-                query GetAttendanceStatistics($userId: Int!, $dateRange: DateRangeEnum!) {
-                    attendanceStatistics(userId: $userId, dateRange: $dateRange) {
-                        totalWorkingDays
-                        attendedDays
-                        absentDays
-                        lateDays
-                        attendanceRate
-                    }
-                }
-            ";
+            var result = await DashboardApiClient.GetAttendanceStatisticsAsync(currentUserId, selectedRange);
 
-            var variables = new
+            if (result != null)
             {
-                userId = currentUserId,
-                dateRange = selectedRange.ToString().ToUpper()
-            };
-            var response = await GraphQLClient.QueryAsync<AttendanceStatisticsResponse>(query, variables);
-
-            if (response.Data?.AttendanceStatistics != null)
-            {
-                attendanceData = response.Data.AttendanceStatistics;
+                attendanceData = result;
             }
             else
             {
@@ -744,21 +668,5 @@
         if (rate >= 90) return "bg-success";
         if (rate >= 75) return "bg-warning";
         return "bg-danger";
-    }
-
-    // GraphQL Response Types
-    private class SalesDashboardResponse
-    {
-        public SalesDashboardDto? SalesDashboard { get; set; }
-    }
-
-    private class InventoryDashboardResponse
-    {
-        public InventoryDashboardDto? InventoryDashboard { get; set; }
-    }
-
-    private class AttendanceStatisticsResponse
-    {
-        public AttendanceRateDto? AttendanceStatistics { get; set; }
     }
 }

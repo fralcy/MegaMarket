@@ -13,21 +13,50 @@ public class LocalStorageService
 
     public async Task SetItemAsync(string key, string value)
     {
-        await _jsRuntime.InvokeVoidAsync("localStorageHelper.setItem", key, value);
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("localStorageHelper.setItem", key, value);
+        }
+        catch (InvalidOperationException)
+        {
+            // JS Interop not available (prerendering)
+        }
     }
 
     public async Task<string?> GetItemAsync(string key)
     {
-        return await _jsRuntime.InvokeAsync<string?>("localStorageHelper.getItem", key);
+        try
+        {
+            return await _jsRuntime.InvokeAsync<string?>("localStorageHelper.getItem", key);
+        }
+        catch (InvalidOperationException)
+        {
+            // JS Interop not available (prerendering)
+            return null;
+        }
     }
 
     public async Task RemoveItemAsync(string key)
     {
-        await _jsRuntime.InvokeVoidAsync("localStorageHelper.removeItem", key);
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("localStorageHelper.removeItem", key);
+        }
+        catch (InvalidOperationException)
+        {
+            // JS Interop not available (prerendering)
+        }
     }
 
     public async Task ClearAsync()
     {
-        await _jsRuntime.InvokeVoidAsync("localStorageHelper.clear");
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("localStorageHelper.clear");
+        }
+        catch (InvalidOperationException)
+        {
+            // JS Interop not available (prerendering)
+        }
     }
 }

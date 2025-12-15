@@ -72,7 +72,9 @@ public class AuthService
         {
             new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
             new Claim(ClaimTypes.Name, username),
-            new Claim(ClaimTypes.Role, role)
+            new Claim(ClaimTypes.Role, role),
+            new Claim("userId", userId.ToString()), // Custom claim for Blazor frontend
+            new Claim("role", role) // Custom claim for Blazor frontend
         };
 
         var token = new JwtSecurityToken(
