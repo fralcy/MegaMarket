@@ -1,10 +1,14 @@
 ﻿@page "/sale"
 
 @inject IHttpClientFactory HttpClientFactory
+@inject ProductService ProductService
+@inject InvoiceApiClient InvoiceApiClient
 @using System.Globalization
 @using MegaMarket.API.DTOs.Invoice
 @using MegaMarket.API.DTOs.Products
 @using MegaMarket.API.DTOs.Promotion
+@using MegaMarket.BlazorUI.Services.Invoice
+@using MegaMarket.BlazorUI.Services.Products
 @using MegaMarket.Data.Models
 
 <div class="checkout-container">
@@ -113,9 +117,9 @@
 
         <div class="payment-screen">
             <div class="payment-methods">
-                <button class="@(SelectedPaymentMethod == PaymentMethod.Cash ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Cash)">Cash</button>
-                <button class="@(SelectedPaymentMethod == PaymentMethod.BankTransfer ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.BankTransfer)">Bank transfer</button>
-                <button class="@(SelectedPaymentMethod == PaymentMethod.Card ? "active" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Card)">Card</button>
+                <button class="@(SelectedPaymentMethod == PaymentMethod.Cash ? "cash" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Cash)">Cash</button>
+                <button class="@(SelectedPaymentMethod == PaymentMethod.BankTransfer ? "bank_transfer" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.BankTransfer)">Bank transfer</button>
+                <button class="@(SelectedPaymentMethod == PaymentMethod.Card ? "card" : "")" @onclick="() => SetPaymentMethod(PaymentMethod.Card)">Card</button>
             </div>
 
             <div class="financial-summary">
@@ -262,8 +266,8 @@
 </div>
 
 @code {
-    private List<ProductDto> Products = new List<ProductDto>();
-    private Dictionary<string, ProductDto> ProductDB;
+    private List<Services.Products.ProductDto> Products = new List<Services.Products.ProductDto>();
+    private Dictionary<string, Services.Products.ProductDto> ProductDB;
     private List<PromotionResDto> Promotions { get; set; } = new List<PromotionResDto>();
     private List<PromotionProductResDto> PromotionProducts = new List<PromotionProductResDto>();
 
@@ -272,7 +276,7 @@
         try
         {
             var client = HttpClientFactory.CreateClient("MegaMarket.API");
-            Products = await client.GetFromJsonAsync<List<ProductDto>>("api/Products") ?? new List<ProductDto>();
+            Products = await ProductService.GetProductsAsync();
             Promotions = await client.GetFromJsonAsync<List<PromotionResDto>>("api/Promotion") ?? new List<PromotionResDto>();
             PromotionProducts = await client.GetFromJsonAsync<List<PromotionProductResDto>>("api/Promotion/PromotionProduct") ?? new List<PromotionProductResDto>();
             ProductDB = Products.ToDictionary(p => p.Barcode, p => p);
@@ -280,10 +284,10 @@
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Lỗi khi tải danh sách sản phẩm: {ex.Message}");
-            Products = new List<ProductDto>();
+            Products = new List<Services.Products.ProductDto>();
             Promotions = new List<PromotionResDto>();
             PromotionProducts = new List<PromotionProductResDto>();
-            ProductDB = new Dictionary<string, ProductDto>();
+            ProductDB = new Dictionary<string, Services.Products.ProductDto>();
         }
     }
 
@@ -323,7 +327,7 @@
     private decimal AmountPaid { get; set; } = 0;
     private string AmountPaidInput { get; set; } = "";
     private List<PromotionResDto> SelectedPromotion = new List<PromotionResDto>();
-    private Invoice? LastCompletedInvoice { get; set; }
+    private InvoiceResDto? LastCompletedInvoice { get; set; }
 
 
     // -----------------------------------------------------------------------
@@ -526,19 +530,19 @@
                     // .Select(pp => pp.Promotion)
                     // .FirstOrDefault()
                     ;
-				// Console.WriteLine($"Áp dụng khuyến mãi cho sản phẩm {item.Name}: {(applicablePromotion != null ? applicablePromotion.Description : "Không có")}");
+                // Console.WriteLine($"Áp dụng khuyến mãi cho sản phẩm {item.Name}: {(applicablePromotion != null ? applicablePromotion.Description : "Không có")}");
                 foreach(var promo in applicablePromotion)
                 {
-					Console.WriteLine($"Áp dụng khuyến mãi cho sản phẩm {item.Name}: {promo.ProductId}");
-				}
-    //             if (applicablePromotion != null)
-    //             {
-    //                 item.DiscountPerUnit = applicablePromotion.DiscountValue;
-    //             }
-    //             else
-    //             {
-    //                 item.DiscountPerUnit = 1;
-				// }
+                    Console.WriteLine($"Áp dụng khuyến mãi cho sản phẩm {item.Name}: {promo.ProductId}");
+                }
+                //             if (applicablePromotion != null)
+                //             {
+                //                 item.DiscountPerUnit = applicablePromotion.DiscountValue;
+                //             }
+                //             else
+                //             {
+                //                 item.DiscountPerUnit = 1;
+                // }
             }
 
             CurrentFocusedInput = "AmountPaid";
@@ -547,10 +551,10 @@
             AmountPaid = 0; // Gán tiền đã thu ban đầu bằng tiền cần thu
 
             // Nếu không phải tiền mặt, tự động set phương thức để trigger AmountPaid
-            if (SelectedPaymentMethod != PaymentMethod.Cash)
-            {
-                SetPaymentMethod(SelectedPaymentMethod);
-            }
+            // if (SelectedPaymentMethod != PaymentMethod.Cash)
+            // {
+            //     SetPaymentMethod(SelectedPaymentMethod);
+            // }
 
             Console.WriteLine("Hiển thị màn hình thanh toán.");
         }
@@ -563,12 +567,12 @@
     // Hàm mới: Hủy thanh toán trên màn hình thanh toán
     private void CancelPaymentScreen()
     {
-		CurrentFocusedInput = "ProductCode";
+        CurrentFocusedInput = "ProductCode";
         IsPaymentScreenVisible = false;
         AmountPaid = 0;
         SelectedPaymentMethod = PaymentMethod.Cash;
-		SelectedPromotion.Clear();
-		DiscountAmountCalculated = 0;
+        SelectedPromotion.Clear();
+        DiscountAmountCalculated = 0;
         Console.WriteLine("Hủy thanh toán, quay lại màn hình giỏ hàng.");
     }
 
@@ -598,7 +602,7 @@
         .Where(detail => detail != null)
         .ToList();
 
-		var query = SelectedPromotion.FirstOrDefault(p => p.Type == "invoice");
+        var query = SelectedPromotion.FirstOrDefault(p => p.Type == "invoice");
         return new InvoiceReqDto
         {
             TotalBeforeDiscount = OriginalPrice,
@@ -606,6 +610,7 @@
             PaymentMethod = SelectedPaymentMethod.ToString(),
             ReceivedAmount = AmountPaid,
             ChangeAmount = ChangeAmount,
+			Status = "Paid",
             PromotionId = query.PromotionId,
             InvoiceDetails = invoiceDetails
         };
@@ -618,19 +623,15 @@
         {
             Console.WriteLine($"Giao dịch THÀNH CÔNG! Phương thức: {SelectedPaymentMethod}. Cần thu: {FormatCurrency(AmountToCollect)}. Khách trả: {FormatCurrency(AmountPaid)}. Tiền thừa: {FormatCurrency(ChangeAmount)}");
             var newInvoice = CreateCompletedInvoiceObject();
-            var client = HttpClientFactory.CreateClient("MegaMarket.API");
-            var response = await client.PostAsJsonAsync("api/Invoice", newInvoice);
-            if (response.IsSuccessStatusCode)
+            try
             {
-                LastCompletedInvoice = await response.Content.ReadFromJsonAsync<Invoice>();
+				LastCompletedInvoice = await InvoiceApiClient.SaveInvoice(newInvoice);
                 IsPaymentScreenVisible = false;
                 Console.WriteLine($"Hóa đơn #{LastCompletedInvoice.InvoiceId} đã được lưu vào hệ thống.");
             }
-            else
+            catch (Exception ex)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Console.Error.WriteLine($"Lỗi khi lưu hóa đơn (Status: {response.StatusCode}): {errorContent}");
-                return;
+				Console.Error.WriteLine($"Lỗi khi lưu hóa đơn: {ex.Message}");
             }
         }
         else

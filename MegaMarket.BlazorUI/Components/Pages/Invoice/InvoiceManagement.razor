@@ -1,10 +1,12 @@
 ﻿@page "/invoice"
 
 @inject IHttpClientFactory HttpClientFactory
+@inject InvoiceApiClient InvoiceApiClient
 @using System.Globalization
 @using System.ComponentModel.DataAnnotations
 @using System.ComponentModel.DataAnnotations.Schema
 @using MegaMarket.API.DTOs.Invoice
+@using MegaMarket.BlazorUI.Services.Invoice
 
 <div class="invoice-container">
     <h2>Invoice Mangagement</h2>
@@ -179,8 +181,7 @@
     {
         try
         {
-            var client = HttpClientFactory.CreateClient("MegaMarket.API");
-            AllInvoices = await client.GetFromJsonAsync<List<InvoiceResDto>>("api/Invoice") ?? new List<InvoiceResDto>();
+            AllInvoices =await InvoiceApiClient.GetAllInvoices();
             FilteredInvoices = AllInvoices;
         }
         catch (Exception ex)
