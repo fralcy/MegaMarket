@@ -13,6 +13,8 @@ using MegaMarket.BlazorUI.Services.Dashboard;
 using MegaMarket.BlazorUI.Services.Users;
 using MegaMarket.BlazorUI.Services.ShiftTypes;
 using MegaMarket.BlazorUI.Services.Attendance;
+using MegaMarket.BlazorUI.Services.Invoice;
+using MegaMarket.BlazorUI.Services.Promotion;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -87,6 +89,20 @@ builder.Services.AddHttpClient<AttendanceApiClient>(client =>
 // Register Product & Import Services with HttpClient
 builder.Services.AddHttpClient<ProductApiClient>(client =>
 {
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+// Register Invoice API Client
+builder.Services.AddHttpClient<InvoiceApiClient>((sp, client) =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var baseUrl = configuration["ApiSettings:BaseUrl"] ?? configuration["ApiBaseUrl"] ?? "https://localhost:7284";
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+builder.Services.AddHttpClient<PromotionApiClient>((sp, client) =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var baseUrl = configuration["ApiSettings:BaseUrl"] ?? configuration["ApiBaseUrl"] ?? "https://localhost:7284";
     client.BaseAddress = new Uri(apiBaseUrl);
 });
 

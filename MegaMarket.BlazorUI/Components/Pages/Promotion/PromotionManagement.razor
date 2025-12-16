@@ -1,11 +1,15 @@
 ﻿@page "/promotion"
 
 @inject IHttpClientFactory HttpClientFactory
+@inject PromotionApiClient client
+@inject ProductService productService
 @using System.ComponentModel.DataAnnotations
 @using System.ComponentModel.DataAnnotations.Schema
 @using System.Globalization
 @using MegaMarket.API.DTOs.Products
 @using MegaMarket.API.DTOs.Promotion
+@using MegaMarket.BlazorUI.Services.Products
+@using MegaMarket.BlazorUI.Services.Promotion
 
 <div class="promotion-container">
     <h2>Promotion Management</h2>
@@ -95,8 +99,12 @@
                         @if(CurrentPromotion.Type == "invoice")
                         {
                             <option value="percent">Percent (%)</option>
+							<option value="fixed">Fixed (VNĐ)</option>
 						}
-                        <option value="fixed">Fixed (VNĐ)</option>
+                        else if(CurrentPromotion.Type == "product")
+                        {
+                            <option value="fixed">Fixed (VNĐ)</option>
+                        }
                     </InputSelect>
                 </div>
 
@@ -152,8 +160,8 @@
 
     private List<PromotionResDto> Promotions { get; set; } = new List<PromotionResDto>();
     private PromotionReqDto CurrentPromotion { get; set; } = new PromotionReqDto();
-    private List<ProductDto> Products = new List<ProductDto>();
-    private Dictionary<string, ProductDto> ProductDB;
+    private List<Services.Products.ProductDto> Products = new List<Services.Products.ProductDto>();
+    private Dictionary<string, Services.Products.ProductDto> ProductDB;
     private int CurrentPromotionId { get; set; } = 0;
     private bool IsEditing { get; set; } = false;
     private string Barcode { get; set; } = string.Empty;
@@ -169,9 +177,8 @@
     {
         try
         {
-            var client = HttpClientFactory.CreateClient("MegaMarket.API");
-            Promotions = await client.GetFromJsonAsync<List<PromotionResDto>>("api/Promotion") ?? new List<PromotionResDto>();
-            Products = await client.GetFromJsonAsync<List<ProductDto>>("api/Products") ?? new List<ProductDto>();
+			Promotions = await client.GetAllPromotions();
+            Products = await productService.GetProductsAsync();
             ProductDB = Products.ToDictionary(p => p.Barcode, p => p);
             Console.WriteLine($"Đã tải {Promotions.Count} khuyến mãi.");
         }
@@ -179,8 +186,8 @@
         {
             Console.WriteLine($"Lỗi khi tải danh sách khuyến mãi: {ex.Message}");
             Promotions = new List<PromotionResDto>();
-            Products = new List<ProductDto>();
-            ProductDB = new Dictionary<string, ProductDto>();
+            Products = new List<Services.Products.ProductDto>();
+            ProductDB = new Dictionary<string, Services.Products.ProductDto>();
         }
     }
 
@@ -289,18 +296,17 @@
         if (CurrentPromotionId == 0)
         {
             // Thêm mới (Create)
-            var httpClient = HttpClientFactory.CreateClient("MegaMarket.API");
-            var response = await httpClient.PostAsJsonAsync("api/Promotion", CurrentPromotion);
-            if (response.IsSuccessStatusCode)
+			var response = await client.CreatePromotion(CurrentPromotion);
+            try
             {
                 IsEditing = false;
                 CurrentPromotion = new PromotionReqDto();
                 CurrentPromotionId = 0;
 				await OnInitializedAsync(); // Tải lại danh sách sau khi thêm mới
             }
-            else
+			catch (Exception ex)
             {
-                Console.WriteLine("Lỗi khi thêm mới khuyến mãi.");
+				Console.WriteLine("Lỗi khi tạo khuyến mãi: " + ex.Message);
             }
         }
         else

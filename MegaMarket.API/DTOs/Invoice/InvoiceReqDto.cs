@@ -9,6 +9,7 @@ namespace MegaMarket.API.DTOs.Invoice
         public string PaymentMethod { get; set; } = "cash"; // cash / bank_transfer / card
         public decimal ReceivedAmount { get; set; }
         public decimal ChangeAmount { get; set; }
+        public string Status { get; set; } = "Pending"; // Paid / Pending
         public int? PromotionId { get; set; }
         public ICollection<InvoiceDetailReqDto> InvoiceDetails { get; set; } = new List<InvoiceDetailReqDto>();
     }
