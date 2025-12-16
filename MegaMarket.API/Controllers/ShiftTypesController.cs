@@ -76,7 +76,7 @@ public class ShiftTypesController : ControllerBase
 
     // POST: api/ShiftTypes
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> CreateShiftType([FromBody] ShiftTypeInputDto input)
     {
         try
@@ -92,7 +92,7 @@ public class ShiftTypesController : ControllerBase
 
     // PUT: api/ShiftTypes/5
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> UpdateShiftType(int id, [FromBody] ShiftTypeInputDto input)
     {
         try
@@ -108,7 +108,7 @@ public class ShiftTypesController : ControllerBase
 
     // DELETE: api/ShiftTypes/5
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> DeleteShiftType(int id)
     {
         try

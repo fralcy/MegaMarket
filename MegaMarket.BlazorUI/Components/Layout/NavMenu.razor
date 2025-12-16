@@ -1,51 +1,46 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">MegaMarket</a>
+<div class="nav-menu">
+    <div class="brand-row">
+        <a class="brand" href="">MegaMarket</a>
     </div>
-</div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
-
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column">
-        
+    <nav class="menu-content">
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <div class="nav-section-title">Admin</div>
                 
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="admin/dashboard">
-                        <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
+                        <span class="bi bi-grid" aria-hidden="true"></span> Dashboard
                     </NavLink>
                 </div>
             
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="employees">
-                        <span class="bi bi-people-fill" aria-hidden="true"></span> Employees
+                        <span class="bi bi-people" aria-hidden="true"></span> Employees
                     </NavLink>
                 </div>
         
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="admin/shift-types">
-                        <span class="bi bi-clock-fill" aria-hidden="true"></span> Shift Types
+                        <span class="bi bi-clock" aria-hidden="true"></span> Shift Types
                     </NavLink>
                 </div>
  
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="products">
-                        <span class="bi bi-bag-fill" aria-hidden="true"></span> Products
+                        <span class="bi bi-box-seam" aria-hidden="true"></span> Products
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="imports">
                         <span class="bi bi-truck" aria-hidden="true"></span> Imports
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="attendance/history">
-                        <span class="bi bi-clock-history" aria-hidden="true"></span> Attendance
+                        <span class="bi bi-calendar-check" aria-hidden="true"></span> Attendance
                     </NavLink>
                 </div>
             </Authorized>
@@ -55,31 +50,31 @@
             <Authorized>
                 <div class="nav-section-title">Manager</div>
             
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="manager/dashboard">
-                        <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
+                        <span class="bi bi-grid" aria-hidden="true"></span> Dashboard
                     </NavLink>
                 </div>
         
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="employees">
-                        <span class="bi bi-people-fill" aria-hidden="true"></span> Employees
+                        <span class="bi bi-people" aria-hidden="true"></span> Employees
                     </NavLink>
                 </div>
     
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="products">
-                        <span class="bi bi-bag-fill" aria-hidden="true"></span> Products
+                        <span class="bi bi-box-seam" aria-hidden="true"></span> Products
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="imports">
                         <span class="bi bi-truck" aria-hidden="true"></span> Imports
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="attendance/history">
-                        <span class="bi bi-clock-history" aria-hidden="true"></span> Attendance
+                        <span class="bi bi-calendar-check" aria-hidden="true"></span> Attendance
                     </NavLink>
                 </div>
             </Authorized>
@@ -89,31 +84,31 @@
             <Authorized>
                 <div class="nav-section-title">Loyalty & Marketing</div>
 
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="customers">
-                        <span class="bi bi-person-lines-fill" aria-hidden="true"></span> Customer 
+                        <span class="bi bi-person" aria-hidden="true"></span> Customer Management
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="loyalty">
-                        <span class="bi bi-award-fill" aria-hidden="true"></span> Loyalty 
+                        <span class="bi bi-gift" aria-hidden="true"></span> Loyalty Dashboard
                     </NavLink>
                 </div>
-            </Authorized>
-        </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,Manager">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="promotion">
-                        <span class="bi bi-tags-fill" aria-hidden="true"></span> Promotions
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="rewards">
-                        <span class="bi bi-gift-fill" aria-hidden="true"></span> Rewards
-                    </NavLink>
-                </div>
+                <AuthorizeView Roles="Admin,Manager">
+                    <Authorized Context="adminMarketing">
+                        <div class="nav-item">
+                            <NavLink class="nav-link" href="promotion">
+                                <span class="bi bi-tag" aria-hidden="true"></span> Promotions
+                            </NavLink>
+                        </div>
+                        <div class="nav-item">
+                            <NavLink class="nav-link" href="rewards">
+                                <span class="bi bi-bookmark" aria-hidden="true"></span> Rewards
+                            </NavLink>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
             </Authorized>
         </AuthorizeView>
         
@@ -121,29 +116,29 @@
             <Authorized>
                 <div class="nav-section-title">Cashier</div>
             
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="cashier/dashboard">
-                        <span class="bi bi-speedometer2" aria-hidden="true"></span> My Dashboard
+                        <span class="bi bi-grid" aria-hidden="true"></span> My Dashboard
                     </NavLink>
                 </div>
         
                 <div class="nav-section-title">Operations</div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="attendance/check-in-out">
                         <span class="bi bi-calendar-check" aria-hidden="true"></span> Check In/Out
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="attendance/my-history">
                         <span class="bi bi-clock-history" aria-hidden="true"></span> My Attendance History
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="sale">
-                        <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Sale
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="checkout">
+                        <span class="bi bi-bag-check-fill" aria-hidden="true"></span> Checkout
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="invoice">
                         <span class="bi bi-file-invoice" aria-hidden="true"></span> Invoice
                     </NavLink>
@@ -155,53 +150,53 @@
             <Authorized>
                 <div class="nav-section-title">Warehouse</div>
            
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="warehouse/dashboard">
-                        <span class="bi bi-speedometer2" aria-hidden="true"></span> My Dashboard
+                        <span class="bi bi-grid" aria-hidden="true"></span> My Dashboard
                     </NavLink>
                 </div>
         
                 <div class="nav-section-title">Inventory</div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="attendance/check-in-out">
                         <span class="bi bi-calendar-check" aria-hidden="true"></span> Check In/Out
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="attendance/my-history">
                         <span class="bi bi-clock-history" aria-hidden="true"></span> My Attendance History
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="products">
-                        <span class="bi bi-bag-fill" aria-hidden="true"></span> Products
+                        <span class="bi bi-box-seam" aria-hidden="true"></span> Products
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="imports">
                         <span class="bi bi-truck" aria-hidden="true"></span> New Import
                     </NavLink>
                 </div>
             </Authorized>
         </AuthorizeView>
+    </nav>
 
-        <AuthorizeView>
-            <Authorized>
-                
-                <div class="nav-item px-3 mt-4 pt-3 border-top">
+    <AuthorizeView>
+        <Authorized>
+            <div class="menu-footer">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="profile">
-                        <span class="bi bi-person-circle" aria-hidden="true"></span> My Profile
+                        <span class="bi bi-person" aria-hidden="true"></span> My Profile
                     </NavLink>
                 </div>
-        
-                <div class="nav-item px-3 mt-2">
+                <div class="nav-item">
                     <a class="nav-link" href="javascript:void(0)" @onclick="HandleLogout" style="cursor: pointer;">
                         <span class="bi bi-box-arrow-right" aria-hidden="true"></span> Logout
                     </a>
                 </div>
-            </Authorized>
-        </AuthorizeView>
-    </nav>
+            </div>
+        </Authorized>
+    </AuthorizeView>
 </div>
 
 @code {
@@ -227,14 +222,3 @@
         }
     }
 }
-
-<style>
-    .nav-section-title {
-        padding: 1rem 1.5rem 0.5rem 1.5rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #6c757d;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-</style>
