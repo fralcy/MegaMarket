@@ -47,6 +47,15 @@ builder.Services.AddAuthentication(options =>
     options.Events.OnRedirectToAccessDenied = context => Task.CompletedTask;
 });
 builder.Services.AddAuthorizationCore();
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = "CustomAuthScheme";
+})
+.AddCookie("CustomAuthScheme", options =>
+{
+    options.Cookie.Name = "MegaMarketAuthCookie";
+    options.SlidingExpiration = true;
+});
 
 // Configure API Base URL
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7284/";

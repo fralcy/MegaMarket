@@ -44,7 +44,7 @@ public class EmployeeDashboardController : ControllerBase
 
     // GET: api/EmployeeDashboard/work-summary?dateRange=TODAY
     [HttpGet("work-summary")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> GetEmployeeWorkSummary([FromQuery] string dateRange = "TODAY")
     {
         try
@@ -77,8 +77,8 @@ public class EmployeeDashboardController : ControllerBase
                 return BadRequest(new { message = "Invalid date range. Use: TODAY, THIS_WEEK, THIS_MONTH, THIS_YEAR" });
             }
 
-            // Access control: Admin can see all employees, Employee can only see themselves
-            if (currentRole != "Admin" && employeeId != currentUserId)
+            // Access control: Admin and Manager can see all employees, Employee can only see themselves
+            if (currentRole != "Admin" && currentRole != "Manager" && employeeId != currentUserId)
             {
                 return Forbid();
             }

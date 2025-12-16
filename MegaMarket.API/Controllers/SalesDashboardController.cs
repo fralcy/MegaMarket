@@ -44,7 +44,7 @@ public class SalesDashboardController : ControllerBase
 
     // GET: api/SalesDashboard/revenue-trend?dateRange=TODAY
     [HttpGet("revenue-trend")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> GetRevenueTrend([FromQuery] string dateRange = "TODAY")
     {
         try

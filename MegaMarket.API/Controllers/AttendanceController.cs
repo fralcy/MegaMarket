@@ -20,7 +20,7 @@ public class AttendanceController : ControllerBase
 
     // GET: api/Attendance
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> GetAttendances()
     {
         try
@@ -50,8 +50,8 @@ public class AttendanceController : ControllerBase
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var currentRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            // Access control: Admin can see all, Employee can only see their own
-            if (currentRole != "Admin" && attendance.UserId != currentUserId)
+            // Access control: Admin and Manager can see all, Employee can only see their own
+            if (currentRole != "Admin" && currentRole != "Manager" && attendance.UserId != currentUserId)
             {
                 return Forbid();
             }
@@ -73,8 +73,8 @@ public class AttendanceController : ControllerBase
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var currentRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            // Access control: Admin can see all, Employee can only see their own
-            if (currentRole != "Admin" && currentUserId != userId)
+            // Access control: Admin and Manager can see all, Employee can only see their own
+            if (currentRole != "Admin" && currentRole != "Manager" && currentUserId != userId)
             {
                 return Forbid();
             }
@@ -90,7 +90,7 @@ public class AttendanceController : ControllerBase
 
     // GET: api/Attendance/date/2024-01-15
     [HttpGet("date/{date}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> GetAttendancesByDate(DateTime date)
     {
         try
@@ -113,8 +113,8 @@ public class AttendanceController : ControllerBase
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var currentRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            // Access control: Employee can only create for themselves
-            if (currentRole != "Admin" && input.UserId != currentUserId)
+            // Access control: Admin and Manager can create for anyone, Employee can only create for themselves
+            if (currentRole != "Admin" && currentRole != "Manager" && input.UserId != currentUserId)
             {
                 return Forbid();
             }
@@ -137,8 +137,8 @@ public class AttendanceController : ControllerBase
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var currentRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            // Access control: Employee can only check-in for themselves
-            if (currentRole != "Admin" && input.UserId != currentUserId)
+            // Access control: Admin and Manager can check-in for anyone, Employee can only check-in for themselves
+            if (currentRole != "Admin" && currentRole != "Manager" && input.UserId != currentUserId)
             {
                 return Forbid();
             }
@@ -161,8 +161,8 @@ public class AttendanceController : ControllerBase
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var currentRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            // Access control: Employee can only check-out for themselves
-            if (currentRole != "Admin" && input.UserId != currentUserId)
+            // Access control: Admin and Manager can check-out for anyone, Employee can only check-out for themselves
+            if (currentRole != "Admin" && currentRole != "Manager" && input.UserId != currentUserId)
             {
                 return Forbid();
             }
@@ -178,7 +178,7 @@ public class AttendanceController : ControllerBase
 
     // PUT: api/Attendance/5
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> UpdateAttendance(int id, [FromBody] AttendanceInputDto input)
     {
         try
@@ -194,7 +194,7 @@ public class AttendanceController : ControllerBase
 
     // DELETE: api/Attendance/5
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> DeleteAttendance(int id)
     {
         try
