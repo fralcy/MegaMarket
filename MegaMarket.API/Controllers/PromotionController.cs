@@ -69,5 +69,19 @@ namespace MegaMarket.API.Controllers
                 return BadRequest(ModelState);
             }
         }
+
+        [HttpGet("PromotionProduct")]
+        public async Task<ActionResult> GetAllPromotionProducts()
+        {
+            try
+            {
+                var promotionProducts = await _service.GetAllPromotionProducts();
+                return Ok(promotionProducts);
+            }
+            catch
+            {
+                return BadRequest(ModelState);
+            }
+        }
     }
 }
