@@ -4,6 +4,29 @@
     gap: 1rem;
 }
 
+.page-header {
+    padding: 1.25rem 1.5rem;
+    background: #ffffff;
+    border-radius: 14px;
+}
+
+.header-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #eef3ff, #d9e5ff);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #113e92;
+    font-size: 1.35rem;
+}
+
+.page-title {
+    font-weight: 700;
+    margin: 0;
+}
+
 .filters .filter-layout {
     display: flex;
     align-items: center;
